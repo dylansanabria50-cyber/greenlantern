@@ -26,6 +26,7 @@ public class ClientEvents {
     public static final KeyMapping BLAST = new KeyMapping("key.greenlantern.blast", GLFW.GLFW_KEY_R, CATEGORY);
     public static final KeyMapping SHIELD = new KeyMapping("key.greenlantern.shield", GLFW.GLFW_KEY_V, CATEGORY);
     public static final KeyMapping WALL = new KeyMapping("key.greenlantern.wall", GLFW.GLFW_KEY_B, CATEGORY);
+    public static final KeyMapping SUIT = new KeyMapping("key.greenlantern.suit", GLFW.GLFW_KEY_N, CATEGORY);
 
     private static final int HOLD_TICKS = 8; // ~0.4 s
     private static int holdTicks = 0;
@@ -48,6 +49,7 @@ public class ClientEvents {
             e.register(BLAST);
             e.register(SHIELD);
             e.register(WALL);
+            e.register(SUIT);
         }
     }
 
@@ -83,6 +85,7 @@ public class ClientEvents {
             while (BLAST.consumeClick()) { }
             while (FLIGHT.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(RingPowers.ACT_FLIGHT));
             while (SHIELD.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(RingPowers.ACT_SHIELD));
+            while (SUIT.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(RingPowers.ACT_SUIT));
             while (WALL.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(RingPowers.ACT_WALL));
         }
 
@@ -111,7 +114,8 @@ public class ClientEvents {
                     {FLIGHT.getTranslatedKeyMessage().getString(), "Volar (doble salto)"},
                     {BLAST.getTranslatedKeyMessage().getString(), "Crear objetos (mantener: favoritos)"},
                     {SHIELD.getTranslatedKeyMessage().getString(), "Burbuja protectora"},
-                    {WALL.getTranslatedKeyMessage().getString(), "Muro de energia"}
+                    {WALL.getTranslatedKeyMessage().getString(), "Muro de energia"},
+                    {SUIT.getTranslatedKeyMessage().getString(), "Traje de Linterna Verde"}
             };
             int textW = 0;
             for (String[] r : rows) textW = Math.max(textW, mc.font.width("[" + r[0] + "] " + r[1]));
