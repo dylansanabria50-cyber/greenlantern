@@ -125,6 +125,7 @@ public class RingScreen extends Screen {
         if (!st.isEmpty() && button == 0) {
             int amount = hasShiftDown() ? st.getMaxStackSize() : 1;
             ModNetwork.CHANNEL.sendToServer(new ModNetwork.ConjurePacket(ForgeRegistries.ITEMS.getKey(st.getItem()), amount));
+            this.onClose();
             return true;
         }
         return false;
