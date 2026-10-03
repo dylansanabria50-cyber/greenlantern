@@ -19,6 +19,7 @@ public class ModNetwork {
 
     public static void register() {
         CHANNEL.registerMessage(0, PowerPacket.class, PowerPacket::encode, PowerPacket::decode, PowerPacket::handle);
+        CHANNEL.registerMessage(2, SuitPacket.class, SuitPacket::encode, SuitPacket::decode, SuitPacket::handle);
         CHANNEL.registerMessage(1, ConjurePacket.class, ConjurePacket::encode, ConjurePacket::decode, ConjurePacket::handle);
     }
 
@@ -65,6 +66,26 @@ public class ModNetwork {
                 Item item = ForgeRegistries.ITEMS.getValue(m.id);
                 if (item != null) RingPowers.conjure(p, item, Math.max(1, Math.min(m.amount, 64)));
             });
+            ctx.setPacketHandled(true);
+        }
+    }
+
+    /** El servidor avisa a los clientes de que un jugador lleva (o no) el traje. */
+    public static class SuitPacket {
+        private final int entityId;
+        private final boolean on;
+
+        public SuitPacket(int entityId, boolean on) { this.entityId = entityId; this.on = on; }
+
+        public static void encode(SuitPacket m, FriendlyByteBuf buf) { buf.writeVarInt(m.entityId); buf.writeBoolean(m.on); }
+
+        public static SuitPacket decode(FriendlyByteBuf buf) { return new SuitPacket(buf.readVarInt(), buf.readBoolean()); }
+
+        public static void handle(SuitPacket m, Supplier<NetworkEvent.Context> sup) {
+            NetworkEvent.Context ctx = sup.get();
+            ctx.enqueueWork(() -> net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(
+                    net.minecraftforge.api.distmarker.Dist.CLIENT,
+                    () -> () -> com.example.greenlantern.client.ClientSuit.set(m.entityId, m.on)));
             ctx.setPacketHandled(true);
         }
     }
