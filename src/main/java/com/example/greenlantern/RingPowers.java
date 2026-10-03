@@ -14,14 +14,19 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
+
+import java.util.function.Consumer;
 
 public class RingPowers {
     public static final int MAX_ENERGY = 100;
@@ -30,6 +35,9 @@ public class RingPowers {
     public static final int COST_WALL = 25;
 
     public static final int ACT_FLIGHT = 0, ACT_BLAST = 1, ACT_SHIELD = 2, ACT_WALL = 3;
+
+    public static final double SHIELD_RADIUS = 5.0;
+    public static final int SHIELD_TICKS = 200; // 10 segundos
 
     private static final DustParticleOptions GREEN = new DustParticleOptions(new Vector3f(0.1f, 1.0f, 0.25f), 1.4f);
 
@@ -131,19 +139,134 @@ public class RingPowers {
         bar(p, "Rayo de energia");
     }
 
-    public static void shield(ServerPlayer p) {
-        if (!spend(p, COST_SHIELD)) return;
-        p.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 200, 3, false, false, true));
-        p.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 200, 4, false, false, true));
-        ServerLevel level = p.serverLevel();
-        for (int i = 0; i < 80; i++) {
-            double theta = Math.random() * Math.PI * 2, phi = Math.acos(2 * Math.random() - 1);
-            double r = 1.6;
-            level.sendParticles(GREEN, p.getX() + r * Math.sin(phi) * Math.cos(theta),
-                    p.getY() + 1.0 + r * Math.cos(phi), p.getZ() + r * Math.sin(phi) * Math.sin(theta), 1, 0, 0, 0, 0);
+    public static boolean shieldActive(Player p) {
+        return p.level().getGameTime() < data(p).getLong("GLShieldEnd");
+    }
+
+    private static BlockPos shieldCenter(CompoundTag d) {
+        return new BlockPos(d.getInt("GLSX"), d.getInt("GLSY"), d.getInt("GLSZ"));
+    }
+
+    /** Recorre las posiciones de la capa esferica (grosor ~1.5 para que no queden huecos). */
+    private static void forEachShell(BlockPos c, Consumer<BlockPos> fn) {
+        int r = (int) Math.ceil(SHIELD_RADIUS) + 1;
+        for (int dx = -r; dx <= r; dx++) {
+            for (int dy = -r; dy <= r; dy++) {
+                for (int dz = -r; dz <= r; dz++) {
+                    double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    if (dist > SHIELD_RADIUS - 1.0 && dist <= SHIELD_RADIUS + 0.5) fn.accept(c.offset(dx, dy, dz));
+                }
+            }
         }
+    }
+
+    /** Coloca (o repara) la pared. No encierra a un mob dentro de un bloque: espera a que se mueva. */
+    private static void fillShell(ServerLevel level, BlockPos c) {
+        BlockState shell = GreenLanternMod.SHIELD_BLOCK.get().defaultBlockState();
+        forEachShell(c, pos -> {
+            if (level.isOutsideBuildHeight(pos) || !level.hasChunkAt(pos)) return;
+            BlockState cur = level.getBlockState(pos);
+            if (cur.is(shell.getBlock())) return;
+            boolean free = cur.isAir() || (cur.canBeReplaced() && cur.getFluidState().isEmpty());
+            if (!free) return;
+            if (!level.getEntitiesOfClass(LivingEntity.class, new AABB(pos), e -> !(e instanceof Player)).isEmpty()) return;
+            level.setBlock(pos, shell, 2);
+        });
+    }
+
+    private static void clearShell(ServerLevel level, BlockPos c) {
+        forEachShell(c, pos -> {
+            if (level.isOutsideBuildHeight(pos) || !level.hasChunkAt(pos)) return;
+            if (level.getBlockState(pos).is(GreenLanternMod.SHIELD_BLOCK.get())) level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+        });
+    }
+
+    private static boolean isShell(BlockPos pos, BlockPos c) {
+        double dx = pos.getX() - c.getX(), dy = pos.getY() - c.getY(), dz = pos.getZ() - c.getZ();
+        double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        return dist > SHIELD_RADIUS - 1.0 && dist <= SHIELD_RADIUS + 0.5;
+    }
+
+    /** Desplaza la pared al nuevo centro: quita solo lo que sobra y coloca solo lo que falta. */
+    private static void moveShell(ServerLevel level, BlockPos oldC, BlockPos newC) {
+        forEachShell(oldC, pos -> {
+            if (isShell(pos, newC)) return;
+            if (level.isOutsideBuildHeight(pos) || !level.hasChunkAt(pos)) return;
+            if (level.getBlockState(pos).is(GreenLanternMod.SHIELD_BLOCK.get())) level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+        });
+        fillShell(level, newC);
+    }
+
+    /** V: crea la burbuja alrededor tuyo (te sigue) o la quita si ya esta activa. */
+    public static void shield(ServerPlayer p) {
+        CompoundTag d = data(p);
+        ServerLevel level = p.serverLevel();
+        String dim = level.dimension().location().toString();
+
+        if (shieldActive(p)) {
+            if (dim.equals(d.getString("GLSDim"))) clearShell(level, shieldCenter(d));
+            d.putLong("GLShieldEnd", 0);
+            bar(p, "Burbuja desactivada");
+            return;
+        }
+        if (!spend(p, COST_SHIELD)) return;
+
+        BlockPos c = p.blockPosition().above();
+        d.putLong("GLShieldEnd", level.getGameTime() + SHIELD_TICKS);
+        d.putInt("GLSX", c.getX());
+        d.putInt("GLSY", c.getY());
+        d.putInt("GLSZ", c.getZ());
+        d.putString("GLSDim", dim);
+        fillShell(level, c);
         level.playSound(null, p.blockPosition(), SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 1.0f, 1.4f);
-        bar(p, "Escudo de energia (10 s)");
+        bar(p, "Burbuja de energia (10 s, te sigue; V para quitarla)");
+    }
+
+    /** Cada tick desde RingEvents: mantiene la pared, elimina proyectiles y la retira al terminar. */
+    public static void tickShield(ServerPlayer p) {
+        CompoundTag d = data(p);
+        long end = d.getLong("GLShieldEnd");
+        if (end == 0) return;
+
+        ServerLevel level = p.serverLevel();
+        long now = level.getGameTime();
+        if (!level.dimension().location().toString().equals(d.getString("GLSDim"))) {
+            d.putLong("GLShieldEnd", 0); // cambiaste de dimension: los bloques se retiran solos
+            return;
+        }
+        BlockPos c = shieldCenter(d);
+
+        if (!hasRing(p) || now >= end) {
+            clearShell(level, c);
+            d.putLong("GLShieldEnd", 0);
+            bar(p, "La burbuja se disipo");
+            return;
+        }
+
+        // la burbuja te sigue: si cambiaste de bloque, mueve la pared
+        BlockPos nc = p.blockPosition().above();
+        if (!nc.equals(c)) {
+            moveShell(level, c, nc);
+            d.putInt("GLSX", nc.getX());
+            d.putInt("GLSY", nc.getY());
+            d.putInt("GLSZ", nc.getZ());
+            c = nc;
+        }
+
+        // proyectiles que no son tuyos se eliminan antes de tocar la pared (evita explosiones)
+        Vec3 cv = Vec3.atCenterOf(c);
+        AABB box = new AABB(cv, cv).inflate(SHIELD_RADIUS + 2.0);
+        for (Projectile proj : level.getEntitiesOfClass(Projectile.class, box, e -> e.getOwner() != p)) {
+            if (proj.getDeltaMovement().lengthSqr() < 1.0E-4) continue; // flechas ya clavadas
+            if (proj.position().distanceTo(cv) <= SHIELD_RADIUS + 0.5) {
+                level.sendParticles(GREEN, proj.getX(), proj.getY(), proj.getZ(), 12, 0.2, 0.2, 0.2, 0.02);
+                level.playSound(null, proj.blockPosition(), SoundEvents.AMETHYST_BLOCK_HIT, SoundSource.PLAYERS, 1.0f, 1.5f);
+                proj.discard();
+            }
+        }
+
+        // repara huecos (por ejemplo donde habia un mob o tras una explosion)
+        if (now % 10 == 0) fillShell(level, c);
     }
 
     public static void wall(ServerPlayer p) {
