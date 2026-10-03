@@ -27,6 +27,8 @@ public class RingEvents {
         CompoundTag d = RingPowers.data(p);
         Abilities ab = p.getAbilities();
 
+        RingPowers.tickShield(p);
+
         boolean wantFly = ring && flightOn && energy > 0;
 
         if (wantFly) {

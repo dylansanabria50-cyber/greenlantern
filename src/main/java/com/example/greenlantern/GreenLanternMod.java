@@ -22,6 +22,7 @@ public class GreenLanternMod {
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MODID);
 
     public static final RegistryObject<Block> CONSTRUCT_BLOCK = BLOCKS.register("construct_block", ConstructBlock::new);
+    public static final RegistryObject<Block> SHIELD_BLOCK = BLOCKS.register("shield_block", ShieldBlock::new);
     public static final RegistryObject<Item> POWER_RING = ITEMS.register("power_ring",
             () -> new PowerRingItem(new Item.Properties().stacksTo(1).rarity(Rarity.EPIC).fireResistant()));
 
