@@ -82,6 +82,12 @@ public class RingPowers {
     public static boolean hasRing(Player p) {
         for (ItemStack s : p.getInventory().items) if (s.is(GreenLanternMod.POWER_RING.get())) return true;
         for (ItemStack s : p.getInventory().offhand) if (s.is(GreenLanternMod.POWER_RING.get())) return true;
+        return isWorn(p);
+    }
+
+    /** El anillo esta "puesto" si esta en alguna de las 4 ranuras de armadura. */
+    public static boolean isWorn(Player p) {
+        for (ItemStack s : p.getInventory().armor) if (s.is(GreenLanternMod.POWER_RING.get())) return true;
         return false;
     }
 
