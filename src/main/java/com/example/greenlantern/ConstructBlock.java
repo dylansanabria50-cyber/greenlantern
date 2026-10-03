@@ -6,13 +6,13 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.SoundType;
-import net.minecraft.world.level.block.TransparentBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
 
 /** Bloque temporal de energia verde. Desaparece solo tras LIFETIME ticks. */
-public class ConstructBlock extends TransparentBlock {
+public class ConstructBlock extends Block {
     public static final int LIFETIME = 300; // 15 segundos
 
     public ConstructBlock() {
