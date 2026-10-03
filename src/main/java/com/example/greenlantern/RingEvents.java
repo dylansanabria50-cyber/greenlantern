@@ -30,8 +30,8 @@ public class RingEvents {
         boolean wantFly = ring && flightOn && energy > 0;
 
         if (wantFly) {
-            if (!ab.mayFly) {
-                ab.mayFly = true;
+            if (!ab.mayfly) {
+                ab.mayfly = true;
                 ab.setFlyingSpeed(RING_FLY_SPEED);
                 d.putBoolean("GLFly", true);
                 if (!p.onGround()) ab.flying = true;
@@ -47,7 +47,7 @@ public class RingEvents {
         } else if (d.getBoolean("GLFly")) {
             d.putBoolean("GLFly", false);
             if (!p.isCreative() && !p.isSpectator()) {
-                ab.mayFly = false;
+                ab.mayfly = false;
                 ab.flying = false;
             }
             ab.setFlyingSpeed(NORMAL_FLY_SPEED);
