@@ -27,6 +27,19 @@ public class ClientEvents {
     public static final KeyMapping SHIELD = new KeyMapping("key.greenlantern.shield", GLFW.GLFW_KEY_V, CATEGORY);
     public static final KeyMapping WALL = new KeyMapping("key.greenlantern.wall", GLFW.GLFW_KEY_B, CATEGORY);
 
+    private static final int HOLD_TICKS = 8; // ~0.4 s
+    private static int holdTicks = 0;
+    private static boolean armed = true;
+
+    /** Tinte verde translucido con borde, sobre un objeto de size x size pixeles. */
+    public static void tint(GuiGraphics g, int x, int y, int size) {
+        g.fill(x, y, x + size, y + size, 0x7A22FF66);
+        g.fill(x, y, x + size, y + 1, 0xCC66FF99);
+        g.fill(x, y + size - 1, x + size, y + size, 0xCC66FF99);
+        g.fill(x, y, x + 1, y + size, 0xCC66FF99);
+        g.fill(x + size - 1, y, x + size, y + size, 0xCC66FF99);
+    }
+
     @Mod.EventBusSubscriber(modid = GreenLanternMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
     public static class ModBus {
         @SubscribeEvent
@@ -44,12 +57,31 @@ public class ClientEvents {
         public static void onClientTick(TickEvent.ClientTickEvent e) {
             if (e.phase != TickEvent.Phase.END) return;
             Minecraft mc = Minecraft.getInstance();
-            if (mc.player == null || mc.screen != null) return;
-            while (FLIGHT.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(RingPowers.ACT_FLIGHT));
-            while (BLAST.consumeClick()) {
+            if (mc.player == null) return;
+            if (mc.screen != null) { holdTicks = 0; armed = false; return; }
+            if (!BLAST.isDown()) armed = true;
+            if (armed && BLAST.isDown()) {
+                holdTicks++;
+                if (holdTicks == HOLD_TICKS) {
+                    if (hasRingClient(mc)) mc.setScreen(new QuickScreen());
+                    else mc.player.displayClientMessage(Component.literal("§cNecesitas el Anillo de Poder en el inventario"), true);
+                    return;
+                }
+            } else if (holdTicks > 0) {
+                int t = holdTicks;
+                holdTicks = 0;
+                if (t < HOLD_TICKS) {
+                    if (hasRingClient(mc)) mc.setScreen(new RingScreen());
+                    else mc.player.displayClientMessage(Component.literal("§cNecesitas el Anillo de Poder en el inventario"), true);
+                    return;
+                }
+            } else if (armed && BLAST.consumeClick()) { // toque muy rapido (menos de un tick)
                 if (hasRingClient(mc)) mc.setScreen(new RingScreen());
-                else mc.player.displayClientMessage(Component.literal("\u00a7cNecesitas el Anillo de Poder en el inventario"), true);
+                else mc.player.displayClientMessage(Component.literal("§cNecesitas el Anillo de Poder en el inventario"), true);
+                return;
             }
+            while (BLAST.consumeClick()) { }
+            while (FLIGHT.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(RingPowers.ACT_FLIGHT));
             while (SHIELD.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(RingPowers.ACT_SHIELD));
             while (WALL.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(RingPowers.ACT_WALL));
         }
@@ -69,7 +101,7 @@ public class ClientEvents {
                     if (RingPowers.isConjured(s.getItem())) {
                         int x = scr.getGuiLeft() + s.x;
                         int y = scr.getGuiTop() + s.y;
-                        g.fill(x, y, x + 16, y + 16, 0x6600FF55);
+                        tint(g, x, y, 16);
                     }
                 }
             }
@@ -88,7 +120,7 @@ public class ClientEvents {
                 if (RingPowers.isConjured(mc.player.getInventory().items.get(i))) {
                     int x = w / 2 - 90 + i * 20 + 2;
                     int y = h - 16 - 3;
-                    g.fill(x, y, x + 16, y + 16, 0x6600FF55);
+                    tint(g, x, y, 16);
                 }
             }
         }
