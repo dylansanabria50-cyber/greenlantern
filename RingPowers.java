@@ -54,7 +54,7 @@ public class RingPowers {
     public static final int COST_SHIELD = 30;
     public static final int COST_WALL = 25;
 
-    public static final int ACT_FLIGHT = 0, ACT_SHIELD = 2, ACT_WALL = 3;
+    public static final int ACT_FLIGHT = 0, ACT_SHIELD = 2, ACT_WALL = 3, ACT_SUIT = 4;
 
     public static final double SHIELD_RADIUS = 5.0;
     public static final int SHIELD_TICKS = 200; // 10 segundos
@@ -110,6 +110,7 @@ public class RingPowers {
             case ACT_FLIGHT -> toggleFlight(p);
             case ACT_SHIELD -> shield(p);
             case ACT_WALL -> wall(p);
+            case ACT_SUIT -> toggleSuit(p);
             default -> { }
         }
     }
@@ -312,8 +313,40 @@ public class RingPowers {
         bar(p, "Burbuja de energia (10 s, te sigue; V para quitarla)");
     }
 
+    // ---------- traje ----------
+    public static boolean isSuitOn(Player p) {
+        return data(p).getBoolean("GLSuit");
+    }
+
+    public static void setSuit(ServerPlayer p, boolean on) {
+        data(p).putBoolean("GLSuit", on);
+        ModNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> p),
+                new ModNetwork.SuitPacket(p.getId(), on));
+    }
+
+    public static void toggleSuit(ServerPlayer p) {
+        boolean on = !isSuitOn(p);
+        setSuit(p, on);
+        ServerLevel level = p.serverLevel();
+        level.sendParticles(GREEN, p.getX(), p.getY() + 1.0, p.getZ(), 60, 0.5, 0.9, 0.5, 0.05);
+        level.playSound(null, p.blockPosition(), SoundEvents.BEACON_POWER_SELECT, SoundSource.PLAYERS, 1.0f, on ? 1.5f : 0.8f);
+        bar(p, on ? "Traje de Linterna Verde activado" : "Traje desactivado");
+    }
+
+    public static void tickSuit(ServerPlayer p) {
+        if (!isSuitOn(p)) return;
+        if (!isWorn(p)) {
+            setSuit(p, false);
+            return;
+        }
+        if (p.tickCount % 3 == 0) {
+            p.serverLevel().sendParticles(GREEN, p.getX(), p.getY() + 1.0, p.getZ(), 2, 0.35, 0.8, 0.35, 0.0);
+        }
+    }
+
     /** Cada tick desde RingEvents: mantiene la pared, elimina proyectiles y la retira al terminar. */
     public static void tickShield(ServerPlayer p) {
+        tickSuit(p);
         CompoundTag d = data(p);
         long end = d.getLong("GLShieldEnd");
         if (end == 0) return;
