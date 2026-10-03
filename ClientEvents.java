@@ -87,9 +87,7 @@ public class ClientEvents {
         }
 
         private static boolean hasRingClient(Minecraft mc) {
-            for (ItemStack s : mc.player.getInventory().items) if (s.is(GreenLanternMod.POWER_RING.get())) return true;
-            for (ItemStack s : mc.player.getInventory().offhand) if (s.is(GreenLanternMod.POWER_RING.get())) return true;
-            return false;
+            return RingPowers.hasRing(mc.player);
         }
 
         /** Tinte verde translucido sobre los objetos creados en inventarios y cofres. */
@@ -107,6 +105,28 @@ public class ClientEvents {
             }
         }
 
+        /** Panel de poderes a la derecha de la pantalla (solo con el anillo puesto). */
+        private static void drawPanel(Minecraft mc, GuiGraphics g, int w, int h) {
+            String[][] rows = {
+                    {FLIGHT.getTranslatedKeyMessage().getString(), "Volar (doble salto)"},
+                    {BLAST.getTranslatedKeyMessage().getString(), "Crear objetos (mantener: favoritos)"},
+                    {SHIELD.getTranslatedKeyMessage().getString(), "Burbuja protectora"},
+                    {WALL.getTranslatedKeyMessage().getString(), "Muro de energia"}
+            };
+            int textW = 0;
+            for (String[] r : rows) textW = Math.max(textW, mc.font.width("[" + r[0] + "] " + r[1]));
+            int pw = textW + 12;
+            int ph = rows.length * 11 + 20;
+            int x = w - pw - 6;
+            int y = h / 2 - ph / 2;
+            g.fill(x - 1, y - 1, x + pw + 1, y + ph + 1, 0xFF2E6B45);
+            g.fill(x, y, x + pw, y + ph, 0xAA0E1F15);
+            g.drawString(mc.font, "Anillo de Poder", x + 6, y + 4, 0x55FF77, false);
+            for (int i = 0; i < rows.length; i++) {
+                g.drawString(mc.font, "§a[" + rows[i][0] + "] §f" + rows[i][1], x + 6, y + 17 + i * 11, 0xFFFFFF, false);
+            }
+        }
+
         /** Tinte verde translucido sobre los objetos creados en la barra rapida. */
         @SubscribeEvent
         public static void onHotbar(RenderGuiOverlayEvent.Post e) {
@@ -116,6 +136,7 @@ public class ClientEvents {
             GuiGraphics g = e.getGuiGraphics();
             int w = e.getWindow().getGuiScaledWidth();
             int h = e.getWindow().getGuiScaledHeight();
+            if (RingPowers.isWorn(mc.player)) drawPanel(mc, g, w, h);
             for (int i = 0; i < 9; i++) {
                 if (RingPowers.isConjured(mc.player.getInventory().items.get(i))) {
                     int x = w / 2 - 90 + i * 20 + 2;
