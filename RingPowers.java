@@ -49,7 +49,8 @@ public class RingPowers {
             "minecraft:command_block", "minecraft:chain_command_block", "minecraft:repeating_command_block",
             "minecraft:command_block_minecart", "minecraft:structure_block", "minecraft:structure_void",
             "minecraft:jigsaw", "minecraft:barrier", "minecraft:light", "minecraft:debug_stick",
-            "minecraft:knowledge_book", "minecraft:bedrock");
+            "minecraft:knowledge_book", "minecraft:bedrock",
+            "minecraft:totem_of_undying", "minecraft:golden_apple", "minecraft:enchanted_golden_apple");
     public static final int COST_SHIELD = 30;
     public static final int COST_WALL = 25;
 
@@ -130,7 +131,10 @@ public class RingPowers {
     public static boolean isAllowed(Item item) {
         if (item == Items.AIR) return false;
         ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
-        return key != null && !FORBIDDEN.contains(key.toString());
+        if (key == null || FORBIDDEN.contains(key.toString())) return false;
+        if (item instanceof net.minecraft.world.item.SpawnEggItem) return false;
+        String path = key.getPath();
+        return !(path.equals("egg") || path.endsWith("_egg") || path.endsWith("_spawn_egg"));
     }
 
     public static boolean isConjured(ItemStack s) {
