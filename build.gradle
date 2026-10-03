@@ -42,3 +42,14 @@ tasks.named('jar', Jar).configure {
 }
 
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+
+
+// Compila los .java que estan sueltos en la raiz del repositorio (los recursos siguen en src/main/resources)
+sourceSets {
+    main {
+        java {
+            srcDirs = [projectDir]
+            include '*.java'
+        }
+    }
+}
