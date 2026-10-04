@@ -22,11 +22,11 @@ import org.lwjgl.glfw.GLFW;
 
 public class ClientEvents {
     public static final String CATEGORY = "key.categories.greenlantern";
-    public static final KeyMapping COMBAT = new KeyMapping("key.greenlantern.combat", GLFW.GLFW_KEY_G, CATEGORY);
+
     public static final KeyMapping BLAST = new KeyMapping("key.greenlantern.blast", GLFW.GLFW_KEY_R, CATEGORY);
-    public static final KeyMapping SHIELD = new KeyMapping("key.greenlantern.shield", GLFW.GLFW_KEY_V, CATEGORY);
-    public static final KeyMapping WALL = new KeyMapping("key.greenlantern.wall", GLFW.GLFW_KEY_B, CATEGORY);
-    public static final KeyMapping SUIT = new KeyMapping("key.greenlantern.suit", GLFW.GLFW_KEY_N, CATEGORY);
+
+
+
 
     private static final int HOLD_TICKS = 8; // ~0.4 s
     private static int holdTicks = 0;
@@ -45,11 +45,7 @@ public class ClientEvents {
     public static class ModBus {
         @SubscribeEvent
         public static void registerKeys(RegisterKeyMappingsEvent e) {
-            e.register(COMBAT);
             e.register(BLAST);
-            e.register(SHIELD);
-            e.register(WALL);
-            e.register(SUIT);
         }
     }
 
@@ -83,39 +79,6 @@ public class ClientEvents {
                 return;
             }
             while (BLAST.consumeClick()) { }
-            if (COMBAT.consumeClick()) {
-                if (hasRingClient(mc)) {
-                    mc.setScreen(new CombatScreen());
-                    return;
-                }
-                mc.player.displayClientMessage(Component.literal("\u00a7cNecesitas el Anillo de Poder en el inventario"), true);
-            }
-            while (COMBAT.consumeClick()) { }
-            doubleJump(mc);
-            while (SHIELD.consumeClick()) { }
-            if (SHIELD.isDown() && hasRingClient(mc) && mc.player.tickCount % 3 == 0) {
-                ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(RingPowers.ACT_SHIELD_HOLD));
-            }
-            while (SUIT.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(RingPowers.ACT_SUIT));
-            while (WALL.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(RingPowers.ACT_WALL));
-        }
-
-        private static int jumpGap = 0;
-        private static boolean prevJump = false;
-
-        /** Dos saltos rapidos en el aire: activa el vuelo. */
-        private static void doubleJump(Minecraft mc) {
-            boolean jd = mc.options.keyJump.isDown();
-            if (jumpGap > 0) jumpGap--;
-            if (jd && !prevJump) {
-                if (jumpGap > 0 && !mc.player.onGround() && !mc.player.getAbilities().mayfly && hasRingClient(mc)) {
-                    ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(RingPowers.ACT_FLIGHT_ON));
-                    jumpGap = 0;
-                } else {
-                    jumpGap = 8;
-                }
-            }
-            prevJump = jd;
         }
 
         private static boolean hasRingClient(Minecraft mc) {
@@ -140,12 +103,7 @@ public class ClientEvents {
         /** Panel de poderes a la derecha de la pantalla (solo con el anillo puesto). */
         private static void drawPanel(Minecraft mc, GuiGraphics g, int w, int h) {
             String[][] rows = {
-                    {"Salto x2", "Volar (salto doble en el aire)"},
-                    {COMBAT.getTranslatedKeyMessage().getString(), "Armas: minigun, cohete, avion"},
-                    {BLAST.getTranslatedKeyMessage().getString(), "Crear objetos (mantener: favoritos)"},
-                    {SHIELD.getTranslatedKeyMessage().getString(), "Escudo de fuerza (mantener)"},
-                    {WALL.getTranslatedKeyMessage().getString(), "Muro de energia"},
-                    {SUIT.getTranslatedKeyMessage().getString(), "Traje de Linterna Verde"}
+                                        {BLAST.getTranslatedKeyMessage().getString(), "Crear objetos (mantener: favoritos)"},
             };
             int textW = 0;
             for (String[] r : rows) textW = Math.max(textW, mc.font.width("[" + r[0] + "] " + r[1]));
