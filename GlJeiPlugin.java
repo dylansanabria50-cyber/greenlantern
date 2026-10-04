@@ -1,4 +1,4 @@
-package com.example.greenlantern;
+package com.example.glsolo;
 
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
