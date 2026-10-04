@@ -29,6 +29,8 @@ public final class BoxModel {
     private final List<float[]> quads = new ArrayList<>();
     private final List<float[]> spinQuads = new ArrayList<>();
     private boolean ready = false;
+    private boolean proc = false;
+    private NativeImage procImg;
 
     public BoxModel(String name, String cubesFile, String spinFile, float tw, float th, double[] spinPivot) {
         this.name = name;
@@ -38,6 +40,24 @@ public final class BoxModel {
         this.tw = tw;
         this.th = th;
         this.spinPivot = spinPivot;
+    }
+
+    /** La textura se genera por codigo a partir de una columna de color extra en cada cubo. */
+    public BoxModel procedural() {
+        this.proc = true;
+        return this;
+    }
+
+    private static final int[][] PALETTE = {{70, 74, 80}, {45, 48, 54}, {110, 255, 140}, {25, 170, 60}, {24, 24, 28}, {105, 110, 118}};
+
+    private void paint(double u, double v, double w, double h, double d, int ci) {
+        int[] c = PALETTE[Math.max(0, Math.min(PALETTE.length - 1, ci))];
+        int px = 0xFF000000 | (c[2] << 16) | (c[1] << 8) | c[0];
+        int x0 = (int) u, y0 = (int) v;
+        int pw = (int) Math.ceil(2 * d + 2 * w), ph = (int) Math.ceil(d + h);
+        for (int y = y0; y < y0 + ph && y < procImg.getHeight(); y++) {
+            for (int x = x0; x < x0 + pw && x < procImg.getWidth(); x++) procImg.setPixelRGBA(x, y, px);
+        }
     }
 
     private static String read(String file) throws IOException {
@@ -60,11 +80,16 @@ public final class BoxModel {
         if (ready) return;
         ready = true;
         try {
-            byte[] png = Base64.getMimeDecoder().decode(read(name + "_png.b64").trim());
-            NativeImage img = NativeImage.read(new ByteArrayInputStream(png));
-            Minecraft.getInstance().getTextureManager().register(tex, new DynamicTexture(img));
+            if (proc) {
+                procImg = new NativeImage(NativeImage.Format.RGBA, (int) tw, (int) th, true);
+            } else {
+                byte[] png = Base64.getMimeDecoder().decode(read(name + "_png.b64").trim());
+                NativeImage img = NativeImage.read(new ByteArrayInputStream(png));
+                Minecraft.getInstance().getTextureManager().register(tex, new DynamicTexture(img));
+            }
             load(cubesFile, quads);
             if (spinFile != null) load(spinFile, spinQuads);
+            if (procImg != null) Minecraft.getInstance().getTextureManager().register(tex, new DynamicTexture(procImg));
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -95,6 +120,7 @@ public final class BoxModel {
         double[] piv = {n[0], n[1], n[2]};
         double x0 = n[6], y0 = n[7], z0 = n[8], w = n[9], h = n[10], d = n[11], u = n[12], v = n[13];
         double x1 = x0 + w, y1 = y0 + h, z1 = z0 + d;
+        if (procImg != null && n.length == 15) paint(u, v, w, h, d, (int) n[14]);
         boolean own = n.length >= 20;
         double[] cpiv = own ? new double[]{n[14], n[15], n[16]} : null;
         double[][][] faces = {
