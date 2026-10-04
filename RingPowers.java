@@ -52,15 +52,6 @@ public class RingPowers {
             "minecraft:knowledge_book", "minecraft:bedrock",
             "minecraft:totem_of_undying", "minecraft:golden_apple", "minecraft:enchanted_golden_apple",
             "minecraft:diamond", "minecraft:diamond_block", "minecraft:diamond_ore", "minecraft:deepslate_diamond_ore", "minecraft:netherite_ingot", "minecraft:netherite_block", "minecraft:netherite_scrap", "minecraft:ancient_debris", "minecraft:gold_ingot", "minecraft:gold_nugget", "minecraft:gold_block", "minecraft:raw_gold", "minecraft:raw_gold_block", "minecraft:gold_ore", "minecraft:deepslate_gold_ore", "minecraft:nether_gold_ore", "minecraft:iron_ingot", "minecraft:iron_nugget", "minecraft:iron_block", "minecraft:raw_iron", "minecraft:raw_iron_block", "minecraft:iron_ore", "minecraft:deepslate_iron_ore");
-    public static final int COST_SHIELD = 30;
-    public static final int COST_WALL = 25;
-
-    public static final int ACT_FLIGHT = 0, ACT_SHIELD = 2, ACT_WALL = 3, ACT_SUIT = 4,
-            ACT_FLIGHT_ON = 5, ACT_SHIELD_HOLD = 6, ACT_MINIGUN = 7, ACT_ROCKET = 8, ACT_JET = 9;
-
-    public static final double SHIELD_RADIUS = 5.0;
-    public static final int SHIELD_TICKS = 700; // 35 segundos
-
     public static final DustParticleOptions GREEN = new DustParticleOptions(new Vector3f(0.1f, 1.0f, 0.25f), 1.4f);
 
     // ---------- datos persistentes (sobreviven a la muerte) ----------
@@ -76,10 +67,6 @@ public class RingPowers {
     }
 
     public static void setEnergy(Player p, int v) { data(p).putInt("GLEnergy", Math.max(0, Math.min(MAX_ENERGY, v))); }
-
-    public static boolean isFlightOn(Player p) { return data(p).getBoolean("GLFlightOn"); }
-
-    public static void setFlightOn(Player p, boolean v) { data(p).putBoolean("GLFlightOn", v); }
 
     public static boolean hasRing(Player p) {
         for (ItemStack s : p.getInventory().items) if (s.is(GreenLanternMod.POWER_RING.get())) return true;
@@ -99,30 +86,7 @@ public class RingPowers {
     }
 
     // ---------- acciones ----------
-    public static void activate(ServerPlayer p, int action) {
-        if (!hasRing(p)) {
-            p.displayClientMessage(Component.literal("\u00a7cNecesitas el Anillo de Poder en el inventario"), true);
-            return;
-        }
-        long now = p.level().getGameTime();
-        CompoundTag d = data(p);
-        boolean free = action == ACT_FLIGHT || action == ACT_FLIGHT_ON || action == ACT_SHIELD_HOLD;
-        if (!free && now < d.getLong("GLCd")) return;
-        if (!free) d.putLong("GLCd", now + 10);
-
-        switch (action) {
-            case ACT_FLIGHT -> toggleFlight(p);
-            case ACT_SHIELD -> shield(p);
-            case ACT_WALL -> wall(p);
-            case ACT_SUIT -> toggleSuit(p);
-            case ACT_FLIGHT_ON -> { if (!isFlightOn(p)) toggleFlight(p); }
-            case ACT_SHIELD_HOLD -> shieldHold(p);
-            case ACT_MINIGUN -> conjure(p, GreenLanternMod.MINIGUN.get(), 1);
-            case ACT_ROCKET -> conjure(p, GreenLanternMod.ROCKET.get(), 1);
-            case ACT_JET -> jet(p);
-            default -> { }
-        }
-    }
+    public static void activate(ServerPlayer p, int action) { }
 
     private static boolean spend(ServerPlayer p, int cost) {
         if (getEnergy(p) < cost) {
@@ -131,16 +95,6 @@ public class RingPowers {
         }
         setEnergy(p, getEnergy(p) - cost);
         return true;
-    }
-
-    private static void toggleFlight(ServerPlayer p) {
-        boolean on = !isFlightOn(p);
-        if (on && getEnergy(p) <= 0) {
-            p.displayClientMessage(Component.literal("\u00a7cSin voluntad suficiente para volar"), true);
-            return;
-        }
-        setFlightOn(p, on);
-        bar(p, on ? "Vuelo activado" : "Vuelo desactivado");
     }
 
     // ---------- crear objetos (R) ----------
@@ -239,263 +193,6 @@ public class RingPowers {
             }
         }
         if (end >= 0) markConjured(result, end);
-    }
-
-    public static boolean shieldActive(Player p) {
-        return p.level().getGameTime() < data(p).getLong("GLShieldEnd");
-    }
-
-    private static BlockPos shieldCenter(CompoundTag d) {
-        return new BlockPos(d.getInt("GLSX"), d.getInt("GLSY"), d.getInt("GLSZ"));
-    }
-
-    /** Recorre las posiciones de la capa esferica (grosor ~1.5 para que no queden huecos). */
-    private static void forEachShell(BlockPos c, Consumer<BlockPos> fn) {
-        int r = (int) Math.ceil(SHIELD_RADIUS) + 1;
-        for (int dx = -r; dx <= r; dx++) {
-            for (int dy = -r; dy <= r; dy++) {
-                for (int dz = -r; dz <= r; dz++) {
-                    double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                    if (dist > SHIELD_RADIUS - 1.0 && dist <= SHIELD_RADIUS + 0.5) fn.accept(c.offset(dx, dy, dz));
-                }
-            }
-        }
-    }
-
-    /** Coloca (o repara) la pared. No encierra a un mob dentro de un bloque: espera a que se mueva. */
-    private static void fillShell(ServerLevel level, BlockPos c) {
-        BlockState shell = GreenLanternMod.SHIELD_BLOCK.get().defaultBlockState();
-        forEachShell(c, pos -> {
-            if (level.isOutsideBuildHeight(pos) || !level.hasChunkAt(pos)) return;
-            BlockState cur = level.getBlockState(pos);
-            if (cur.is(shell.getBlock())) return;
-            boolean free = cur.isAir() || (cur.canBeReplaced() && cur.getFluidState().isEmpty());
-            if (!free) return;
-            if (!level.getEntitiesOfClass(LivingEntity.class, new AABB(pos), e -> !(e instanceof Player)).isEmpty()) return;
-            level.setBlock(pos, shell, 2);
-        });
-    }
-
-    private static void clearShell(ServerLevel level, BlockPos c) {
-        forEachShell(c, pos -> {
-            if (level.isOutsideBuildHeight(pos) || !level.hasChunkAt(pos)) return;
-            if (level.getBlockState(pos).is(GreenLanternMod.SHIELD_BLOCK.get())) level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
-        });
-    }
-
-    private static boolean isShell(BlockPos pos, BlockPos c) {
-        double dx = pos.getX() - c.getX(), dy = pos.getY() - c.getY(), dz = pos.getZ() - c.getZ();
-        double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        return dist > SHIELD_RADIUS - 1.0 && dist <= SHIELD_RADIUS + 0.5;
-    }
-
-    /** Desplaza la pared al nuevo centro: quita solo lo que sobra y coloca solo lo que falta. */
-    private static void moveShell(ServerLevel level, BlockPos oldC, BlockPos newC) {
-        forEachShell(oldC, pos -> {
-            if (isShell(pos, newC)) return;
-            if (level.isOutsideBuildHeight(pos) || !level.hasChunkAt(pos)) return;
-            if (level.getBlockState(pos).is(GreenLanternMod.SHIELD_BLOCK.get())) level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
-        });
-        fillShell(level, newC);
-    }
-
-    /** V: crea la burbuja alrededor tuyo (te sigue) o la quita si ya esta activa. */
-    public static void shield(ServerPlayer p) {
-        CompoundTag d = data(p);
-        ServerLevel level = p.serverLevel();
-        String dim = level.dimension().location().toString();
-
-        if (shieldActive(p)) {
-            d.putLong("GLShieldEnd", 0);
-            ShieldFx.send(p, false);
-            bar(p, "Burbuja desactivada");
-            return;
-        }
-        if (!spend(p, COST_SHIELD)) return;
-
-        BlockPos c = p.blockPosition().above();
-        d.putLong("GLShieldEnd", level.getGameTime() + SHIELD_TICKS);
-        d.putInt("GLSX", c.getX());
-        d.putInt("GLSY", c.getY());
-        d.putInt("GLSZ", c.getZ());
-        d.putString("GLSDim", dim);
-        pushMobsOut(level, c);
-        ShieldFx.send(p, true);
-        level.playSound(null, p.blockPosition(), SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 1.0f, 1.4f);
-        bar(p, "Burbuja de energia (35 s, te sigue; V para quitarla)");
-    }
-
-    /** Escudo de fuerza: dura mientras se mantiene la tecla (el cliente renueva cada 3 ticks). */
-    public static void shieldHold(ServerPlayer p) {
-        CompoundTag d = data(p);
-        ServerLevel level = p.serverLevel();
-        if (!shieldActive(p)) {
-            if (getEnergy(p) < 3) {
-                bar(p, "Sin voluntad para el escudo");
-                return;
-            }
-            setEnergy(p, getEnergy(p) - 2);
-            BlockPos c = p.blockPosition().above();
-            d.putInt("GLSX", c.getX());
-            d.putInt("GLSY", c.getY());
-            d.putInt("GLSZ", c.getZ());
-            d.putString("GLSDim", level.dimension().location().toString());
-            pushMobsOut(level, c);
-            ShieldFx.send(p, true);
-            level.playSound(null, p.blockPosition(), SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 1.0f, 1.4f);
-        }
-        d.putLong("GLShieldEnd", level.getGameTime() + 8);
-    }
-
-    public static boolean jetActive(Player p) {
-        return p.level().getGameTime() < data(p).getLong("GLJetEnd");
-    }
-
-    /** Caza de energia: avion montable de 35 s. */
-    public static void jet(ServerPlayer p) {
-        if (p.isPassenger()) {
-            bar(p, "Ya vas montado en algo");
-            return;
-        }
-        if (!spend(p, COST_CONJURE)) return;
-        ServerLevel level = p.serverLevel();
-        JetEntity j = new JetEntity(GreenLanternMod.JET.get(), level);
-        j.moveTo(p.getX(), p.getY(), p.getZ(), p.getYRot(), 0.0f);
-        level.addFreshEntity(j);
-        p.startRiding(j, true);
-        level.sendParticles(GREEN, p.getX(), p.getY() + 1.0, p.getZ(), 40, 0.6, 0.8, 0.6, 0.05);
-        level.playSound(null, p.blockPosition(), SoundEvents.BEACON_POWER_SELECT, SoundSource.PLAYERS, 1.0f, 1.2f);
-        bar(p, "Caza de energia (35 s): W acelera, S frena, Shift baja");
-    }
-
-    /** Al activarse la burbuja, los mobs que quedan dentro salen despedidos hacia afuera. */
-    private static void pushMobsOut(ServerLevel level, BlockPos c) {
-        double cx = c.getX() + 0.5, cy = c.getY() + 0.5, cz = c.getZ() + 0.5;
-        net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(c).inflate(SHIELD_RADIUS);
-        for (net.minecraft.world.entity.Mob m : level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box)) {
-            if (m.distanceToSqr(cx, cy, cz) > SHIELD_RADIUS * SHIELD_RADIUS) continue;
-            double dx = m.getX() - cx, dz = m.getZ() - cz;
-            double len = Math.sqrt(dx * dx + dz * dz);
-            if (len < 0.01) { dx = 1.0; dz = 0.0; len = 1.0; }
-            dx /= len;
-            dz /= len;
-            for (double dist = SHIELD_RADIUS + 1.5; dist <= SHIELD_RADIUS + 5.0; dist += 1.0) {
-                double nx = cx + dx * dist, nz = cz + dz * dist;
-                net.minecraft.world.phys.AABB moved = m.getBoundingBox().move(nx - m.getX(), 0.0, nz - m.getZ());
-                if (level.noCollision(m, moved)) {
-                    m.teleportTo(nx, m.getY(), nz);
-                    break;
-                }
-            }
-            m.setDeltaMovement(dx * 0.6, 0.3, dz * 0.6);
-            m.hurtMarked = true;
-            level.sendParticles(GREEN, m.getX(), m.getY() + 0.5, m.getZ(), 10, 0.3, 0.3, 0.3, 0.02);
-        }
-    }
-
-    // ---------- traje ----------
-    public static boolean isSuitOn(Player p) {
-        return data(p).getBoolean("GLSuit");
-    }
-
-    public static void setSuit(ServerPlayer p, boolean on) {
-        data(p).putBoolean("GLSuit", on);
-        if (!on) SuitLight.clear(p);
-        ModNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> p),
-                new ModNetwork.SuitPacket(p.getId(), on));
-    }
-
-    public static void toggleSuit(ServerPlayer p) {
-        boolean on = !isSuitOn(p);
-        setSuit(p, on);
-        ServerLevel level = p.serverLevel();
-        level.sendParticles(GREEN, p.getX(), p.getY() + 1.0, p.getZ(), 60, 0.5, 0.9, 0.5, 0.05);
-        level.playSound(null, p.blockPosition(), SoundEvents.BEACON_POWER_SELECT, SoundSource.PLAYERS, 1.0f, on ? 1.5f : 0.8f);
-        bar(p, on ? "Traje de Linterna Verde activado" : "Traje desactivado");
-    }
-
-    public static void tickSuit(ServerPlayer p) {
-        if (!isSuitOn(p)) return;
-        if (!isWorn(p)) {
-            setSuit(p, false);
-            return;
-        }
-        SuitLight.update(p);
-        if (p.tickCount % 3 == 0) {
-            p.serverLevel().sendParticles(GREEN, p.getX(), p.getY() + 1.0, p.getZ(), 2, 0.35, 0.8, 0.35, 0.0);
-        }
-    }
-
-    /** Cada tick desde RingEvents: mantiene la burbuja, elimina proyectiles, repele mobs y la retira al terminar. */
-    public static void tickShield(ServerPlayer p) {
-        tickSuit(p);
-        CompoundTag d = data(p);
-        long end = d.getLong("GLShieldEnd");
-        if (end == 0) return;
-
-        ServerLevel level = p.serverLevel();
-        long now = level.getGameTime();
-        if (!level.dimension().location().toString().equals(d.getString("GLSDim"))) {
-            d.putLong("GLShieldEnd", 0);
-            ShieldFx.send(p, false);
-            return;
-        }
-        if (!hasRing(p) || now >= end) {
-            d.putLong("GLShieldEnd", 0);
-            ShieldFx.send(p, false);
-            return;
-        }
-        if (now % 40 == 0) ShieldFx.send(p, true);
-        if (now % 40 == 20) setEnergy(p, Math.max(0, getEnergy(p) - 1));
-        if (getEnergy(p) <= 0) {
-            d.putLong("GLShieldEnd", 0);
-            ShieldFx.send(p, false);
-            return;
-        }
-
-        Vec3 cv = new Vec3(p.getX(), p.getY() + 1.0, p.getZ());
-        AABB box = new AABB(cv, cv).inflate(SHIELD_RADIUS + 2.0);
-
-        // proyectiles que no son tuyos se eliminan al entrar en la burbuja
-        for (Projectile proj : level.getEntitiesOfClass(Projectile.class, box, e -> e.getOwner() != p)) {
-            if (proj.getDeltaMovement().lengthSqr() < 1.0E-4) continue; // flechas ya clavadas
-            if (proj.position().distanceTo(cv) <= SHIELD_RADIUS + 0.5) {
-                level.sendParticles(GREEN, proj.getX(), proj.getY(), proj.getZ(), 12, 0.2, 0.2, 0.2, 0.02);
-                level.playSound(null, proj.blockPosition(), SoundEvents.AMETHYST_BLOCK_HIT, SoundSource.PLAYERS, 1.0f, 1.5f);
-                ShieldFx.sendHit(p, proj.position().subtract(cv));
-                proj.discard();
-            }
-        }
-
-        // los mobs no pueden entrar: se los empuja hacia afuera
-        for (net.minecraft.world.entity.Mob m : level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box)) {
-            Vec3 off = m.position().add(0.0, m.getBbHeight() / 2.0, 0.0).subtract(cv);
-            double dist = off.length();
-            if (dist >= SHIELD_RADIUS + 0.3) continue;
-            Vec3 dir = dist < 0.01 ? new Vec3(1.0, 0.0, 0.0) : off.scale(1.0 / dist);
-            m.setDeltaMovement(m.getDeltaMovement().add(dir.scale(0.45)).add(0.0, 0.05, 0.0));
-            m.hurtMarked = true;
-            if (now % 6 == 0) ShieldFx.sendHit(p, off);
-            if (now % 4 == 0) level.sendParticles(GREEN, m.getX(), m.getY() + 0.5, m.getZ(), 2, 0.2, 0.2, 0.2, 0.0);
-        }
-    }
-
-    public static void wall(ServerPlayer p) {
-        if (!spend(p, COST_WALL)) return;
-        ServerLevel level = p.serverLevel();
-        Direction dir = p.getDirection();
-        Direction side = dir.getClockWise();
-        BlockPos base = p.blockPosition().relative(dir, 3);
-        for (int w = -2; w <= 2; w++) {
-            for (int h = 0; h <= 3; h++) {
-                BlockPos pos = base.relative(side, w).above(h);
-                if (level.getBlockState(pos).canBeReplaced()) {
-                    level.setBlock(pos, GreenLanternMod.CONSTRUCT_BLOCK.get().defaultBlockState(), 3);
-                }
-            }
-        }
-        level.playSound(null, base, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS, 1.2f, 0.8f);
-        bar(p, "Muro de energia (15 s)");
     }
 
     public static void recharge(Player p) {
