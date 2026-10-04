@@ -350,14 +350,21 @@ public class RingPowers {
         return p.level().getGameTime() < data(p).getLong("GLJetEnd");
     }
 
-    /** Modo caza: 35 s de vuelo de combate (mas lento y controlado). */
+    /** Caza de energia: avion montable de 35 s. */
     public static void jet(ServerPlayer p) {
+        if (p.isPassenger()) {
+            bar(p, "Ya vas montado en algo");
+            return;
+        }
         if (!spend(p, COST_CONJURE)) return;
-        data(p).putLong("GLJetEnd", p.level().getGameTime() + CONJURE_TICKS);
-        setFlightOn(p, true);
-        p.serverLevel().sendParticles(GREEN, p.getX(), p.getY() + 1.0, p.getZ(), 40, 0.5, 0.8, 0.5, 0.05);
-        p.serverLevel().playSound(null, p.blockPosition(), SoundEvents.BEACON_POWER_SELECT, SoundSource.PLAYERS, 1.0f, 1.2f);
-        bar(p, "Modo caza (35 s): salta dos veces para despegar");
+        ServerLevel level = p.serverLevel();
+        JetEntity j = new JetEntity(GreenLanternMod.JET.get(), level);
+        j.moveTo(p.getX(), p.getY(), p.getZ(), p.getYRot(), 0.0f);
+        level.addFreshEntity(j);
+        p.startRiding(j, true);
+        level.sendParticles(GREEN, p.getX(), p.getY() + 1.0, p.getZ(), 40, 0.6, 0.8, 0.6, 0.05);
+        level.playSound(null, p.blockPosition(), SoundEvents.BEACON_POWER_SELECT, SoundSource.PLAYERS, 1.0f, 1.2f);
+        bar(p, "Caza de energia (35 s): W acelera, S frena, Shift baja");
     }
 
     /** Al activarse la burbuja, los mobs que quedan dentro salen despedidos hacia afuera. */
