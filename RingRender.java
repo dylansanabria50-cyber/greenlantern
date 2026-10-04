@@ -18,7 +18,7 @@ public class RingRender {
     public static void addLayers(EntityRenderersEvent.AddLayers e) {
         for (String skin : e.getSkins()) {
             PlayerRenderer r = e.getSkin(skin);
-            if (r != null) { r.addLayer(new RingLayer(r, e.getEntityModels())); r.addLayer(new SuitLayer(r)); }
+            if (r != null) { r.addLayer(new RingLayer(r, e.getEntityModels())); }
         }
     }
 }
