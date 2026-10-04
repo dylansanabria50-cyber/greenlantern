@@ -43,7 +43,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 public class RingPowers {
     public static final int MAX_ENERGY = 100;
     public static final int COST_CONJURE = 20;
-    public static final int CONJURE_TICKS = 400; // 20 segundos
+    public static final int CONJURE_TICKS = 700; // 35 segundos
     private static final String CONJURE_TAG = "GLConjuredUntil";
     private static final java.util.Set<String> FORBIDDEN = java.util.Set.of(
             "minecraft:command_block", "minecraft:chain_command_block", "minecraft:repeating_command_block",
@@ -57,7 +57,7 @@ public class RingPowers {
     public static final int ACT_FLIGHT = 0, ACT_SHIELD = 2, ACT_WALL = 3, ACT_SUIT = 4;
 
     public static final double SHIELD_RADIUS = 5.0;
-    public static final int SHIELD_TICKS = 200; // 10 segundos
+    public static final int SHIELD_TICKS = 700; // 35 segundos
 
     public static final DustParticleOptions GREEN = new DustParticleOptions(new Vector3f(0.1f, 1.0f, 0.25f), 1.4f);
 
@@ -87,6 +87,7 @@ public class RingPowers {
 
     /** El anillo esta "puesto" si esta en alguna de las 4 ranuras de armadura. */
     public static boolean isWorn(Player p) {
+        if (RingSlot.has(p)) return true;
         for (ItemStack s : p.getInventory().armor) if (s.is(GreenLanternMod.POWER_RING.get())) return true;
         return false;
     }
@@ -161,7 +162,7 @@ public class RingPowers {
         stack.getOrCreateTag().putLong(CONJURE_TAG, end);
         ListTag lore = new ListTag();
         lore.add(StringTag.valueOf(Component.Serializer.toJson(
-                Component.literal("Constructo de energia: desaparece a los 20 s de crearse"))));
+                Component.literal("Constructo de energia: desaparece a los 35 s de crearse"))));
         stack.getOrCreateTagElement("display").put("Lore", lore);
     }
 
@@ -188,7 +189,7 @@ public class RingPowers {
         ServerLevel level = p.serverLevel();
         level.sendParticles(GREEN, p.getX(), p.getY() + 1.0, p.getZ(), 20, 0.4, 0.5, 0.4, 0.02);
         level.playSound(null, p.blockPosition(), SoundEvents.BEACON_POWER_SELECT, SoundSource.PLAYERS, 1.0f, 1.8f);
-        bar(p, "Creaste " + stack.getCount() + " x " + stack.getHoverName().getString() + " (20 s)");
+        bar(p, "Creaste " + stack.getCount() + " x " + stack.getHoverName().getString() + " (35 s)");
     }
 
     /** Cada 10 ticks: borra los objetos creados cuyo tiempo se acabo. */
@@ -308,9 +309,35 @@ public class RingPowers {
         d.putInt("GLSY", c.getY());
         d.putInt("GLSZ", c.getZ());
         d.putString("GLSDim", dim);
+        pushMobsOut(level, c);
         fillShell(level, c);
         level.playSound(null, p.blockPosition(), SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 1.0f, 1.4f);
-        bar(p, "Burbuja de energia (10 s, te sigue; V para quitarla)");
+        bar(p, "Burbuja de energia (35 s, te sigue; V para quitarla)");
+    }
+
+    /** Al activarse la burbuja, los mobs que quedan dentro salen despedidos hacia afuera. */
+    private static void pushMobsOut(ServerLevel level, BlockPos c) {
+        double cx = c.getX() + 0.5, cy = c.getY() + 0.5, cz = c.getZ() + 0.5;
+        net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(c).inflate(SHIELD_RADIUS);
+        for (net.minecraft.world.entity.Mob m : level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box)) {
+            if (m.distanceToSqr(cx, cy, cz) > SHIELD_RADIUS * SHIELD_RADIUS) continue;
+            double dx = m.getX() - cx, dz = m.getZ() - cz;
+            double len = Math.sqrt(dx * dx + dz * dz);
+            if (len < 0.01) { dx = 1.0; dz = 0.0; len = 1.0; }
+            dx /= len;
+            dz /= len;
+            for (double dist = SHIELD_RADIUS + 1.5; dist <= SHIELD_RADIUS + 5.0; dist += 1.0) {
+                double nx = cx + dx * dist, nz = cz + dz * dist;
+                net.minecraft.world.phys.AABB moved = m.getBoundingBox().move(nx - m.getX(), 0.0, nz - m.getZ());
+                if (level.noCollision(m, moved)) {
+                    m.teleportTo(nx, m.getY(), nz);
+                    break;
+                }
+            }
+            m.setDeltaMovement(dx * 0.6, 0.3, dz * 0.6);
+            m.hurtMarked = true;
+            level.sendParticles(GREEN, m.getX(), m.getY() + 0.5, m.getZ(), 10, 0.3, 0.3, 0.3, 0.02);
+        }
     }
 
     // ---------- traje ----------
