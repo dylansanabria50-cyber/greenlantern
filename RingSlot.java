@@ -40,7 +40,7 @@ public class RingSlot {
 
     public static boolean has(Player p) {
         if (p.level().isClientSide) return CLIENT_WORN.contains(p.getId());
-        return get(p).is(GreenLanternMod.POWER_RING.get());
+        return RingPowers.isRing(get(p));
     }
 
     /** Pone el anillo de la mano en la ranura (si esta libre). Solo en el servidor. */
@@ -72,7 +72,7 @@ public class RingSlot {
             if (slot.isEmpty()) return;
             menu.setCarried(slot);
             set(p, ItemStack.EMPTY);
-        } else if (carried.is(GreenLanternMod.POWER_RING.get())) {
+        } else if (RingPowers.isRing(carried)) {
             menu.setCarried(slot);
             set(p, carried);
         } else {
@@ -131,7 +131,7 @@ public class RingSlot {
             Iterator<ItemEntity> it = e.getDrops().iterator();
             while (it.hasNext()) {
                 ItemStack s = it.next().getItem();
-                if (s.is(GreenLanternMod.POWER_RING.get())) {
+                if (RingPowers.isRing(s)) {
                     n += s.getCount();
                     it.remove();
                 }
