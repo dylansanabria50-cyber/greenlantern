@@ -50,7 +50,8 @@ public class RingPowers {
             "minecraft:command_block_minecart", "minecraft:structure_block", "minecraft:structure_void",
             "minecraft:jigsaw", "minecraft:barrier", "minecraft:light", "minecraft:debug_stick",
             "minecraft:knowledge_book", "minecraft:bedrock",
-            "minecraft:totem_of_undying", "minecraft:golden_apple", "minecraft:enchanted_golden_apple");
+            "minecraft:totem_of_undying", "minecraft:golden_apple", "minecraft:enchanted_golden_apple",
+            "minecraft:diamond", "minecraft:diamond_block", "minecraft:diamond_ore", "minecraft:deepslate_diamond_ore", "minecraft:netherite_ingot", "minecraft:netherite_block", "minecraft:netherite_scrap", "minecraft:ancient_debris", "minecraft:gold_ingot", "minecraft:gold_nugget", "minecraft:gold_block", "minecraft:raw_gold", "minecraft:raw_gold_block", "minecraft:gold_ore", "minecraft:deepslate_gold_ore", "minecraft:nether_gold_ore", "minecraft:iron_ingot", "minecraft:iron_nugget", "minecraft:iron_block", "minecraft:raw_iron", "minecraft:raw_iron_block", "minecraft:iron_ore", "minecraft:deepslate_iron_ore");
     public static final int COST_SHIELD = 30;
     public static final int COST_WALL = 25;
 
