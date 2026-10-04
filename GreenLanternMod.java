@@ -30,7 +30,6 @@ public class GreenLanternMod {
         ITEMS.register(bus);
         bus.addListener(this::commonSetup);
         bus.addListener(this::addCreative);
-        bus.addListener(net.minecraftforge.eventbus.api.EventPriority.LOWEST, HideOthers::onTab);
         MinecraftForge.EVENT_BUS.register(new RingEvents());
     }
 
