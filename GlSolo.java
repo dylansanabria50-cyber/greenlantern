@@ -31,6 +31,7 @@ public class GlSolo {
         MinecraftForge.EVENT_BUS.addListener(GlSolo::onTick);
         if (FMLEnvironment.dist.isClient()) Cl.init();
         Ring.init();
+        Mv.init();
     }
 
     static java.lang.reflect.Method SUIT_GET;
@@ -243,6 +244,136 @@ public class GlSolo {
             static void handle(Msg m, java.util.function.Supplier<net.minecraftforge.network.NetworkEvent.Context> c) {
                 c.get().enqueueWork(() -> CLIENT_EQ = m.v);
                 c.get().setPacketHandled(true);
+            }
+        }
+    }
+
+    /** Velocidad al correr vanilla, vuelo -25 %, turbina -60 %, jets solo atacan lo que atacas. */
+    static class Mv {
+        static final double FLIGHT = 0.75D;
+        static final double TURBINE = 0.4D;
+        static final java.util.Map<Player, St> STATE = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+        static final java.util.List<UUID> SPEED_IDS = new java.util.ArrayList<>();
+        static boolean IDS_INIT;
+        static Object FLIGHT_AB, TURBINE_AB;
+        static boolean AB_INIT;
+
+        static class St {
+            boolean flightScaled;
+            net.minecraft.world.phys.Vec3 before = net.minecraft.world.phys.Vec3.ZERO;
+        }
+
+        static void init() {
+            MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, Mv::pre);
+            MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, Mv::post);
+            MinecraftForge.EVENT_BUS.addListener(Mv::onTarget);
+        }
+
+        static Object field(String cls, String name) {
+            try {
+                Object ro = Class.forName(cls).getField(name).get(null);
+                return ((net.minecraftforge.registries.RegistryObject<?>) ro).get();
+            } catch (Throwable t) {
+                return null;
+            }
+        }
+
+        static void abilities() {
+            if (AB_INIT) return;
+            AB_INIT = true;
+            FLIGHT_AB = field("com.tihyo.legends.abilities.LegendsAbilities", "FLIGHT");
+            TURBINE_AB = field("com.tihyo.legends.superheroes.abilities.SuperHeroesAbilities", "TURBINE_SMASH");
+        }
+
+        static Object call(Object o, String name, Object arg) {
+            try {
+                Class<?> c = o.getClass();
+                while (c != null) {
+                    for (java.lang.reflect.Method m : c.getDeclaredMethods()) {
+                        if (m.getName().equals(name) && m.getParameterCount() == 1 && m.getParameterTypes()[0].isAssignableFrom(arg.getClass())) {
+                            m.setAccessible(true);
+                            return m.invoke(o, arg);
+                        }
+                    }
+                    c = c.getSuperclass();
+                }
+            } catch (Throwable t) {
+                // ignorar
+            }
+            return null;
+        }
+
+        static boolean tracked(Player p) {
+            return !p.level().isClientSide || p.isLocalPlayer();
+        }
+
+        static void pre(net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent e) {
+            if (!(e.getEntity() instanceof Player p) || !tracked(p)) return;
+            St s = STATE.computeIfAbsent(p, k -> new St());
+            if (s.flightScaled) p.setDeltaMovement(p.getDeltaMovement().scale(1.0D / FLIGHT));
+            s.before = p.getDeltaMovement();
+        }
+
+        static void post(net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent e) {
+            net.minecraft.world.entity.LivingEntity le = e.getEntity();
+            if (le instanceof net.minecraft.world.entity.TamableAnimal t && le.getClass().getName().endsWith("JetSquadronEntity")) {
+                jetTick(t);
+                return;
+            }
+            if (!(le instanceof Player p) || !tracked(p)) return;
+            St s = STATE.computeIfAbsent(p, k -> new St());
+            boolean gl = isGlSuit(p);
+            if (gl) stripSpeed(p);
+            abilities();
+            if (gl && TURBINE_AB != null && Boolean.TRUE.equals(call(TURBINE_AB, "isActive", p))) {
+                net.minecraft.world.phys.Vec3 d = p.getDeltaMovement().subtract(s.before);
+                p.setDeltaMovement(s.before.add(d.scale(TURBINE)));
+            }
+            boolean flying = gl && FLIGHT_AB != null && Boolean.TRUE.equals(call(FLIGHT_AB, "canFly", p)) && !p.onGround();
+            if (flying) {
+                p.setDeltaMovement(p.getDeltaMovement().scale(FLIGHT));
+                s.flightScaled = true;
+            } else {
+                s.flightScaled = false;
+            }
+        }
+
+        static void stripSpeed(Player p) {
+            net.minecraft.world.entity.ai.attributes.AttributeInstance in = p.getAttribute(Attributes.MOVEMENT_SPEED);
+            if (in == null) return;
+            if (!IDS_INIT) {
+                IDS_INIT = true;
+                for (String n : new String[] {"SPEED", "ADJUSTABLE_SPEED"}) {
+                    Object ef = field("com.tihyo.legends.abilities.LegendsAbilities", n);
+                    if (ef instanceof net.minecraft.world.effect.MobEffect me) {
+                        for (java.util.Map.Entry<Attribute, net.minecraft.world.entity.ai.attributes.AttributeModifierTemplate> en : me.getAttributeModifiers().entrySet()) {
+                            if (en.getKey() == Attributes.MOVEMENT_SPEED) SPEED_IDS.add(en.getValue().getAttributeModifierId());
+                        }
+                    }
+                }
+            }
+            for (UUID id : SPEED_IDS) {
+                if (in.getModifier(id) != null) in.removeModifier(id);
+            }
+        }
+
+        static net.minecraft.world.entity.LivingEntity wanted(net.minecraft.world.entity.TamableAnimal t) {
+            net.minecraft.world.entity.LivingEntity o = t.getOwner();
+            if (o == null) return null;
+            net.minecraft.world.entity.LivingEntity w = o.getLastHurtMob();
+            return (w != null && w.isAlive() && w != o) ? w : null;
+        }
+
+        static void jetTick(net.minecraft.world.entity.TamableAnimal t) {
+            if (t.level().isClientSide) return;
+            net.minecraft.world.entity.LivingEntity w = wanted(t);
+            if (t.getTarget() != w) t.setTarget(w);
+        }
+
+        static void onTarget(net.minecraftforge.event.entity.living.LivingChangeTargetEvent e) {
+            if (e.getEntity() instanceof net.minecraft.world.entity.TamableAnimal t && t.getClass().getName().endsWith("JetSquadronEntity")) {
+                net.minecraft.world.entity.LivingEntity w = wanted(t);
+                if (e.getNewTarget() != w) e.setNewTarget(w);
             }
         }
     }
