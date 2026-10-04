@@ -13,10 +13,36 @@ public class SuitTexture {
     private static final String DATA = "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";
     private static ResourceLocation tex;
 
+    /** Pone encima el cuerpo del traje del mod de referencia (cuerpo, brazos y piernas); la cabeza queda la del jugador. */
+    private static void overlaySuit(NativeImage img) {
+        try {
+            var res = Minecraft.getInstance().getResourceManager()
+                    .getResource(new ResourceLocation("greenlantern", "suit_png.b64"));
+            if (res.isEmpty()) return;
+            byte[] png;
+            try (java.io.InputStream in = res.get().open()) {
+                png = Base64.getMimeDecoder().decode(new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).trim());
+            }
+            NativeImage suit = NativeImage.read(new ByteArrayInputStream(png));
+            int w = Math.min(Math.min(suit.getWidth(), img.getWidth()), 64);
+            int h = Math.min(Math.min(suit.getHeight(), img.getHeight()), 64);
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    int p = suit.getPixelRGBA(x, y);
+                    if ((p >>> 24) > 0) img.setPixelRGBA(x, y, p);
+                }
+            }
+            suit.close();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
     public static ResourceLocation get() {
         if (tex == null) {
             try {
                 NativeImage img = NativeImage.read(new ByteArrayInputStream(Base64.getDecoder().decode(DATA)));
+                overlaySuit(img);
                 tex = Minecraft.getInstance().getTextureManager().register("greenlantern_suit", new DynamicTexture(img));
             } catch (Exception ex) {
                 tex = new ResourceLocation("minecraft", "textures/entity/steve.png");
