@@ -140,8 +140,8 @@ public class ClientEvents {
         /** Panel de poderes a la derecha de la pantalla (solo con el anillo puesto). */
         private static void drawPanel(Minecraft mc, GuiGraphics g, int w, int h) {
             String[][] rows = {
-                    {"Salto x2", "Volar"},
-                    {COMBAT.getTranslatedKeyMessage().getString(), "Armas y caza (rueda)"},
+                    {"Salto x2", "Volar (salto doble en el aire)"},
+                    {COMBAT.getTranslatedKeyMessage().getString(), "Armas: minigun, cohete, avion"},
                     {BLAST.getTranslatedKeyMessage().getString(), "Crear objetos (mantener: favoritos)"},
                     {SHIELD.getTranslatedKeyMessage().getString(), "Escudo de fuerza (mantener)"},
                     {WALL.getTranslatedKeyMessage().getString(), "Muro de energia"},
@@ -152,10 +152,10 @@ public class ClientEvents {
             int pw = textW + 12;
             int ph = rows.length * 11 + 20;
             int x = w - pw - 6;
-            int y = h / 2 - ph / 2;
+            int y = 4;
             g.fill(x - 1, y - 1, x + pw + 1, y + ph + 1, 0xFF2E6B45);
             g.fill(x, y, x + pw, y + ph, 0xAA0E1F15);
-            g.drawString(mc.font, "Anillo de Poder", x + 6, y + 4, 0x55FF77, false);
+            g.drawString(mc.font, "Guia del Anillo", x + 6, y + 4, 0x55FF77, false);
             for (int i = 0; i < rows.length; i++) {
                 g.drawString(mc.font, "§a[" + rows[i][0] + "] §f" + rows[i][1], x + 6, y + 17 + i * 11, 0xFFFFFF, false);
             }
