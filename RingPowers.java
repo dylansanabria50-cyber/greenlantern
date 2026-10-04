@@ -75,7 +75,31 @@ public class RingPowers {
     return k != null && k.getNamespace().equals("legends_superheroes") && k.getPath().equals("willpower_ring");
   }
 
+  static java.lang.reflect.Method SUIT_GET;
+  static boolean SUIT_INIT;
+
+  /** Verdadero si el jugador lleva puesto el traje de Linterna Verde de Legends Superheroes. */
+  public static boolean isGlSuit(Player p) {
+    try {
+      if (!SUIT_INIT) {
+        SUIT_INIT = true;
+        Class<?> c = Class.forName("com.tihyo.legends.armors.LegendsSuit");
+        SUIT_GET = c.getMethod("getSuit", net.minecraft.world.entity.LivingEntity.class);
+      }
+      if (SUIT_GET == null) return false;
+      Object o = SUIT_GET.invoke(null, p);
+      return o != null && o.getClass().getName().contains(".greenlantern.");
+    } catch (Throwable t) {
+      return false;
+    }
+  }
+
   public static boolean hasRing(Player p) {
+    return isGlSuit(p);
+  }
+
+  @SuppressWarnings("unused")
+  static boolean hasRingOld(Player p) {
         for (ItemStack s : p.getInventory().items) if (isRing(s)) return true;
         for (ItemStack s : p.getInventory().offhand) if (isRing(s)) return true;
         return isWorn(p);
@@ -83,6 +107,11 @@ public class RingPowers {
 
     /** El anillo esta "puesto" si esta en alguna de las 4 ranuras de armadura. */
     public static boolean isWorn(Player p) {
+    return isGlSuit(p);
+  }
+
+  @SuppressWarnings("unused")
+  static boolean isWornOld(Player p) {
         if (RingSlot.has(p)) return true;
         for (ItemStack s : p.getInventory().armor) if (isRing(s)) return true;
         return false;
