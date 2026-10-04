@@ -3,24 +3,30 @@ loaderVersion="[47,)"
 license="MIT"
 
 [[mods]]
-modId="greenlantern"
+modId="glsolo"
 version="1.0.0"
-displayName="Green Lantern Power Ring"
+displayName="Solo Linterna Verde (filtro)"
 description='''
-El Anillo de Poder de Linterna Verde (inspirado en Justice League Heroes).
-Vuelo, rayo de energia, escudo y construcciones de energia verde.
+Oculta en la pestana creativa y en JEI los objetos de Legends Superheroes que no son de Linterna Verde.
 '''
 
-[[dependencies.greenlantern]]
+[[dependencies.glsolo]]
     modId="forge"
     mandatory=true
     versionRange="[47,)"
     ordering="NONE"
     side="BOTH"
 
-[[dependencies.greenlantern]]
+[[dependencies.glsolo]]
     modId="minecraft"
     mandatory=true
     versionRange="[1.20.1,1.21)"
     ordering="NONE"
+    side="BOTH"
+
+[[dependencies.glsolo]]
+    modId="legends_superheroes"
+    mandatory=false
+    versionRange="[1,)"
+    ordering="AFTER"
     side="BOTH"
