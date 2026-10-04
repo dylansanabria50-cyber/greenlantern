@@ -26,6 +26,11 @@ public class GreenLanternMod {
     public static final RegistryObject<Item> POWER_RING = ITEMS.register("power_ring",
             () -> new PowerRingItem(new Item.Properties().stacksTo(1).rarity(Rarity.EPIC).fireResistant()));
 
+    public static final RegistryObject<Item> MINIGUN = ITEMS.register("energy_minigun",
+            () -> new CombatItem(CombatItem.Kind.MINIGUN, new Item.Properties().stacksTo(1).fireResistant()));
+    public static final RegistryObject<Item> ROCKET = ITEMS.register("energy_rocket_launcher",
+            () -> new CombatItem(CombatItem.Kind.ROCKET, new Item.Properties().stacksTo(1).fireResistant()));
+
     public GreenLanternMod() {
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
         BLOCKS.register(bus);
