@@ -151,6 +151,18 @@ public class RingEvents {
         PENDING.add(new Pending(level.dimension(), pos.immutable(), block, when));
     }
 
+    /** Un bloque creado con el anillo desaparece al romperlo, sin soltar nada. */
+    @SubscribeEvent
+    public void onBlockBreak(BlockEvent.BreakEvent e) {
+        if (!(e.getLevel() instanceof ServerLevel level)) return;
+        BlockPos pos = e.getPos();
+        boolean found = PENDING.removeIf(pd -> pd.dim().equals(level.dimension()) && pd.pos().equals(pos));
+        if (!found) return;
+        e.setCanceled(true);
+        level.sendParticles(RingPowers.GREEN, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 20, 0.4, 0.4, 0.4, 0.02);
+        level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+    }
+
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent e) {
         if (e.phase != TickEvent.Phase.END || PENDING.isEmpty()) return;
