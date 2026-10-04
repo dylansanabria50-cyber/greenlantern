@@ -459,6 +459,7 @@ public class RingPowers {
             if (proj.position().distanceTo(cv) <= SHIELD_RADIUS + 0.5) {
                 level.sendParticles(GREEN, proj.getX(), proj.getY(), proj.getZ(), 12, 0.2, 0.2, 0.2, 0.02);
                 level.playSound(null, proj.blockPosition(), SoundEvents.AMETHYST_BLOCK_HIT, SoundSource.PLAYERS, 1.0f, 1.5f);
+                ShieldFx.sendHit(p, proj.position().subtract(cv));
                 proj.discard();
             }
         }
@@ -471,6 +472,7 @@ public class RingPowers {
             Vec3 dir = dist < 0.01 ? new Vec3(1.0, 0.0, 0.0) : off.scale(1.0 / dist);
             m.setDeltaMovement(m.getDeltaMovement().add(dir.scale(0.45)).add(0.0, 0.05, 0.0));
             m.hurtMarked = true;
+            if (now % 6 == 0) ShieldFx.sendHit(p, off);
             if (now % 4 == 0) level.sendParticles(GREEN, m.getX(), m.getY() + 0.5, m.getZ(), 2, 0.2, 0.2, 0.2, 0.0);
         }
     }
