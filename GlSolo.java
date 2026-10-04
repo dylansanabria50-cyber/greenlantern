@@ -9,5 +9,6 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 public class GlSolo {
     public GlSolo() {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(EventPriority.LOWEST, HideOthers::onTab);
+        GlTweaks.init();
     }
 }
