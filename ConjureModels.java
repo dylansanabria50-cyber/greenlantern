@@ -5,6 +5,7 @@ import com.example.greenlantern.RingPowers;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.model.ItemOverrides;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelResourceLocation;
@@ -59,6 +60,10 @@ public class ConjureModels {
 
         public List<BakedModel> getRenderPasses(ItemStack stack, boolean fabulous) {
             return List.of(this);
+        }
+
+        public List<RenderType> getRenderTypes(ItemStack stack, boolean fabulous) {
+            return List.of(GreenRender.ITEM_GLASS);
         }
     }
 
