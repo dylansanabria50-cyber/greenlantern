@@ -32,6 +32,8 @@ public class ShieldRender {
         float pt = e.getPartialTick();
         MultiBufferSource.BufferSource buf = mc.renderBuffers().bufferSource();
         VertexConsumer vc = buf.getBuffer(GreenRender.SPHERE);
+        final long now = System.currentTimeMillis();
+        ShieldFx.CLIENT_HITS.removeIf(h -> now - (long) h[4] > 1000L);
         float pulse = 0.20F + 0.05F * Mth.sin((mc.level.getGameTime() + pt) * 0.1F);
 
         for (int id : ShieldFx.CLIENT_ON) {
@@ -42,13 +44,29 @@ public class ShieldRender {
             double z = Mth.lerp(pt, en.zo, en.getZ());
             ps.pushPose();
             ps.translate(x - cam.x, y + 1.0 - cam.y, z - cam.z);
-            sphere(ps.last().pose(), vc, RADIUS, pulse);
+            sphere(ps.last().pose(), vc, RADIUS, pulse, id, now);
             ps.popPose();
         }
         buf.endBatch(GreenRender.SPHERE);
     }
 
-    private static void sphere(Matrix4f m, VertexConsumer vc, float r, float a) {
+    /** Cuanto brilla un punto de la esfera por impactos recientes (0 a 1+). */
+    private static float boost(int id, float nx, float ny, float nz, long now) {
+        float b = 0.0F;
+        for (double[] h : ShieldFx.CLIENT_HITS) {
+            if ((int) h[0] != id) continue;
+            double age = (now - (long) h[4]) / 1000.0;
+            if (age > 0.7) continue;
+            double dot = nx * h[1] + ny * h[2] + nz * h[3];
+            double ang = Math.acos(Math.max(-1.0, Math.min(1.0, dot)));
+            double spread = 0.3 + age * 1.8;
+            double w = Math.max(0.0, 1.0 - ang / spread);
+            b += (float) (w * (1.0 - age / 0.7));
+        }
+        return b;
+    }
+
+    private static void sphere(Matrix4f m, VertexConsumer vc, float r, float a, int id, long now) {
         int stacks = 14, slices = 28;
         for (int i = 0; i < stacks; i++) {
             float t0 = (float) Math.PI * i / stacks;
@@ -60,16 +78,18 @@ public class ShieldRender {
             for (int j = 0; j < slices; j++) {
                 float p0 = (float) (2.0 * Math.PI) * j / slices;
                 float p1 = (float) (2.0 * Math.PI) * (j + 1) / slices;
-                vert(vc, m, r0 * Mth.cos(p0), y0, r0 * Mth.sin(p0), a0);
-                vert(vc, m, r1 * Mth.cos(p0), y1, r1 * Mth.sin(p0), a1);
-                vert(vc, m, r1 * Mth.cos(p1), y1, r1 * Mth.sin(p1), a1);
-                vert(vc, m, r0 * Mth.cos(p1), y0, r0 * Mth.sin(p1), a0);
+                vert(vc, m, r0 * Mth.cos(p0), y0, r0 * Mth.sin(p0), a0, r, id, now);
+                vert(vc, m, r1 * Mth.cos(p0), y1, r1 * Mth.sin(p0), a1, r, id, now);
+                vert(vc, m, r1 * Mth.cos(p1), y1, r1 * Mth.sin(p1), a1, r, id, now);
+                vert(vc, m, r0 * Mth.cos(p1), y0, r0 * Mth.sin(p1), a0, r, id, now);
             }
         }
     }
 
-    private static void vert(VertexConsumer vc, Matrix4f m, float x, float y, float z, float a) {
-        vc.vertex(m, x, y, z).color(0.25F, 1.0F, 0.5F, a).endVertex();
+    private static void vert(VertexConsumer vc, Matrix4f m, float x, float y, float z, float a, float r, int id, long now) {
+        float b = ShieldFx.CLIENT_HITS.isEmpty() ? 0.0F : boost(id, x / r, y / r, z / r, now);
+        float alpha = Math.min(0.9F, a + 0.75F * b);
+        vc.vertex(m, x, y, z).color(Math.min(1.0F, 0.25F + 0.6F * b), 1.0F, Math.min(1.0F, 0.5F + 0.5F * b), alpha).endVertex();
     }
 
     @SubscribeEvent
