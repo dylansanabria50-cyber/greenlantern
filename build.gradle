@@ -25,15 +25,8 @@ minecraft {
     }
 }
 
-repositories {
-    maven { url = 'https://maven.blamejared.com/' }
-    maven { url = 'https://modmaven.dev' }
-}
-
 dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.2.0'
-    compileOnly fg.deobf('mezz.jei:jei-1.20.1-common-api:15.20.0.106')
-    compileOnly fg.deobf('mezz.jei:jei-1.20.1-forge-api:15.20.0.106')
 }
 
 tasks.named('jar', Jar).configure {
@@ -75,6 +68,8 @@ sourceSets {
             exclude 'SuitLight.java'
             exclude 'ClientSuit.java'
             exclude 'ConstructBlock.java'
+            exclude 'HideOthers.java'
+            exclude 'GlJeiPlugin.java'
         }
     }
 }
