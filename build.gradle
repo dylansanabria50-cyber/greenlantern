@@ -6,7 +6,7 @@ plugins {
 }
 
 version = '1.0.0'
-group = 'com.example.greenlantern'
+group = 'com.example.jarvis'
 base { archivesName = 'greenlantern' }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -18,10 +18,10 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
-            mods { "greenlantern" { source sourceSets.main } }
+            mods { "jarvis" { source sourceSets.main } }
         }
-        client { property 'forge.enabledGameTestNamespaces', 'greenlantern' }
-        server { property 'forge.enabledGameTestNamespaces', 'greenlantern'; args '--nogui' }
+        client { property 'forge.enabledGameTestNamespaces', 'jarvis' }
+        server { property 'forge.enabledGameTestNamespaces', 'jarvis'; args '--nogui' }
     }
 }
 
@@ -31,45 +31,36 @@ dependencies {
 
 tasks.named('jar', Jar).configure {
     manifest.attributes([
-        'Specification-Title': 'greenlantern',
-        'Specification-Vendor': 'greenlantern',
+        'Specification-Title': 'jarvis',
+        'Specification-Vendor': 'jarvis',
         'Specification-Version': '1',
-        'Implementation-Title': project.name,
+        'Implementation-Title': 'jarvis',
         'Implementation-Version': project.jar.archiveVersion,
-        'Implementation-Vendor': 'greenlantern'
+        'Implementation-Vendor': 'jarvis'
     ])
     finalizedBy 'reobfJar'
 }
 
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
 
+def flatResDir = new File(layout.buildDirectory.get().asFile, 'flat-resources')
 
-// Compila los .java que estan sueltos en la raiz del repositorio (los recursos siguen en src/main/resources)
+tasks.register('stageResources', Sync) {
+    into flatResDir
+    from(projectDir) { include 'mods.toml'; into 'META-INF' }
+    from(projectDir) { include 'pack.mcmeta' }
+}
+
 sourceSets {
     main {
         java {
             srcDirs = [projectDir]
-            include '*.java'
-            exclude 'CombatItem.java'
-            exclude 'CombatScreen.java'
-            exclude 'JetEntity.java'
-            exclude 'JetModel.java'
-            exclude 'JetRenderer.java'
-            exclude 'BoxModel.java'
-            exclude 'GunRenderer.java'
-            exclude 'RocketRenderer.java'
-            exclude 'FlightTrail.java'
-            exclude 'ShieldBlock.java'
-            exclude 'ShieldFx.java'
-            exclude 'ShieldRender.java'
-            exclude 'SuitEvents.java'
-            exclude 'SuitLayer.java'
-            exclude 'SuitTexture.java'
-            exclude 'SuitLight.java'
-            exclude 'ClientSuit.java'
-            exclude 'ConstructBlock.java'
-            exclude 'HideOthers.java'
-            exclude 'GlJeiPlugin.java'
+            include 'Jarvis*.java'
+        }
+        resources {
+            srcDirs = [flatResDir]
         }
     }
 }
+
+tasks.named('processResources').configure { dependsOn 'stageResources' }
