@@ -32,6 +32,17 @@ public class CombatItem extends Item {
     }
 
     @Override
+    public void initializeClient(java.util.function.Consumer<net.minecraftforge.client.extensions.common.IClientItemExtensions> consumer) {
+        if (kind != Kind.MINIGUN) return;
+        consumer.accept(new net.minecraftforge.client.extensions.common.IClientItemExtensions() {
+            @Override
+            public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                return com.example.greenlantern.client.GunRenderer.get();
+            }
+        });
+    }
+
+    @Override
     public Component getName(ItemStack stack) {
         return Component.literal(kind == Kind.MINIGUN ? "Minigun de energia" : "Lanzacohetes de energia");
     }
