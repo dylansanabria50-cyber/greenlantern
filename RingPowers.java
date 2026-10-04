@@ -399,6 +399,7 @@ public class RingPowers {
 
     public static void setSuit(ServerPlayer p, boolean on) {
         data(p).putBoolean("GLSuit", on);
+        if (!on) SuitLight.clear(p);
         ModNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> p),
                 new ModNetwork.SuitPacket(p.getId(), on));
     }
@@ -418,6 +419,7 @@ public class RingPowers {
             setSuit(p, false);
             return;
         }
+        SuitLight.update(p);
         if (p.tickCount % 3 == 0) {
             p.serverLevel().sendParticles(GREEN, p.getX(), p.getY() + 1.0, p.getZ(), 2, 0.35, 0.8, 0.35, 0.0);
         }
