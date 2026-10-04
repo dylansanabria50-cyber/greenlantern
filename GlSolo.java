@@ -346,8 +346,8 @@ public class GlSolo {
                 for (String n : new String[] {"SPEED", "ADJUSTABLE_SPEED"}) {
                     Object ef = field("com.tihyo.legends.abilities.LegendsAbilities", n);
                     if (ef instanceof net.minecraft.world.effect.MobEffect me) {
-                        for (java.util.Map.Entry<Attribute, net.minecraft.world.entity.ai.attributes.AttributeModifierTemplate> en : me.getAttributeModifiers().entrySet()) {
-                            if (en.getKey() == Attributes.MOVEMENT_SPEED) SPEED_IDS.add(en.getValue().getAttributeModifierId());
+                        for (java.util.Map.Entry<Attribute, net.minecraft.world.entity.ai.attributes.AttributeModifier> en : me.getAttributeModifiers().entrySet()) {
+                            if (en.getKey() == Attributes.MOVEMENT_SPEED) SPEED_IDS.add(en.getValue().getId());
                         }
                     }
                 }
