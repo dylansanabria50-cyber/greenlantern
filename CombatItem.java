@@ -33,11 +33,11 @@ public class CombatItem extends Item {
 
     @Override
     public void initializeClient(java.util.function.Consumer<net.minecraftforge.client.extensions.common.IClientItemExtensions> consumer) {
-        if (kind != Kind.MINIGUN) return;
         consumer.accept(new net.minecraftforge.client.extensions.common.IClientItemExtensions() {
             @Override
             public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getCustomRenderer() {
-                return com.example.greenlantern.client.GunRenderer.get();
+                return kind == Kind.MINIGUN ? com.example.greenlantern.client.GunRenderer.get()
+                        : com.example.greenlantern.client.RocketRenderer.get();
             }
         });
     }
