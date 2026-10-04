@@ -139,6 +139,8 @@ public class RingPowers {
         ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
         if (key == null || FORBIDDEN.contains(key.toString())) return false;
         if (item instanceof net.minecraft.world.item.SpawnEggItem) return false;
+        if (key.getNamespace().equals("legends_superheroes")
+                && !java.util.regex.Pattern.compile("lantern|willpower|oanite|^gl_").matcher(key.getPath()).find()) return false;
         String path = key.getPath();
         return !(path.equals("egg") || path.endsWith("_egg") || path.endsWith("_spawn_egg"));
     }
