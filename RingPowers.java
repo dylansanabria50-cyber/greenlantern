@@ -54,7 +54,8 @@ public class RingPowers {
     public static final int COST_SHIELD = 30;
     public static final int COST_WALL = 25;
 
-    public static final int ACT_FLIGHT = 0, ACT_SHIELD = 2, ACT_WALL = 3, ACT_SUIT = 4;
+    public static final int ACT_FLIGHT = 0, ACT_SHIELD = 2, ACT_WALL = 3, ACT_SUIT = 4,
+            ACT_FLIGHT_ON = 5, ACT_SHIELD_HOLD = 6, ACT_MINIGUN = 7, ACT_ROCKET = 8, ACT_JET = 9;
 
     public static final double SHIELD_RADIUS = 5.0;
     public static final int SHIELD_TICKS = 700; // 35 segundos
@@ -104,14 +105,20 @@ public class RingPowers {
         }
         long now = p.level().getGameTime();
         CompoundTag d = data(p);
-        if (action != ACT_FLIGHT && now < d.getLong("GLCd")) return;
-        d.putLong("GLCd", now + 10);
+        boolean free = action == ACT_FLIGHT || action == ACT_FLIGHT_ON || action == ACT_SHIELD_HOLD;
+        if (!free && now < d.getLong("GLCd")) return;
+        if (!free) d.putLong("GLCd", now + 10);
 
         switch (action) {
             case ACT_FLIGHT -> toggleFlight(p);
             case ACT_SHIELD -> shield(p);
             case ACT_WALL -> wall(p);
             case ACT_SUIT -> toggleSuit(p);
+            case ACT_FLIGHT_ON -> { if (!isFlightOn(p)) toggleFlight(p); }
+            case ACT_SHIELD_HOLD -> shieldHold(p);
+            case ACT_MINIGUN -> conjure(p, GreenLanternMod.MINIGUN.get(), 1);
+            case ACT_ROCKET -> conjure(p, GreenLanternMod.ROCKET.get(), 1);
+            case ACT_JET -> jet(p);
             default -> { }
         }
     }
@@ -132,7 +139,7 @@ public class RingPowers {
             return;
         }
         setFlightOn(p, on);
-        bar(p, on ? "Vuelo activado (salta dos veces para volar)" : "Vuelo desactivado");
+        bar(p, on ? "Vuelo activado" : "Vuelo desactivado");
     }
 
     // ---------- crear objetos (R) ----------
@@ -317,6 +324,42 @@ public class RingPowers {
         bar(p, "Burbuja de energia (35 s, te sigue; V para quitarla)");
     }
 
+    /** Escudo de fuerza: dura mientras se mantiene la tecla (el cliente renueva cada 3 ticks). */
+    public static void shieldHold(ServerPlayer p) {
+        CompoundTag d = data(p);
+        ServerLevel level = p.serverLevel();
+        if (!shieldActive(p)) {
+            if (getEnergy(p) < 3) {
+                bar(p, "Sin voluntad para el escudo");
+                return;
+            }
+            setEnergy(p, getEnergy(p) - 2);
+            BlockPos c = p.blockPosition().above();
+            d.putInt("GLSX", c.getX());
+            d.putInt("GLSY", c.getY());
+            d.putInt("GLSZ", c.getZ());
+            d.putString("GLSDim", level.dimension().location().toString());
+            pushMobsOut(level, c);
+            ShieldFx.send(p, true);
+            level.playSound(null, p.blockPosition(), SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 1.0f, 1.4f);
+        }
+        d.putLong("GLShieldEnd", level.getGameTime() + 8);
+    }
+
+    public static boolean jetActive(Player p) {
+        return p.level().getGameTime() < data(p).getLong("GLJetEnd");
+    }
+
+    /** Modo caza: 35 s de vuelo de combate (mas lento y controlado). */
+    public static void jet(ServerPlayer p) {
+        if (!spend(p, COST_CONJURE)) return;
+        data(p).putLong("GLJetEnd", p.level().getGameTime() + CONJURE_TICKS);
+        setFlightOn(p, true);
+        p.serverLevel().sendParticles(GREEN, p.getX(), p.getY() + 1.0, p.getZ(), 40, 0.5, 0.8, 0.5, 0.05);
+        p.serverLevel().playSound(null, p.blockPosition(), SoundEvents.BEACON_POWER_SELECT, SoundSource.PLAYERS, 1.0f, 1.2f);
+        bar(p, "Modo caza (35 s): salta dos veces para despegar");
+    }
+
     /** Al activarse la burbuja, los mobs que quedan dentro salen despedidos hacia afuera. */
     private static void pushMobsOut(ServerLevel level, BlockPos c) {
         double cx = c.getX() + 0.5, cy = c.getY() + 0.5, cz = c.getZ() + 0.5;
@@ -390,10 +433,15 @@ public class RingPowers {
         if (!hasRing(p) || now >= end) {
             d.putLong("GLShieldEnd", 0);
             ShieldFx.send(p, false);
-            bar(p, "La burbuja se disipo");
             return;
         }
         if (now % 40 == 0) ShieldFx.send(p, true);
+        if (now % 40 == 20) setEnergy(p, Math.max(0, getEnergy(p) - 1));
+        if (getEnergy(p) <= 0) {
+            d.putLong("GLShieldEnd", 0);
+            ShieldFx.send(p, false);
+            return;
+        }
 
         Vec3 cv = new Vec3(p.getX(), p.getY() + 1.0, p.getZ());
         AABB box = new AABB(cv, cv).inflate(SHIELD_RADIUS + 2.0);
