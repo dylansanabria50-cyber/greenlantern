@@ -19,6 +19,7 @@ public class ModNetwork {
 
     public static void register() {
         CHANNEL.registerMessage(0, PowerPacket.class, PowerPacket::encode, PowerPacket::decode, PowerPacket::handle);
+        RingSlot.register(CHANNEL);
         CHANNEL.registerMessage(2, SuitPacket.class, SuitPacket::encode, SuitPacket::decode, SuitPacket::handle);
         CHANNEL.registerMessage(1, ConjurePacket.class, ConjurePacket::encode, ConjurePacket::decode, ConjurePacket::handle);
     }
