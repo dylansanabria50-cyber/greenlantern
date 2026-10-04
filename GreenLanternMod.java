@@ -31,10 +31,17 @@ public class GreenLanternMod {
     public static final RegistryObject<Item> ROCKET = ITEMS.register("energy_rocket_launcher",
             () -> new CombatItem(CombatItem.Kind.ROCKET, new Item.Properties().stacksTo(1).fireResistant()));
 
+    public static final DeferredRegister<net.minecraft.world.entity.EntityType<?>> ENTITIES =
+            DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, MODID);
+    public static final RegistryObject<net.minecraft.world.entity.EntityType<JetEntity>> JET = ENTITIES.register("lantern_jet",
+            () -> net.minecraft.world.entity.EntityType.Builder.<JetEntity>of(JetEntity::new, net.minecraft.world.entity.MobCategory.MISC)
+                    .sized(1.8f, 0.7f).clientTrackingRange(10).updateInterval(1).fireImmune().build("lantern_jet"));
+
     public GreenLanternMod() {
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
         BLOCKS.register(bus);
         ITEMS.register(bus);
+        ENTITIES.register(bus);
         bus.addListener(this::commonSetup);
         bus.addListener(this::addCreative);
         MinecraftForge.EVENT_BUS.register(new RingEvents());
