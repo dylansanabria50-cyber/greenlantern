@@ -17,7 +17,7 @@ import java.util.List;
 public class GlJeiPlugin implements IModPlugin {
     @Override
     public ResourceLocation getPluginUid() {
-        return new ResourceLocation(GreenLanternMod.MODID, "solo_linterna");
+        return new ResourceLocation("glsolo", "solo_linterna");
     }
 
     @Override
