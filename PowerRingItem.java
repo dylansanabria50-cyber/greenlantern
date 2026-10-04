@@ -27,19 +27,10 @@ public class PowerRingItem extends Item {
             player.getCooldowns().addCooldown(this, 600);
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
         }
-        // clic derecho: ponerse el anillo (va a la primera ranura de armadura libre)
-        for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD}) {
-            if (player.getItemBySlot(slot).isEmpty()) {
-                if (!level.isClientSide) {
-                    ItemStack one = stack.copy();
-                    one.setCount(1);
-                    player.setItemSlot(slot, one);
-                    stack.shrink(1);
-                }
-                return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
-            }
-        }
-        return InteractionResultHolder.pass(stack);
+        // clic derecho: ponerse el anillo en su ranura propia del inventario
+        if (RingSlot.has(player)) return InteractionResultHolder.pass(stack);
+        if (!level.isClientSide) RingSlot.equip(player, stack);
+        return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }
 
     /** El anillo se puede colocar en cualquier ranura de armadura. */
@@ -52,7 +43,7 @@ public class PowerRingItem extends Item {
 
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tips, TooltipFlag flag) {
-        tips.add(Component.literal("Clic derecho: ponertelo (o ponelo en una ranura de armadura)").withStyle(ChatFormatting.GREEN));
+        tips.add(Component.literal("Clic derecho: ponertelo (ranura propia en el inventario)").withStyle(ChatFormatting.GREEN));
         tips.add(Component.literal("G: volar | R: crear objetos | V: burbuja | B: muro").withStyle(ChatFormatting.GRAY));
         tips.add(Component.literal("Shift + clic derecho: recargar voluntad").withStyle(ChatFormatting.DARK_GREEN));
     }
