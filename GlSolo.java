@@ -249,6 +249,47 @@ public class GlSolo {
     }
 
     /** Velocidad al correr vanilla, vuelo -25 %, turbina -60 %, jets solo atacan lo que atacas. */
+    static class Tune {
+        static boolean done;
+
+        static void init() {
+            MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, Tune::tick);
+        }
+
+        static void setInt(Object o, String f, int v) throws Exception {
+            java.lang.reflect.Field fl = o.getClass().getDeclaredField(f);
+            fl.setAccessible(true);
+            fl.setInt(o, v);
+        }
+
+        static void apply() {
+            if (done) return;
+            try {
+                Class<?> c = Class.forName("com.tihyo.legends.superheroes.abilities.SuperHeroesAbilities");
+                Object jet = ((net.minecraftforge.registries.RegistryObject<?>) c.getField("FLIGHT_JET_SQUADRON").get(null)).get();
+                Object oas = ((net.minecraftforge.registries.RegistryObject<?>) c.getField("OAS_ROCKET").get(null)).get();
+                if (jet == null || oas == null) return;
+                setInt(jet, "duration", 700);
+                setInt(jet, "cooldown", 700 + 160);
+                setInt(oas, "cooldown", 80);
+                done = true;
+            } catch (Throwable t) {
+                done = true;
+            }
+        }
+
+        static void tick(net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent e) {
+            apply();
+            net.minecraft.world.entity.LivingEntity le = e.getEntity();
+            if (le.level().isClientSide) return;
+            if (!le.getClass().getSimpleName().equals("JetSquadronEntity")) return;
+            if (le.tickCount >= 250 && !le.getPersistentData().getBoolean("glsolo_ext")) {
+                le.getPersistentData().putBoolean("glsolo_ext", true);
+                le.tickCount -= 400;
+            }
+        }
+    }
+
     static class Mv {
         static final double FLIGHT = 0.75D;
         static final double TURBINE = 0.4D;
@@ -264,6 +305,7 @@ public class GlSolo {
         }
 
         static void init() {
+            Tune.init();
             MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, Mv::pre);
             MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, Mv::post);
             MinecraftForge.EVENT_BUS.addListener(Mv::onTarget);
