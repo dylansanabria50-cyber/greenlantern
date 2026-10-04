@@ -50,6 +50,24 @@ sourceSets {
         java {
             srcDirs = [projectDir]
             include '*.java'
+            exclude 'CombatItem.java'
+            exclude 'CombatScreen.java'
+            exclude 'JetEntity.java'
+            exclude 'JetModel.java'
+            exclude 'JetRenderer.java'
+            exclude 'BoxModel.java'
+            exclude 'GunRenderer.java'
+            exclude 'RocketRenderer.java'
+            exclude 'FlightTrail.java'
+            exclude 'ShieldBlock.java'
+            exclude 'ShieldFx.java'
+            exclude 'ShieldRender.java'
+            exclude 'SuitEvents.java'
+            exclude 'SuitLayer.java'
+            exclude 'SuitTexture.java'
+            exclude 'SuitLight.java'
+            exclude 'ClientSuit.java'
+            exclude 'ConstructBlock.java'
         }
     }
 }
