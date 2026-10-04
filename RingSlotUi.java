@@ -14,7 +14,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 /** Ranura propia del anillo dentro del inventario (junto al muneco). */
-@Mod.EventBusSubscriber(modid = GreenLanternMod.MODID, value = Dist.CLIENT)
+// Desactivado: ahora se usa la ranura de equipo extra de Legends (mod glsolo)
 public class RingSlotUi {
     private static final int SX = 77, SY = 44;
 
