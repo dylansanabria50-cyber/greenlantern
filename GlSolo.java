@@ -18,8 +18,10 @@ import net.minecraftforge.fml.loading.FMLEnvironment;
 @Mod("glsolo")
 public class GlSolo {
     /** Vida maxima con el traje (40 = 20 corazones) y armadura maxima (20 = barra vanilla llena). */
-    static final double MAX_HP = 40.0D;
-    static final double MAX_ARMOR = 20.0D;
+    static final double MAX_HP = 20.0D;
+    static final double MAX_ARMOR = 8.0D;
+    static final double TOUGH = 2.0D;
+    static final UUID ID_TG = UUID.fromString("2d4f6a8c-1b3e-4d5f-8a7c-9e0b1c2d3e4f");
     static final UUID ID_HP = UUID.fromString("5b1c2f0e-8a31-4c55-9e0a-1d2f3a4b5c6d");
     static final UUID ID_AR = UUID.fromString("7e9d4a21-3b6c-4f08-a1d5-2c8e9f0b1a3c");
 
@@ -54,6 +56,7 @@ public class GlSolo {
         boolean gl = isGlSuit(p);
         cap(p, Attributes.MAX_HEALTH, ID_HP, MAX_HP, gl);
         cap(p, Attributes.ARMOR, ID_AR, MAX_ARMOR, gl);
+        cap(p, Attributes.ARMOR_TOUGHNESS, ID_TG, TOUGH, gl);
         if (gl && p.getHealth() > p.getMaxHealth()) p.setHealth(p.getMaxHealth());
     }
 
@@ -64,7 +67,7 @@ public class GlSolo {
         double desired = 0.0D;
         if (gl) {
             double v = in.getValue() - (old != null ? old.getAmount() : 0.0D);
-            if (v > max) desired = max - v;
+            if (v != max) desired = max - v;
         }
         if (old == null && desired == 0.0D) return;
         if (old != null && Math.abs(old.getAmount() - desired) < 1.0E-6D) return;
