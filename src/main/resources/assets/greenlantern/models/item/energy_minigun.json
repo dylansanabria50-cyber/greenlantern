@@ -1,1 +1,1 @@
-{"parent":"minecraft:item/handheld","textures":{"layer0":"minecraft:item/crossbow_standby"}}
+{"parent":"minecraft:builtin/entity","gui_light":"front"}
