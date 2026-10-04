@@ -1,4 +1,4 @@
-package com.example.greenlantern;
+package com.example.glsolo;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
