@@ -68,16 +68,23 @@ public class RingPowers {
 
     public static void setEnergy(Player p, int v) { data(p).putInt("GLEnergy", Math.max(0, Math.min(MAX_ENERGY, v))); }
 
-    public static boolean hasRing(Player p) {
-        for (ItemStack s : p.getInventory().items) if (s.is(GreenLanternMod.POWER_RING.get())) return true;
-        for (ItemStack s : p.getInventory().offhand) if (s.is(GreenLanternMod.POWER_RING.get())) return true;
+    public static boolean isRing(ItemStack s) {
+    if (s == null || s.isEmpty()) return false;
+    if (s.is(GreenLanternMod.POWER_RING.get())) return true;
+    net.minecraft.resources.ResourceLocation k = net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(s.getItem());
+    return k != null && k.getNamespace().equals("legends_superheroes") && k.getPath().equals("willpower_ring");
+  }
+
+  public static boolean hasRing(Player p) {
+        for (ItemStack s : p.getInventory().items) if (isRing(s)) return true;
+        for (ItemStack s : p.getInventory().offhand) if (isRing(s)) return true;
         return isWorn(p);
     }
 
     /** El anillo esta "puesto" si esta en alguna de las 4 ranuras de armadura. */
     public static boolean isWorn(Player p) {
         if (RingSlot.has(p)) return true;
-        for (ItemStack s : p.getInventory().armor) if (s.is(GreenLanternMod.POWER_RING.get())) return true;
+        for (ItemStack s : p.getInventory().armor) if (isRing(s)) return true;
         return false;
     }
 
