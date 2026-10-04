@@ -1,4 +1,4 @@
-package com.example.greenlantern;
+package com.example.glsolo;
 
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.fml.common.Mod;
