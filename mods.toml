@@ -3,24 +3,25 @@ loaderVersion="[47,)"
 license="MIT"
 
 [[mods]]
-modId="greenlantern"
+modId="jarvis"
 version="1.0.0"
-displayName="Green Lantern Power Ring"
+displayName="Jarvis"
+displayTest="IGNORE_SERVER_VERSION"
 description='''
-El Anillo de Poder de Linterna Verde (inspirado en Justice League Heroes).
-Vuelo, rayo de energia, escudo y construcciones de energia verde.
+Asistente de IA estilo Jarvis para Minecraft: escribe "Jarvis, ..." en el chat.
+Cerebro local con Ollama y voz con ElevenLabs.
 '''
 
-[[dependencies.greenlantern]]
+[[dependencies.jarvis]]
     modId="forge"
     mandatory=true
     versionRange="[47,)"
     ordering="NONE"
-    side="BOTH"
+    side="CLIENT"
 
-[[dependencies.greenlantern]]
+[[dependencies.jarvis]]
     modId="minecraft"
     mandatory=true
     versionRange="[1.20.1,1.21)"
     ordering="NONE"
-    side="BOTH"
+    side="CLIENT"
