@@ -19,6 +19,11 @@ public class SuitEvents {
     }
 
     @SubscribeEvent
+    public static void onLogout(PlayerEvent.PlayerLoggedOutEvent e) {
+        if (e.getEntity() instanceof ServerPlayer p) SuitLight.clear(p);
+    }
+
+    @SubscribeEvent
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent e) {
         if (e.getEntity() instanceof ServerPlayer p) RingPowers.data(p).putBoolean("GLSuit", false);
     }
