@@ -18,58 +18,51 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
-            mods { "greenlantern" { source sourceSets.main } }
+            mods { "glsolo" { source sourceSets.main } }
         }
-        client { property 'forge.enabledGameTestNamespaces', 'greenlantern' }
-        server { property 'forge.enabledGameTestNamespaces', 'greenlantern'; args '--nogui' }
+        client { property 'forge.enabledGameTestNamespaces', 'glsolo' }
+        server { property 'forge.enabledGameTestNamespaces', 'glsolo'; args '--nogui' }
     }
+}
+
+repositories {
+    maven { url = 'https://maven.blamejared.com/' }
+    maven { url = 'https://modmaven.dev' }
 }
 
 dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.2.0'
+    compileOnly fg.deobf('mezz.jei:jei-1.20.1-common-api:15.20.0.106')
+    compileOnly fg.deobf('mezz.jei:jei-1.20.1-forge-api:15.20.0.106')
 }
 
 tasks.named('jar', Jar).configure {
     manifest.attributes([
-        'Specification-Title': 'greenlantern',
-        'Specification-Vendor': 'greenlantern',
+        'Specification-Title': 'glsolo',
+        'Specification-Vendor': 'glsolo',
         'Specification-Version': '1',
-        'Implementation-Title': project.name,
+        'Implementation-Title': 'glsolo',
         'Implementation-Version': project.jar.archiveVersion,
-        'Implementation-Vendor': 'greenlantern'
+        'Implementation-Vendor': 'glsolo'
     ])
     finalizedBy 'reobfJar'
 }
 
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
 
+processResources {
+    exclude 'assets/**'
+    exclude 'data/**'
+}
 
-// Compila los .java que estan sueltos en la raiz del repositorio (los recursos siguen en src/main/resources)
+// Solo compila el filtro (los demas .java del repositorio son del anillo)
 sourceSets {
     main {
         java {
             srcDirs = [projectDir]
-            include '*.java'
-            exclude 'CombatItem.java'
-            exclude 'CombatScreen.java'
-            exclude 'JetEntity.java'
-            exclude 'JetModel.java'
-            exclude 'JetRenderer.java'
-            exclude 'BoxModel.java'
-            exclude 'GunRenderer.java'
-            exclude 'RocketRenderer.java'
-            exclude 'FlightTrail.java'
-            exclude 'ShieldBlock.java'
-            exclude 'ShieldFx.java'
-            exclude 'ShieldRender.java'
-            exclude 'SuitEvents.java'
-            exclude 'SuitLayer.java'
-            exclude 'SuitTexture.java'
-            exclude 'SuitLight.java'
-            exclude 'ClientSuit.java'
-            exclude 'ConstructBlock.java'
-            exclude 'HideOthers.java'
-            exclude 'GlJeiPlugin.java'
+            include 'HideOthers.java'
+            include 'GlJeiPlugin.java'
+            include 'GlSolo.java'
         }
     }
 }
