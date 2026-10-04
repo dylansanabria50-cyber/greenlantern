@@ -205,6 +205,8 @@ public class RingPowers {
         }
         if (expired(p.containerMenu.getCarried(), now)) { p.containerMenu.setCarried(ItemStack.EMPTY); any = true; }
         if (any) {
+            p.inventoryMenu.broadcastFullState();
+            if (p.containerMenu != p.inventoryMenu) p.containerMenu.broadcastFullState();
             ServerLevel level = p.serverLevel();
             level.sendParticles(GREEN, p.getX(), p.getY() + 1.0, p.getZ(), 15, 0.4, 0.5, 0.4, 0.02);
             level.playSound(null, p.blockPosition(), SoundEvents.AMETHYST_BLOCK_BREAK, SoundSource.PLAYERS, 1.0f, 1.2f);
@@ -296,8 +298,8 @@ public class RingPowers {
         String dim = level.dimension().location().toString();
 
         if (shieldActive(p)) {
-            if (dim.equals(d.getString("GLSDim"))) clearShell(level, shieldCenter(d));
             d.putLong("GLShieldEnd", 0);
+            ShieldFx.send(p, false);
             bar(p, "Burbuja desactivada");
             return;
         }
@@ -310,7 +312,7 @@ public class RingPowers {
         d.putInt("GLSZ", c.getZ());
         d.putString("GLSDim", dim);
         pushMobsOut(level, c);
-        fillShell(level, c);
+        ShieldFx.send(p, true);
         level.playSound(null, p.blockPosition(), SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 1.0f, 1.4f);
         bar(p, "Burbuja de energia (35 s, te sigue; V para quitarla)");
     }
@@ -371,7 +373,7 @@ public class RingPowers {
         }
     }
 
-    /** Cada tick desde RingEvents: mantiene la pared, elimina proyectiles y la retira al terminar. */
+    /** Cada tick desde RingEvents: mantiene la burbuja, elimina proyectiles, repele mobs y la retira al terminar. */
     public static void tickShield(ServerPlayer p) {
         tickSuit(p);
         CompoundTag d = data(p);
@@ -381,31 +383,22 @@ public class RingPowers {
         ServerLevel level = p.serverLevel();
         long now = level.getGameTime();
         if (!level.dimension().location().toString().equals(d.getString("GLSDim"))) {
-            d.putLong("GLShieldEnd", 0); // cambiaste de dimension: los bloques se retiran solos
+            d.putLong("GLShieldEnd", 0);
+            ShieldFx.send(p, false);
             return;
         }
-        BlockPos c = shieldCenter(d);
-
         if (!hasRing(p) || now >= end) {
-            clearShell(level, c);
             d.putLong("GLShieldEnd", 0);
+            ShieldFx.send(p, false);
             bar(p, "La burbuja se disipo");
             return;
         }
+        if (now % 40 == 0) ShieldFx.send(p, true);
 
-        // la burbuja te sigue: si cambiaste de bloque, mueve la pared
-        BlockPos nc = p.blockPosition().above();
-        if (!nc.equals(c)) {
-            moveShell(level, c, nc);
-            d.putInt("GLSX", nc.getX());
-            d.putInt("GLSY", nc.getY());
-            d.putInt("GLSZ", nc.getZ());
-            c = nc;
-        }
-
-        // proyectiles que no son tuyos se eliminan antes de tocar la pared (evita explosiones)
-        Vec3 cv = Vec3.atCenterOf(c);
+        Vec3 cv = new Vec3(p.getX(), p.getY() + 1.0, p.getZ());
         AABB box = new AABB(cv, cv).inflate(SHIELD_RADIUS + 2.0);
+
+        // proyectiles que no son tuyos se eliminan al entrar en la burbuja
         for (Projectile proj : level.getEntitiesOfClass(Projectile.class, box, e -> e.getOwner() != p)) {
             if (proj.getDeltaMovement().lengthSqr() < 1.0E-4) continue; // flechas ya clavadas
             if (proj.position().distanceTo(cv) <= SHIELD_RADIUS + 0.5) {
@@ -415,8 +408,16 @@ public class RingPowers {
             }
         }
 
-        // repara huecos (por ejemplo donde habia un mob o tras una explosion)
-        if (now % 10 == 0) fillShell(level, c);
+        // los mobs no pueden entrar: se los empuja hacia afuera
+        for (net.minecraft.world.entity.Mob m : level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box)) {
+            Vec3 off = m.position().add(0.0, m.getBbHeight() / 2.0, 0.0).subtract(cv);
+            double dist = off.length();
+            if (dist >= SHIELD_RADIUS + 0.3) continue;
+            Vec3 dir = dist < 0.01 ? new Vec3(1.0, 0.0, 0.0) : off.scale(1.0 / dist);
+            m.setDeltaMovement(m.getDeltaMovement().add(dir.scale(0.45)).add(0.0, 0.05, 0.0));
+            m.hurtMarked = true;
+            if (now % 4 == 0) level.sendParticles(GREEN, m.getX(), m.getY() + 0.5, m.getZ(), 2, 0.2, 0.2, 0.2, 0.0);
+        }
     }
 
     public static void wall(ServerPlayer p) {
