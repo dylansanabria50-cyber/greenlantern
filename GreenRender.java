@@ -29,4 +29,14 @@ public class GreenRender extends RenderType {
                     .setCullState(NO_CULL)
                     .setTexturingState(GLASS)
                     .createCompositeState(true));
+
+    /** Esfera de la burbuja: translucida, sin culling, sin escribir profundidad. */
+    public static final RenderType SPHERE = RenderType.create("greenlantern_sphere",
+            DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.QUADS, 4096, false, true,
+            RenderType.CompositeState.builder()
+                    .setShaderState(POSITION_COLOR_SHADER)
+                    .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+                    .setCullState(NO_CULL)
+                    .setWriteMaskState(COLOR_WRITE)
+                    .createCompositeState(false));
 }
