@@ -63,6 +63,8 @@ sourceSets {
             include 'HideOthers.java'
             include 'GlJeiPlugin.java'
             include 'GlSolo.java'
+            include 'GlTweaks.java'
+            include 'ClientHook.java'
         }
     }
 }
