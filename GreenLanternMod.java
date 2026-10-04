@@ -21,27 +21,13 @@ public class GreenLanternMod {
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, MODID);
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MODID);
 
-    public static final RegistryObject<Block> CONSTRUCT_BLOCK = BLOCKS.register("construct_block", ConstructBlock::new);
-    public static final RegistryObject<Block> SHIELD_BLOCK = BLOCKS.register("shield_block", ShieldBlock::new);
     public static final RegistryObject<Item> POWER_RING = ITEMS.register("power_ring",
             () -> new PowerRingItem(new Item.Properties().stacksTo(1).rarity(Rarity.EPIC).fireResistant()));
-
-    public static final RegistryObject<Item> MINIGUN = ITEMS.register("energy_minigun",
-            () -> new CombatItem(CombatItem.Kind.MINIGUN, new Item.Properties().stacksTo(1).fireResistant()));
-    public static final RegistryObject<Item> ROCKET = ITEMS.register("energy_rocket_launcher",
-            () -> new CombatItem(CombatItem.Kind.ROCKET, new Item.Properties().stacksTo(1).fireResistant()));
-
-    public static final DeferredRegister<net.minecraft.world.entity.EntityType<?>> ENTITIES =
-            DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, MODID);
-    public static final RegistryObject<net.minecraft.world.entity.EntityType<JetEntity>> JET = ENTITIES.register("lantern_jet",
-            () -> net.minecraft.world.entity.EntityType.Builder.<JetEntity>of(JetEntity::new, net.minecraft.world.entity.MobCategory.MISC)
-                    .sized(1.8f, 0.7f).clientTrackingRange(10).updateInterval(1).fireImmune().build("lantern_jet"));
 
     public GreenLanternMod() {
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
         BLOCKS.register(bus);
         ITEMS.register(bus);
-        ENTITIES.register(bus);
         bus.addListener(this::commonSetup);
         bus.addListener(this::addCreative);
         MinecraftForge.EVENT_BUS.register(new RingEvents());
