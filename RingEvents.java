@@ -55,52 +55,15 @@ public class RingEvents {
         if (!(e.player instanceof ServerPlayer p)) return;
 
         boolean ring = RingPowers.hasRing(p);
-        boolean flightOn = RingPowers.isFlightOn(p);
         int energy = RingPowers.getEnergy(p);
         CompoundTag d = RingPowers.data(p);
         Abilities ab = p.getAbilities();
 
-        RingPowers.tickShield(p);
         RingPowers.tagCraftResult(p);
         if (p.tickCount % 10 == 0) RingPowers.expireConjured(p);
 
-        // al aterrizar se acaba el vuelo: hay que volver a saltar dos veces
-        if (flightOn && d.getBoolean("GLFly") && p.onGround() && !ab.flying && !p.isCreative() && !p.isSpectator()) {
-            RingPowers.setFlightOn(p, false);
-            flightOn = false;
-        }
-        float speed = RingPowers.jetActive(p) ? JET_FLY_SPEED : RING_FLY_SPEED;
-
-        boolean wantFly = ring && flightOn && energy > 0;
-
-        if (wantFly) {
-            if (!ab.mayfly) {
-                ab.mayfly = true;
-                ab.setFlyingSpeed(speed);
-                d.putBoolean("GLFly", true);
-                if (!p.onGround()) ab.flying = true;
-                p.onUpdateAbilities();
-            }
-            if (ab.getFlyingSpeed() != speed) {
-                ab.setFlyingSpeed(speed);
-                p.onUpdateAbilities();
-            }
-            if (ab.flying) {
-                if (p.tickCount % 20 == 0) RingPowers.setEnergy(p, energy - 1);
-                ServerLevel sl = p.serverLevel();
-                net.minecraft.world.phys.Vec3 look = p.getLookAngle();
-                double bx = p.getX() - look.x * 0.6;
-                double by = p.getY() + 0.9 - look.y * 0.6;
-                double bz = p.getZ() - look.z * 0.6;
-                sl.sendParticles(RingPowers.GREEN, bx, by, bz, 8, 0.3, 0.4, 0.3, 0.0);
-                if (p.tickCount % 2 == 0) {
-                    sl.sendParticles(ParticleTypes.GLOW, bx, by, bz, 2, 0.25, 0.35, 0.25, 0.01);
-                }
-                if (p.tickCount % 3 == 0) {
-                    sl.sendParticles(ParticleTypes.HAPPY_VILLAGER, p.getX(), p.getY() + 0.2, p.getZ(), 2, 0.25, 0.1, 0.25, 0.0);
-                }
-            }
-        } else if (d.getBoolean("GLFly")) {
+        // limpia el vuelo de versiones anteriores del mod
+        if (d.getBoolean("GLFly")) {
             d.putBoolean("GLFly", false);
             if (!p.isCreative() && !p.isSpectator()) {
                 ab.mayfly = false;
@@ -108,16 +71,10 @@ public class RingEvents {
             }
             ab.setFlyingSpeed(NORMAL_FLY_SPEED);
             p.onUpdateAbilities();
-            if (ring && flightOn && energy <= 0) {
-                RingPowers.setFlightOn(p, false);
-                p.displayClientMessage(Component.literal("\u00a7cTe quedaste sin voluntad: vuelo desactivado"), true);
-            } else if (!ring) {
-                RingPowers.setFlightOn(p, false);
-            }
         }
 
-        // Regeneracion de voluntad: +1 cada medio segundo si no estas volando
-        if (ring && !ab.flying && !RingPowers.shieldActive(p) && p.tickCount % 10 == 0 && energy < RingPowers.MAX_ENERGY) {
+        // Regeneracion de voluntad: +1 cada medio segundo
+        if (ring && p.tickCount % 10 == 0 && energy < RingPowers.MAX_ENERGY) {
             RingPowers.setEnergy(p, energy + 1);
         }
     }
@@ -221,13 +178,6 @@ public class RingEvents {
         for (Slot s : e.getContainer().slots) {
             if (s.container instanceof Inventory) continue;
             if (RingPowers.isConjured(s.getItem())) s.set(ItemStack.EMPTY);
-        }
-    }
-
-    @SubscribeEvent
-    public void onFall(LivingFallEvent e) {
-        if (e.getEntity() instanceof Player p && RingPowers.hasRing(p) && RingPowers.isFlightOn(p)) {
-            e.setCanceled(true);
         }
     }
 }
