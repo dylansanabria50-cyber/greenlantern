@@ -60,6 +60,7 @@ public class RingSlot {
     }
 
     public static void register(SimpleChannel ch) {
+        ShieldFx.register(ch);
         ch.registerMessage(3, SyncPacket.class, SyncPacket::encode, SyncPacket::decode, SyncPacket::handle);
         ch.registerMessage(4, ClickPacket.class, ClickPacket::encode, ClickPacket::decode, ClickPacket::handle);
     }
