@@ -6,7 +6,7 @@ plugins {
 }
 
 version = '1.0.0'
-group = 'com.example.jarvis'
+group = 'com.example.cronos'
 base { archivesName = 'greenlantern' }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -18,10 +18,10 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
-            mods { "jarvis" { source sourceSets.main } }
+            mods { "cronos" { source sourceSets.main } }
         }
-        client { property 'forge.enabledGameTestNamespaces', 'jarvis' }
-        server { property 'forge.enabledGameTestNamespaces', 'jarvis'; args '--nogui' }
+        client { property 'forge.enabledGameTestNamespaces', 'cronos' }
+        server { property 'forge.enabledGameTestNamespaces', 'cronos'; args '--nogui' }
     }
 }
 
@@ -31,12 +31,12 @@ dependencies {
 
 tasks.named('jar', Jar).configure {
     manifest.attributes([
-        'Specification-Title': 'jarvis',
-        'Specification-Vendor': 'jarvis',
+        'Specification-Title': 'cronos',
+        'Specification-Vendor': 'cronos',
         'Specification-Version': '1',
-        'Implementation-Title': 'jarvis',
+        'Implementation-Title': 'cronos',
         'Implementation-Version': project.jar.archiveVersion,
-        'Implementation-Vendor': 'jarvis'
+        'Implementation-Vendor': 'cronos'
     ])
     finalizedBy 'reobfJar'
 }
@@ -55,7 +55,7 @@ sourceSets {
     main {
         java {
             srcDirs = [projectDir]
-            include 'Jarvis*.java'
+            include 'Cronos*.java'
         }
         resources {
             srcDirs = [flatResDir]
