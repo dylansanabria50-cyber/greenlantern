@@ -120,7 +120,12 @@ public class CronosModel {
     }
 
     static void rot(Matrix4f m, float[] pv, float rx, float ry, float rz) {
+        rot(m, pv, rx, ry, rz, null);
+    }
+
+    static void rot(Matrix4f m, float[] pv, float rx, float ry, float rz, float[] sc) {
         m.translate(pv[0], pv[1], pv[2]);
+        if (sc != null) m.scale(sc[0], sc[1], sc[2]);
         if (rz != 0) m.rotateZ((float) Math.toRadians(rz));
         if (ry != 0) m.rotateY((float) Math.toRadians(ry));
         if (rx != 0) m.rotateX((float) Math.toRadians(rx));
@@ -134,7 +139,8 @@ public class CronosModel {
         float rx = b.rot[0] + (ar != null ? ar[0] : 0f);
         float ry = b.rot[1] + (ar != null ? ar[1] : 0f);
         float rz = b.rot[2] + (ar != null ? ar[2] : 0f);
-        rot(m, b.pivot, rx, ry, rz);
+        if (ar != null && ar.length >= 9) m.translate(ar[3], ar[4], ar[5]);
+        rot(m, b.pivot, rx, ry, rz, ar != null && ar.length >= 9 ? new float[]{ar[6], ar[7], ar[8]} : null);
         for (Cube c : b.cubes) {
             Matrix4f cm = m;
             if (c.rot != null) {
