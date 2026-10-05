@@ -219,6 +219,15 @@ public class CronosMod {
             snd(p.level(), p.getX(), p.getY(), p.getZ(), "turn_on", 1f, v ? 1f : 0.7f);
             p.refreshDimensions();
             ((ServerLevel) p.level()).sendParticles(ParticleTypes.END_ROD, p.getX(), p.getY() + 1, p.getZ(), 30, 0.4, 0.8, 0.4, 0.05);
+            if (v) {
+                DustParticleOptions yd = new DustParticleOptions(new Vector3f(1f, 0.9f, 0.1f), 2f);
+                for (int a = 0; a < 24; a++) {
+                    double an = a * Math.PI / 12;
+                    for (double h = 0; h < 3; h += 0.25) {
+                        ((ServerLevel) p.level()).sendParticles(yd, p.getX() + Math.cos(an) * 1.1, p.getY() + h, p.getZ() + Math.sin(an) * 1.1, 1, 0, 0.02, 0, 0);
+                    }
+                }
+            }
             sync(p);
             return;
         }
@@ -339,7 +348,8 @@ public class CronosMod {
         double len = hit.distanceTo(eye);
         for (double d = 1; d < len; d += 0.6) {
             Vec3 q = eye.add(dir.scale(d));
-            lv.sendParticles(dust, q.x, q.y - 0.15, q.z, 1, 0, 0, 0, 0);
+            lv.sendParticles(dust, q.x, q.y - 0.15, q.z, 3, 0.15, 0.15, 0.15, 0);
+            if (ray <= 1) lv.sendParticles(ParticleTypes.HAPPY_VILLAGER, q.x, q.y - 0.15, q.z, 1, 0.25, 0.25, 0.25, 0);
         }
         lv.sendParticles(ParticleTypes.ELECTRIC_SPARK, hit.x, hit.y, hit.z, 12, 0.3, 0.3, 0.3, 0.1);
         String rs = switch (ray) {
