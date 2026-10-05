@@ -3,25 +3,23 @@ loaderVersion="[47,)"
 license="MIT"
 
 [[mods]]
-modId="jarvis"
+modId="cronos"
 version="1.0.0"
-displayName="Jarvis"
-displayTest="IGNORE_SERVER_VERSION"
+displayName="Cronosapiente"
 description='''
-Asistente de IA estilo Jarvis para Minecraft: escribe "Jarvis, ..." en el chat.
-Cerebro local con Ollama y voz con ElevenLabs.
+Mod propio con poderes de control del tiempo: rayos temporales, detener, ralentizar y acelerar el tiempo, retroceso y mas.
 '''
 
-[[dependencies.jarvis]]
+[[dependencies.cronos]]
     modId="forge"
     mandatory=true
     versionRange="[47,)"
     ordering="NONE"
-    side="CLIENT"
+    side="BOTH"
 
-[[dependencies.jarvis]]
+[[dependencies.cronos]]
     modId="minecraft"
     mandatory=true
     versionRange="[1.20.1,1.21)"
     ordering="NONE"
-    side="CLIENT"
+    side="BOTH"
