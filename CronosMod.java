@@ -40,6 +40,7 @@ import net.minecraftforge.event.entity.EntityEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.LivingFallEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.DistExecutor;
@@ -68,7 +69,8 @@ public class CronosMod {
     public static final String[] RAYS = {
             "Rayo de tiempo", "Rayo mejorado", "Rayo de detencion / restauracion",
             "Rayo de retroceso", "Rayo de destransformacion", "Remocion de linea temporal",
-            "Disparo de energia (10K)", "Rayo de mano (10K)", "Bomba de tiempo"};
+            "Disparo de energia (10K)", "Rayo de mano (10K)", "Bomba de tiempo",
+            "Bombas de hombro", "Rayo galvano", "Mano taladro (alternar)", "Punetazo", "Salto", "Sentido (escaneo)"};
     public static final String[] CUES = {"Ralentizar tiempo", "Acelerar tiempo", "Detener tiempo", "Efecto Sotobro"};
 
     static final int MAX_ENERGY = 1000;
@@ -76,6 +78,8 @@ public class CronosMod {
     static final UUID U_ARMOR = UUID.fromString("5d9a7b10-0000-4000-8000-0000c0a0a001");
     static final UUID U_TOUGH = UUID.fromString("5d9a7b10-0000-4000-8000-0000c0a0a002");
     static final UUID U_ATK = UUID.fromString("5d9a7b10-0000-4000-8000-0000c0a0a003");
+    static final UUID U_SPD = UUID.fromString("5d9a7b10-0000-4000-8000-0000c0a0a004");
+    static final UUID U_HP = UUID.fromString("5d9a7b10-0000-4000-8000-0000c0a0a005");
 
     // ---------- red ----------
     public static class Act {
@@ -93,17 +97,17 @@ public class CronosMod {
     }
 
     public static class Sync {
-        boolean on, f10k, big;
+        boolean on, f10k, big, up, drill;
         int energy, ray, cue, slow, stop, acc, gray;
         Sync() { }
         static void enc(Sync m, FriendlyByteBuf b) {
-            b.writeBoolean(m.on); b.writeBoolean(m.f10k); b.writeBoolean(m.big);
+            b.writeBoolean(m.on); b.writeBoolean(m.f10k); b.writeBoolean(m.big); b.writeBoolean(m.up); b.writeBoolean(m.drill);
             b.writeVarInt(m.energy); b.writeVarInt(m.ray); b.writeVarInt(m.cue);
             b.writeVarInt(m.slow); b.writeVarInt(m.stop); b.writeVarInt(m.acc); b.writeVarInt(m.gray);
         }
         static Sync dec(FriendlyByteBuf b) {
             Sync m = new Sync();
-            m.on = b.readBoolean(); m.f10k = b.readBoolean(); m.big = b.readBoolean();
+            m.on = b.readBoolean(); m.f10k = b.readBoolean(); m.big = b.readBoolean(); m.up = b.readBoolean(); m.drill = b.readBoolean();
             m.energy = b.readVarInt(); m.ray = b.readVarInt(); m.cue = b.readVarInt();
             m.slow = b.readVarInt(); m.stop = b.readVarInt(); m.acc = b.readVarInt(); m.gray = b.readVarInt();
             return m;
@@ -152,6 +156,9 @@ public class CronosMod {
     static boolean on(Player p) { return p.getPersistentData().getBoolean("cr_on"); }
     static boolean f10k(Player p) { return p.getPersistentData().getBoolean("cr_10k"); }
     static boolean big(Player p) { return p.getPersistentData().getBoolean("cr_big"); }
+    static boolean up(Player p) { return p.getPersistentData().getBoolean("cr_up"); }
+    static boolean drill(Player p) { return p.getPersistentData().getBoolean("cr_drill"); }
+    static boolean avail(Player p, int r) { return (r == 6 || r == 7) ? f10k(p) : (r >= 9 ? up(p) : true); }
     static int en(Player p) {
         CompoundTag d = p.getPersistentData();
         return d.contains("cr_en") ? d.getInt("cr_en") : MAX_ENERGY;
@@ -181,7 +188,7 @@ public class CronosMod {
         St s = st(p);
         long now = p.level().getGameTime();
         Sync m = new Sync();
-        m.on = on(p); m.f10k = f10k(p); m.big = big(p); m.energy = en(p);
+        m.on = on(p); m.f10k = f10k(p); m.big = big(p); m.up = up(p); m.drill = drill(p); m.energy = en(p);
         m.ray = s.ray; m.cue = s.cue;
         m.slow = (int) Math.max(0, s.slowUntil - now);
         m.stop = (int) Math.max(0, s.stopUntil - now);
@@ -204,6 +211,8 @@ public class CronosMod {
             if (!v) {
                 p.getPersistentData().putBoolean("cr_10k", false);
                 p.getPersistentData().putBoolean("cr_big", false);
+                p.getPersistentData().putBoolean("cr_up", false);
+                p.getPersistentData().putBoolean("cr_drill", false);
                 p.refreshDimensions();
             }
             msg(p, v ? "Cronosapiente activado, senor." : "Forma humana restaurada.");
@@ -218,7 +227,7 @@ public class CronosMod {
             case 1 -> fire(p, s, now);
             case 2 -> {
                 int nx = s.ray;
-                do { nx = (nx + 1) % RAYS.length; } while (!f10k(p) && (nx == 6 || nx == 7));
+                do { nx = (nx + 1) % RAYS.length; } while (!avail(p, nx));
                 s.ray = nx;
                 msg(p, RAYS[s.ray]);
             }
@@ -231,6 +240,7 @@ public class CronosMod {
             case 6 -> {
                 boolean v = !f10k(p);
                 p.getPersistentData().putBoolean("cr_10k", v);
+                if (v) { p.getPersistentData().putBoolean("cr_up", false); p.getPersistentData().putBoolean("cr_drill", false); if (s.ray >= 9) s.ray = 0; }
                 if (!v) { p.getPersistentData().putBoolean("cr_big", false); p.refreshDimensions(); if (s.ray == 6 || s.ray == 7) s.ray = 0; }
                 p.refreshDimensions();
                 msg(p, v ? "Forma 10K activada." : "Forma 10K desactivada.");
@@ -241,6 +251,15 @@ public class CronosMod {
                 p.getPersistentData().putBoolean("cr_big", v);
                 p.refreshDimensions();
                 msg(p, v ? "Tamano aumentado." : "Tamano normal.");
+            }
+            case 9 -> {
+                boolean v = !up(p);
+                p.getPersistentData().putBoolean("cr_up", v);
+                if (v) { p.getPersistentData().putBoolean("cr_10k", false); p.getPersistentData().putBoolean("cr_big", false); if (s.ray == 6 || s.ray == 7) s.ray = 0; }
+                else { p.getPersistentData().putBoolean("cr_drill", false); if (s.ray >= 9) s.ray = 0; }
+                p.refreshDimensions();
+                snd(p.level(), p.getX(), p.getY(), p.getZ(), "upgrade", 1f, 1f);
+                msg(p, v ? "Forma mejorada activada." : "Forma mejorada desactivada.");
             }
             case 8 -> {
                 if (spend(p, 30)) {
@@ -292,6 +311,12 @@ public class CronosMod {
             case 5 -> cost = Math.max(100, Math.min(en(p), 400));
             case 6 -> cost = 60;
             case 8 -> cost = 120;
+            case 9 -> cost = 50;
+            case 10 -> cost = 10;
+            case 11 -> cost = 0;
+            case 12 -> cost = 25;
+            case 13 -> cost = 20;
+            case 14 -> cost = 30;
             default -> cost = 200;
         }
         if (ray == 3 && s.slowUntil <= now) { msg(p, "El retroceso requiere el tiempo ralentizado."); s.nextFire = now + 20; return; }
@@ -320,10 +345,11 @@ public class CronosMod {
         String rs = switch (ray) {
             case 0 -> "beam"; case 1 -> "upgrade"; case 2 -> (p.isShiftKeyDown() ? "time_restore" : "time_stop");
             case 3 -> "time_beyond"; case 4 -> "separate"; case 5 -> "time_remove";
-            case 6 -> "shot_bomb"; case 7 -> "shot_beam"; default -> "charge";
+            case 6 -> "shot_bomb"; case 7 -> "shot_beam"; case 9 -> "shot_bomb"; case 10 -> "shot_beam";
+            case 11 -> "drill_on"; case 12 -> "upgrade"; case 13 -> "separate"; case 14 -> "ping"; default -> "charge";
         };
         snd(lv, p.getX(), p.getY(), p.getZ(), rs, 0.9f, 1f);
-        if (ray >= 5 && ray <= 7) shake(lv, hit, ray == 5 ? 10 : 14);
+        if ((ray >= 5 && ray <= 7) || ray == 9 || ray == 12) shake(lv, hit, ray == 5 ? 10 : 14);
 
         switch (ray) {
             case 0 -> { if (t != null) t.hurt(lv.damageSources().playerAttack(p), 6f); }
@@ -346,6 +372,38 @@ public class CronosMod {
             case 6 -> {
                 lv.explode(p, hit.x, hit.y, hit.z, 2.5f, Level.ExplosionInteraction.NONE);
                 if (t != null) t.hurt(lv.damageSources().playerAttack(p), 14f);
+            }
+            case 9 -> {
+                lv.explode(p, hit.x, hit.y, hit.z, 2f, Level.ExplosionInteraction.BLOCK);
+                if (t != null) t.hurt(lv.damageSources().playerAttack(p), 15f);
+            }
+            case 10 -> { if (t != null) t.hurt(lv.damageSources().playerAttack(p), 25f); }
+            case 11 -> {
+                boolean v = !drill(p);
+                p.getPersistentData().putBoolean("cr_drill", v);
+                s.nextFire = now + 20;
+                msg(p, v ? "Mano taladro activada." : "Mano taladro desactivada.");
+            }
+            case 12 -> {
+                if (t != null && p.distanceToSqr(t) <= 36) {
+                    t.hurt(lv.damageSources().playerAttack(p), 12f);
+                    t.push(dir.x * 2.5, 0.6, dir.z * 2.5);
+                    t.hurtMarked = true;
+                    lv.sendParticles(ParticleTypes.EXPLOSION, t.getX(), t.getY() + 1, t.getZ(), 1, 0, 0, 0, 0);
+                }
+            }
+            case 13 -> {
+                if (p.onGround()) {
+                    p.setDeltaMovement(dir.x * 1.6, 1.1, dir.z * 1.6);
+                    p.hurtMarked = true;
+                }
+                s.nextFire = now + 30;
+            }
+            case 14 -> {
+                for (LivingEntity le : lv.getEntitiesOfClass(LivingEntity.class, p.getBoundingBox().inflate(32), x -> x != p)) {
+                    le.addEffect(new MobEffectInstance(MobEffects.GLOWING, 200, 0, false, false));
+                }
+                s.nextFire = now + 30;
             }
             case 8 -> {
                 Bomb b = new Bomb();
@@ -406,6 +464,8 @@ public class CronosMod {
                 sp.getPersistentData().putBoolean("cr_on", false);
                 sp.getPersistentData().putBoolean("cr_10k", false);
                 sp.getPersistentData().putBoolean("cr_big", false);
+                sp.getPersistentData().putBoolean("cr_up", false);
+                sp.getPersistentData().putBoolean("cr_drill", false);
                 sp.refreshDimensions();
                 msg(sp, "Ha sido destransformado.");
                 sync(sp);
@@ -478,19 +538,32 @@ public class CronosMod {
     static void attr(Player p, Attribute a, UUID id, double v, boolean add) {
         AttributeInstance ai = p.getAttribute(a);
         if (ai == null) return;
-        boolean has = ai.getModifier(id) != null;
-        if (add && !has) ai.addTransientModifier(new AttributeModifier(id, "cronos", v, AttributeModifier.Operation.ADDITION));
-        else if (!add && has) ai.removeModifier(id);
+        AttributeModifier cur = ai.getModifier(id);
+        if (add && (cur == null || cur.getAmount() != v)) {
+            if (cur != null) ai.removeModifier(id);
+            ai.addTransientModifier(new AttributeModifier(id, "cronos", v, AttributeModifier.Operation.ADDITION));
+        } else if (!add && cur != null) ai.removeModifier(id);
     }
 
     @SubscribeEvent
     public void onPlayerTick(TickEvent.PlayerTickEvent e) {
         if (e.phase != TickEvent.Phase.END || !(e.player instanceof ServerPlayer p)) return;
         boolean on = on(p);
-        attr(p, Attributes.ARMOR, U_ARMOR, 20, on);
-        attr(p, Attributes.ARMOR_TOUGHNESS, U_TOUGH, 10, on);
-        attr(p, Attributes.ATTACK_DAMAGE, U_ATK, 7, on);
+        boolean upg = on && up(p);
         long now = p.level().getGameTime();
+        St s0 = st(p);
+        boolean tpow = s0.slowUntil > now || s0.accUntil > now;
+        double spd = upg ? 0.02 : (f10k(p) || tpow ? 0.0 : -0.04);
+        if (s0.stopUntil > now) spd += 0.2;
+        attr(p, Attributes.ARMOR, U_ARMOR, upg ? 20 : 10, on);
+        attr(p, Attributes.ARMOR_TOUGHNESS, U_TOUGH, upg ? 20 : 10, on);
+        attr(p, Attributes.ATTACK_DAMAGE, U_ATK, upg ? 19 : 9, on);
+        attr(p, Attributes.MOVEMENT_SPEED, U_SPD, spd, on);
+        attr(p, Attributes.MAX_HEALTH, U_HP, 40, upg);
+        if (on && drill(p) && upg) {
+            p.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 5, 1, false, false));
+            p.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, 5, 3, false, false));
+        }
         setEn(p, en(p) + 1);
         if (on) {
             if (p.isOnFire()) p.clearFire();
@@ -626,9 +699,26 @@ public class CronosMod {
     }
 
     @SubscribeEvent
+    public void onFall(LivingFallEvent e) {
+        if (e.getEntity() instanceof Player p && on(p)) e.setDistance(Math.max(0f, e.getDistance() - 5f));
+    }
+
+    @SubscribeEvent
+    public void onBreakSpeed(PlayerEvent.BreakSpeed e) {
+        Player p = e.getEntity();
+        if (on(p) && up(p) && drill(p)) e.setNewSpeed(e.getNewSpeed() * 25f);
+    }
+
+    @SubscribeEvent
+    public void onHarvest(PlayerEvent.HarvestCheck e) {
+        Player p = e.getEntity();
+        if (on(p) && up(p) && drill(p)) e.setCanHarvest(true);
+    }
+
+    @SubscribeEvent
     public void onSize(EntityEvent.Size e) {
         if (e.getEntity() instanceof Player p && on(p)) {
-            float sc = f10k(p) ? 1.38f : 1.33f;
+            float sc = up(p) ? 1.53f : (f10k(p) ? 1.38f : 1.33f);
             if (big(p)) sc *= 1.6f;
             e.setNewSize(e.getNewSize().scale(sc), true);
         }
@@ -638,7 +728,7 @@ public class CronosMod {
     public void onClone(PlayerEvent.Clone e) {
         CompoundTag o = e.getOriginal().getPersistentData();
         CompoundTag n = e.getEntity().getPersistentData();
-        for (String k : new String[]{"cr_on", "cr_10k", "cr_en"}) {
+        for (String k : new String[]{"cr_on", "cr_10k", "cr_en", "cr_up"}) {
             if (o.contains(k)) n.put(k, o.get(k).copy());
         }
     }
