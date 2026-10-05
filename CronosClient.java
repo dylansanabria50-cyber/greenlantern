@@ -41,6 +41,7 @@ public class CronosClient {
     static volatile int energy = 1000, ray, cue, slow, stop, acc, gray;
     static volatile int shakeT = 0;
     static boolean grayLoaded = false;
+    static int shaderMode = 0;
     static CronosModel mdlD, mdlK, mdlU;
     static final ResourceLocation TEX_U = new ResourceLocation("cronos", "textures/entity/chronosapien_upgrade.png");
     static final ResourceLocation GLOW_U = new ResourceLocation("cronos", "textures/entity/glow_upgrade.png");
@@ -107,15 +108,16 @@ public class CronosClient {
         Minecraft mc = Minecraft.getInstance();
         if (shakeT > 0) shakeT--;
         if (mc.player == null) {
-            gray = 0; grayLoaded = false; shakeT = 0;
+            gray = 0; grayLoaded = false; shaderMode = 0; shakeT = 0;
             return;
         }
-        if (gray > 0 && !grayLoaded) {
-            mc.gameRenderer.loadEffect(new ResourceLocation("shaders/post/desaturate.json"));
-            grayLoaded = true;
-        } else if (gray == 0 && grayLoaded) {
-            mc.gameRenderer.shutdownEffect();
-            grayLoaded = false;
+        int want = gray > 0 ? 1 : (slow > 0 ? 2 : 0);
+        if (want != shaderMode) {
+            if (shaderMode != 0) mc.gameRenderer.shutdownEffect();
+            if (want == 1) mc.gameRenderer.loadEffect(new ResourceLocation("shaders/post/desaturate.json"));
+            else if (want == 2) mc.gameRenderer.loadEffect(new ResourceLocation("cronos", "shaders/post/slowgreen.json"));
+            shaderMode = want;
+            grayLoaded = want != 0;
         }
         boolean free = mc.screen == null;
         if (on && stop > 0 && mc.player.isInWater() && !mc.options.keyShift.isDown()) {
