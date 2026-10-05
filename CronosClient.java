@@ -34,13 +34,16 @@ public class CronosClient {
     static final KeyMapping K_CUE = new KeyMapping("Cronosapiente: Cambiar poder de cuerda", GLFW.GLFW_KEY_G, CAT);
     static final KeyMapping K_10K = new KeyMapping("Cronosapiente: Forma 10K", GLFW.GLFW_KEY_H, CAT);
     static final KeyMapping K_CLEAN = new KeyMapping("Cronosapiente: Limpiar efectos negativos", GLFW.GLFW_KEY_B, CAT);
+    static final KeyMapping K_UP = new KeyMapping("Cronosapiente: Forma mejorada", GLFW.GLFW_KEY_Y, CAT);
     static final KeyMapping K_SIZE = new KeyMapping("Cronosapiente: Cambiar tamano (10K)", GLFW.GLFW_KEY_J, CAT);
 
-    static volatile boolean on, f10k, big;
+    static volatile boolean on, f10k, big, up, drill;
     static volatile int energy = 1000, ray, cue, slow, stop, acc, gray;
     static volatile int shakeT = 0;
     static boolean grayLoaded = false;
-    static CronosModel mdlD, mdlK;
+    static CronosModel mdlD, mdlK, mdlU;
+    static final ResourceLocation TEX_U = new ResourceLocation("cronos", "textures/entity/chronosapien_upgrade.png");
+    static final ResourceLocation GLOW_U = new ResourceLocation("cronos", "textures/entity/glow_upgrade.png");
     static boolean mdlFail = false;
     static float keyAng = 0;
     static final ResourceLocation TEX_D = new ResourceLocation("cronos", "textures/entity/chronosapien_default.png");
@@ -61,7 +64,7 @@ public class CronosClient {
 
     static void keys(RegisterKeyMappingsEvent e) {
         e.register(K_TRANS); e.register(K_FIRE); e.register(K_RAY); e.register(K_WIND);
-        e.register(K_CUE); e.register(K_10K); e.register(K_SIZE); e.register(K_CLEAN);
+        e.register(K_CUE); e.register(K_10K); e.register(K_SIZE); e.register(K_CLEAN); e.register(K_UP);
     }
 
     static void overlays(RegisterGuiOverlaysEvent e) {
@@ -73,14 +76,15 @@ public class CronosClient {
     }
 
     static void onSync(CronosMod.Sync m) {
-        boolean sizeChanged = big != m.big || on != m.on || f10k != m.f10k;
-        on = m.on; f10k = m.f10k; big = m.big; energy = m.energy;
+        boolean sizeChanged = big != m.big || on != m.on || f10k != m.f10k || up != m.up;
+        on = m.on; f10k = m.f10k; big = m.big; up = m.up; drill = m.drill; energy = m.energy;
         ray = m.ray; cue = m.cue; slow = m.slow; stop = m.stop; acc = m.acc; gray = m.gray;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
             mc.player.getPersistentData().putBoolean("cr_big", big);
             mc.player.getPersistentData().putBoolean("cr_on", on);
             mc.player.getPersistentData().putBoolean("cr_10k", f10k);
+            mc.player.getPersistentData().putBoolean("cr_up", up);
             if (sizeChanged) mc.player.refreshDimensions();
         }
     }
@@ -126,6 +130,7 @@ public class CronosClient {
         while (K_10K.consumeClick()) { if (free) send(6); }
         while (K_SIZE.consumeClick()) { if (free) send(7); }
         while (K_CLEAN.consumeClick()) { if (free) send(8); }
+        while (K_UP.consumeClick()) { if (free) send(9); }
         if (free && on && K_FIRE.isDown()) send(1);
         boolean w = free && K_WIND.isDown();
         if (w && !windDown) { send(3); windStartMs = System.currentTimeMillis(); }
@@ -146,7 +151,8 @@ public class CronosClient {
             try {
                 if (mdlD == null) mdlD = CronosModel.load("geo/chronosapien_default.geo.json");
                 if (f10k && mdlK == null) mdlK = CronosModel.load("geo/chronosapien_10k.geo.json");
-                CronosModel m = f10k ? mdlK : mdlD;
+                if (up && mdlU == null) mdlU = CronosModel.load("geo/chronosapien_upgrade.geo.json");
+                CronosModel m = up ? mdlU : (f10k ? mdlK : mdlD);
                 Player p = e.getEntity();
                 float pt = e.getPartialTick();
                 float bodyYaw = Mth.rotLerp(pt, p.yBodyRotO, p.yBodyRot);
@@ -157,6 +163,8 @@ public class CronosClient {
                 float sw = (float) Math.cos(Mth.lerp(pt, p.walkDistO, p.walkDist) * 4.0f) * amp;
                 float ka = keyAng;
                 final float fsw = sw, fh = headYaw, fp = pitch;
+                final float dr = (mc.level.getGameTime() + pt) % 15f;
+                final boolean bombs = up && ray == 9, drl = up && drill;
                 java.util.function.Function<String, float[]> anim = name -> switch (name) {
                     case "Head" -> new float[]{-fp, -fh, 0};
                     case "LeftArm" -> new float[]{fsw * 38f, 0, 0};
@@ -164,6 +172,9 @@ public class CronosClient {
                     case "LeftLeg" -> new float[]{-fsw * 35f, 0, 0};
                     case "RightLeg" -> new float[]{fsw * 35f, 0, 0};
                     case "Key" -> new float[]{0, -ka, 0};
+                    case "bone", "bone2" -> bombs ? new float[]{0, 0, 0, 0, 3, 0, 1, 1, 1} : null;
+                    case "LayerRightarm" -> drl ? new float[]{0, -dr * 23.8f, 0, 0, 4, 0, 0.9f, 0.7f, 0.9f} : null;
+                    case "bone4" -> drl ? new float[]{0, -dr * 24f, 0, 0, -1, 0, 1.4f, 1.6f, 1.4f} : null;
                     default -> null;
                 };
                 ps.pushPose();
@@ -172,10 +183,10 @@ public class CronosClient {
                 float sc = (1f / 16f) * (big ? 1.6f : 1f);
                 ps.scale(sc, sc, sc);
                 MultiBufferSource buf = e.getMultiBufferSource();
-                VertexConsumer vc = buf.getBuffer(RenderType.entityCutoutNoCull(f10k ? TEX_K : TEX_D));
+                VertexConsumer vc = buf.getBuffer(RenderType.entityCutoutNoCull(up ? TEX_U : (f10k ? TEX_K : TEX_D)));
                 m.render(ps, vc, e.getPackedLight(), 1f, 1f, 1f, 1f, anim);
                 int gi = (int) ((mc.level.getGameTime() / 10) % 2);
-                VertexConsumer gv = buf.getBuffer(RenderType.eyes((f10k ? GLOW_K : GLOW_D)[gi]));
+                VertexConsumer gv = buf.getBuffer(RenderType.eyes(up ? GLOW_U : (f10k ? GLOW_K : GLOW_D)[gi]));
                 m.render(ps, gv, 0xF000F0, 1f, 1f, 1f, 1f, anim);
                 ps.popPose();
                 pushed = false;
