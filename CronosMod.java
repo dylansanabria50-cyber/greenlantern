@@ -8,6 +8,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -37,6 +39,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.DistExecutor;
@@ -65,7 +68,7 @@ public class CronosMod {
     public static final String[] RAYS = {
             "Rayo de tiempo", "Rayo mejorado", "Rayo de detencion / restauracion",
             "Rayo de retroceso", "Rayo de destransformacion", "Remocion de linea temporal",
-            "Disparo de energia (10K)", "Rayo de mano (10K)"};
+            "Disparo de energia (10K)", "Rayo de mano (10K)", "Bomba de tiempo"};
     public static final String[] CUES = {"Ralentizar tiempo", "Acelerar tiempo", "Detener tiempo", "Efecto Sotobro"};
 
     static final int MAX_ENERGY = 1000;
@@ -91,24 +94,39 @@ public class CronosMod {
 
     public static class Sync {
         boolean on, f10k, big;
-        int energy, ray, cue, slow, stop, acc;
+        int energy, ray, cue, slow, stop, acc, gray;
         Sync() { }
         static void enc(Sync m, FriendlyByteBuf b) {
             b.writeBoolean(m.on); b.writeBoolean(m.f10k); b.writeBoolean(m.big);
             b.writeVarInt(m.energy); b.writeVarInt(m.ray); b.writeVarInt(m.cue);
-            b.writeVarInt(m.slow); b.writeVarInt(m.stop); b.writeVarInt(m.acc);
+            b.writeVarInt(m.slow); b.writeVarInt(m.stop); b.writeVarInt(m.acc); b.writeVarInt(m.gray);
         }
         static Sync dec(FriendlyByteBuf b) {
             Sync m = new Sync();
             m.on = b.readBoolean(); m.f10k = b.readBoolean(); m.big = b.readBoolean();
             m.energy = b.readVarInt(); m.ray = b.readVarInt(); m.cue = b.readVarInt();
-            m.slow = b.readVarInt(); m.stop = b.readVarInt(); m.acc = b.readVarInt();
+            m.slow = b.readVarInt(); m.stop = b.readVarInt(); m.acc = b.readVarInt(); m.gray = b.readVarInt();
             return m;
         }
         static void handle(Sync m, Supplier<NetworkEvent.Context> c) {
             c.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> CronosClient.onSync(m)));
             c.get().setPacketHandled(true);
         }
+    }
+
+    public static class Shake {
+        final int t;
+        Shake(int t) { this.t = t; }
+        static void enc(Shake m, FriendlyByteBuf b) { b.writeVarInt(m.t); }
+        static Shake dec(FriendlyByteBuf b) { return new Shake(b.readVarInt()); }
+        static void handle(Shake m, Supplier<NetworkEvent.Context> c) {
+            c.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> CronosClient.onShake(m.t)));
+            c.get().setPacketHandled(true);
+        }
+    }
+
+    static class Bomb {
+        ServerLevel level; Vec3 pos; UUID owner; long end;
     }
 
     // ---------- estado ----------
@@ -120,6 +138,7 @@ public class CronosMod {
     static final Map<UUID, St> ST = new HashMap<>();
     static final Map<UUID, ArrayDeque<Snap>> HIST = new HashMap<>();
     static final List<Zone> ZONES = new ArrayList<>();
+    static final List<Bomb> BOMBS = new ArrayList<>();
 
     static class Snap {
         long t; double x, y, z; float yr, xr, hp;
@@ -143,10 +162,19 @@ public class CronosMod {
     public CronosMod() {
         NET.registerMessage(0, Act.class, Act::enc, Act::dec, Act::handle);
         NET.registerMessage(1, Sync.class, Sync::enc, Sync::dec, Sync::handle);
+        NET.registerMessage(2, Shake.class, Shake::enc, Shake::dec, Shake::handle);
         MinecraftForge.EVENT_BUS.register(this);
         if (FMLEnvironment.dist.isClient()) {
             CronosClient.init();
         }
+    }
+
+    static void snd(Level lv, double x, double y, double z, String name, float vol, float pitch) {
+        lv.playSound(null, x, y, z, SoundEvent.createVariableRangeEvent(new ResourceLocation(ID, name)), SoundSource.PLAYERS, vol, pitch);
+    }
+
+    static void shake(ServerLevel lv, Vec3 p, int t) {
+        NET.send(PacketDistributor.NEAR.with(() -> new PacketDistributor.TargetPoint(p.x, p.y, p.z, 48, lv.dimension())), new Shake(t));
     }
 
     static void sync(ServerPlayer p) {
@@ -158,6 +186,11 @@ public class CronosMod {
         m.slow = (int) Math.max(0, s.slowUntil - now);
         m.stop = (int) Math.max(0, s.stopUntil - now);
         m.acc = (int) Math.max(0, s.accUntil - now);
+        m.gray = 0;
+        if (frozen(p)) m.gray = 2;
+        for (Zone z : ZONES) {
+            if (z.stop && z.level == p.level() && p.position().distanceToSqr(z.pos) <= RADIUS * RADIUS) m.gray = 2;
+        }
         NET.send(PacketDistributor.PLAYER.with(() -> p), m);
     }
 
@@ -174,6 +207,7 @@ public class CronosMod {
                 p.refreshDimensions();
             }
             msg(p, v ? "Cronosapiente activado, senor." : "Forma humana restaurada.");
+            snd(p.level(), p.getX(), p.getY(), p.getZ(), "turn_on", 1f, v ? 1f : 0.7f);
             ((ServerLevel) p.level()).sendParticles(ParticleTypes.END_ROD, p.getX(), p.getY() + 1, p.getZ(), 30, 0.4, 0.8, 0.4, 0.05);
             sync(p);
             return;
@@ -182,11 +216,12 @@ public class CronosMod {
         switch (id) {
             case 1 -> fire(p, s, now);
             case 2 -> {
-                int n = f10k(p) ? RAYS.length : 6;
-                s.ray = (s.ray + 1) % n;
+                int nx = s.ray;
+                do { nx = (nx + 1) % RAYS.length; } while (!f10k(p) && (nx == 6 || nx == 7));
+                s.ray = nx;
                 msg(p, RAYS[s.ray]);
             }
-            case 3 -> s.windStart = now;
+            case 3 -> { s.windStart = now; snd(p.level(), p.getX(), p.getY(), p.getZ(), "gear_rotate", 0.8f, 1f); }
             case 4 -> release(p, s, now);
             case 5 -> {
                 s.cue = (s.cue + 1) % CUES.length;
@@ -195,7 +230,7 @@ public class CronosMod {
             case 6 -> {
                 boolean v = !f10k(p);
                 p.getPersistentData().putBoolean("cr_10k", v);
-                if (!v) { p.getPersistentData().putBoolean("cr_big", false); p.refreshDimensions(); if (s.ray >= 6) s.ray = 0; }
+                if (!v) { p.getPersistentData().putBoolean("cr_big", false); p.refreshDimensions(); if (s.ray == 6 || s.ray == 7) s.ray = 0; }
                 msg(p, v ? "Forma 10K activada." : "Forma 10K desactivada.");
             }
             case 7 -> {
@@ -204,6 +239,16 @@ public class CronosMod {
                 p.getPersistentData().putBoolean("cr_big", v);
                 p.refreshDimensions();
                 msg(p, v ? "Tamano aumentado." : "Tamano normal.");
+            }
+            case 8 -> {
+                if (spend(p, 30)) {
+                    for (MobEffectInstance ef : new ArrayList<>(p.getActiveEffects())) {
+                        if (!ef.getEffect().isBeneficial()) p.removeEffect(ef.getEffect());
+                    }
+                    p.getPersistentData().remove("cr_freeze");
+                    snd(p.level(), p.getX(), p.getY(), p.getZ(), "ping", 1f, 1f);
+                    msg(p, "Efectos negativos eliminados.");
+                }
             }
             default -> { }
         }
@@ -244,6 +289,7 @@ public class CronosMod {
             case 4 -> cost = 40;
             case 5 -> cost = Math.max(100, Math.min(en(p), 400));
             case 6 -> cost = 60;
+            case 8 -> cost = 120;
             default -> cost = 200;
         }
         if (ray == 3 && s.slowUntil <= now) { msg(p, "El retroceso requiere el tiempo ralentizado."); s.nextFire = now + 20; return; }
@@ -269,6 +315,13 @@ public class CronosMod {
             lv.sendParticles(dust, q.x, q.y - 0.15, q.z, 1, 0, 0, 0, 0);
         }
         lv.sendParticles(ParticleTypes.ELECTRIC_SPARK, hit.x, hit.y, hit.z, 12, 0.3, 0.3, 0.3, 0.1);
+        String rs = switch (ray) {
+            case 0 -> "beam"; case 1 -> "upgrade"; case 2 -> (p.isShiftKeyDown() ? "time_restore" : "time_stop");
+            case 3 -> "time_beyond"; case 4 -> "separate"; case 5 -> "time_remove";
+            case 6 -> "shot_bomb"; case 7 -> "shot_beam"; default -> "charge";
+        };
+        snd(lv, p.getX(), p.getY(), p.getZ(), rs, 0.9f, 1f);
+        if (ray >= 5 && ray <= 7) shake(lv, hit, ray == 5 ? 10 : 14);
 
         switch (ray) {
             case 0 -> { if (t != null) t.hurt(lv.damageSources().playerAttack(p), 6f); }
@@ -291,6 +344,13 @@ public class CronosMod {
             case 6 -> {
                 lv.explode(p, hit.x, hit.y, hit.z, 2.5f, Level.ExplosionInteraction.NONE);
                 if (t != null) t.hurt(lv.damageSources().playerAttack(p), 14f);
+            }
+            case 8 -> {
+                Bomb b = new Bomb();
+                b.level = lv; b.pos = hit; b.owner = p.getUUID(); b.end = now + 100;
+                BOMBS.add(b);
+                snd(lv, hit.x, hit.y, hit.z, "ticking", 1f, 1f);
+                msg(p, "Bomba de tiempo colocada: 5 segundos.");
             }
             default -> { if (t != null) removeFromTimeline(p, t, 200); }
         }
@@ -388,6 +448,9 @@ public class CronosMod {
             default -> { rewind(p, Math.min(200, dur)); msg(p, "Efecto Sotobro."); }
         }
         lv.sendParticles(ParticleTypes.REVERSE_PORTAL, p.getX(), p.getY() + 1, p.getZ(), 60, 1, 1, 1, 0.2);
+        String cs = switch (s.cue) { case 0 -> "time_slow"; case 1 -> "time_beyond"; case 2 -> "time_stop"; default -> "time_restop"; };
+        snd(lv, p.getX(), p.getY(), p.getZ(), cs, 1f, 1f);
+        shake(lv, p.position(), 12);
     }
 
     static void rewind(ServerPlayer owner, int back) {
@@ -477,6 +540,28 @@ public class CronosMod {
                 }
             }
         }
+        for (Iterator<Bomb> it = BOMBS.iterator(); it.hasNext(); ) {
+            Bomb b = it.next();
+            long bn = b.level.getGameTime();
+            AABB area = new AABB(b.pos, b.pos).inflate(8);
+            for (LivingEntity le : b.level.getEntitiesOfClass(LivingEntity.class, area)) {
+                if (le.getUUID().equals(b.owner)) continue;
+                freeze(le, 6, bn);
+            }
+            if (bn % 10 == 0) b.level.sendParticles(ParticleTypes.REVERSE_PORTAL, b.pos.x, b.pos.y + 0.5, b.pos.z, 20, 2, 1, 2, 0.1);
+            if (bn >= b.end) {
+                b.level.explode(null, b.pos.x, b.pos.y, b.pos.z, 3f, Level.ExplosionInteraction.NONE);
+                ServerPlayer own = e.getServer().getPlayerList().getPlayer(b.owner);
+                for (LivingEntity le : b.level.getEntitiesOfClass(LivingEntity.class, area)) {
+                    if (le.getUUID().equals(b.owner)) continue;
+                    le.getPersistentData().remove("cr_freeze");
+                    le.hurt(own != null ? b.level.damageSources().playerAttack(own) : b.level.damageSources().generic(), 20f);
+                }
+                snd(b.level, b.pos.x, b.pos.y, b.pos.z, "shot_bomb", 1.4f, 0.8f);
+                shake(b.level, b.pos, 20);
+                it.remove();
+            }
+        }
         // jugadores congelados por rayo
         for (ServerPlayer p : e.getServer().getPlayerList().getPlayers()) {
             if (frozen(p)) applyFreezeFx(p, 10);
@@ -515,6 +600,27 @@ public class CronosMod {
         if (e.getEntity() instanceof Player p && on(p) && e.getSource().is(DamageTypeTags.IS_FIRE)) {
             e.setCanceled(true);
         }
+    }
+
+    @SubscribeEvent
+    public void onDeath(LivingDeathEvent e) {
+        if (!(e.getEntity() instanceof ServerPlayer p) || !on(p)) return;
+        if (e.getSource().is(DamageTypeTags.BYPASSES_INVULNERABILITY)) return;
+        long now = p.level().getGameTime();
+        CompoundTag d = p.getPersistentData();
+        if (en(p) < 400 || now < d.getLong("cr_rb")) return;
+        e.setCanceled(true);
+        d.putLong("cr_rb", now + 600);
+        setEn(p, en(p) - 400);
+        p.setHealth(p.getMaxHealth());
+        p.clearFire();
+        p.removeAllEffects();
+        p.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 60, 4));
+        ServerLevel lv = p.serverLevel();
+        lv.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, p.getX(), p.getY() + 1, p.getZ(), 80, 0.5, 1, 0.5, 0.4);
+        snd(lv, p.getX(), p.getY(), p.getZ(), "time_restore", 1.2f, 1f);
+        msg(p, "Time Reborn: ha vuelto del borde de la muerte.");
+        sync(p);
     }
 
     @SubscribeEvent
