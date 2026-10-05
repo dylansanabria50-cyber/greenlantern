@@ -6,7 +6,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.client.event.ViewportEvent;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
@@ -22,10 +24,13 @@ public class CronosClient {
     static final KeyMapping K_WIND = new KeyMapping("Cronosapiente: Dar cuerda (mantener y soltar)", GLFW.GLFW_KEY_C, CAT);
     static final KeyMapping K_CUE = new KeyMapping("Cronosapiente: Cambiar poder de cuerda", GLFW.GLFW_KEY_G, CAT);
     static final KeyMapping K_10K = new KeyMapping("Cronosapiente: Forma 10K", GLFW.GLFW_KEY_H, CAT);
+    static final KeyMapping K_CLEAN = new KeyMapping("Cronosapiente: Limpiar efectos negativos", GLFW.GLFW_KEY_B, CAT);
     static final KeyMapping K_SIZE = new KeyMapping("Cronosapiente: Cambiar tamano (10K)", GLFW.GLFW_KEY_J, CAT);
 
     static volatile boolean on, f10k, big;
-    static volatile int energy = 1000, ray, cue, slow, stop, acc;
+    static volatile int energy = 1000, ray, cue, slow, stop, acc, gray;
+    static volatile int shakeT = 0;
+    static boolean grayLoaded = false;
     static boolean windDown = false;
     static long windStartMs = 0;
 
@@ -34,11 +39,12 @@ public class CronosClient {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(CronosClient::overlays);
         MinecraftForge.EVENT_BUS.addListener(CronosClient::tick);
         MinecraftForge.EVENT_BUS.addListener(CronosClient::render);
+        MinecraftForge.EVENT_BUS.addListener(CronosClient::cam);
     }
 
     static void keys(RegisterKeyMappingsEvent e) {
         e.register(K_TRANS); e.register(K_FIRE); e.register(K_RAY); e.register(K_WIND);
-        e.register(K_CUE); e.register(K_10K); e.register(K_SIZE);
+        e.register(K_CUE); e.register(K_10K); e.register(K_SIZE); e.register(K_CLEAN);
     }
 
     static void overlays(RegisterGuiOverlaysEvent e) {
@@ -52,7 +58,7 @@ public class CronosClient {
     static void onSync(CronosMod.Sync m) {
         boolean sizeChanged = big != m.big;
         on = m.on; f10k = m.f10k; big = m.big; energy = m.energy;
-        ray = m.ray; cue = m.cue; slow = m.slow; stop = m.stop; acc = m.acc;
+        ray = m.ray; cue = m.cue; slow = m.slow; stop = m.stop; acc = m.acc; gray = m.gray;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
             mc.player.getPersistentData().putBoolean("cr_big", big);
@@ -61,16 +67,41 @@ public class CronosClient {
         }
     }
 
+    static void onShake(int t) {
+        shakeT = Math.max(shakeT, t);
+    }
+
+    static void cam(ViewportEvent.ComputeCameraAngles e) {
+        int t = shakeT;
+        if (t <= 0) return;
+        float k = Math.min(t, 10) * 0.25f;
+        e.setYaw(e.getYaw() + (float) (Math.random() - 0.5) * k);
+        e.setPitch(e.getPitch() + (float) (Math.random() - 0.5) * k);
+        e.setRoll(e.getRoll() + (float) (Math.random() - 0.5) * k);
+    }
+
     static void tick(TickEvent.ClientTickEvent e) {
         if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return;
+        if (shakeT > 0) shakeT--;
+        if (mc.player == null) {
+            gray = 0; grayLoaded = false; shakeT = 0;
+            return;
+        }
+        if (gray > 0 && !grayLoaded) {
+            mc.gameRenderer.loadEffect(new ResourceLocation("shaders/post/desaturate.json"));
+            grayLoaded = true;
+        } else if (gray == 0 && grayLoaded) {
+            mc.gameRenderer.shutdownEffect();
+            grayLoaded = false;
+        }
         boolean free = mc.screen == null;
         while (K_TRANS.consumeClick()) { if (free) send(0); }
         while (K_RAY.consumeClick()) { if (free) send(2); }
         while (K_CUE.consumeClick()) { if (free) send(5); }
         while (K_10K.consumeClick()) { if (free) send(6); }
         while (K_SIZE.consumeClick()) { if (free) send(7); }
+        while (K_CLEAN.consumeClick()) { if (free) send(8); }
         if (free && on && K_FIRE.isDown()) send(1);
         boolean w = free && K_WIND.isDown();
         if (w && !windDown) { send(3); windStartMs = System.currentTimeMillis(); }
