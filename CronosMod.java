@@ -208,6 +208,7 @@ public class CronosMod {
             }
             msg(p, v ? "Cronosapiente activado, senor." : "Forma humana restaurada.");
             snd(p.level(), p.getX(), p.getY(), p.getZ(), "turn_on", 1f, v ? 1f : 0.7f);
+            p.refreshDimensions();
             ((ServerLevel) p.level()).sendParticles(ParticleTypes.END_ROD, p.getX(), p.getY() + 1, p.getZ(), 30, 0.4, 0.8, 0.4, 0.05);
             sync(p);
             return;
@@ -231,6 +232,7 @@ public class CronosMod {
                 boolean v = !f10k(p);
                 p.getPersistentData().putBoolean("cr_10k", v);
                 if (!v) { p.getPersistentData().putBoolean("cr_big", false); p.refreshDimensions(); if (s.ray == 6 || s.ray == 7) s.ray = 0; }
+                p.refreshDimensions();
                 msg(p, v ? "Forma 10K activada." : "Forma 10K desactivada.");
             }
             case 7 -> {
@@ -625,8 +627,10 @@ public class CronosMod {
 
     @SubscribeEvent
     public void onSize(EntityEvent.Size e) {
-        if (e.getEntity() instanceof Player p && big(p)) {
-            e.setNewSize(e.getNewSize().scale(1.6f), true);
+        if (e.getEntity() instanceof Player p && on(p)) {
+            float sc = f10k(p) ? 1.38f : 1.33f;
+            if (big(p)) sc *= 1.6f;
+            e.setNewSize(e.getNewSize().scale(sc), true);
         }
     }
 
