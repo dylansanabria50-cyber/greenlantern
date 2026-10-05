@@ -1,6 +1,15 @@
 package com.example.cronos;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.math.Axis;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.client.event.RenderArmEvent;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -31,6 +40,13 @@ public class CronosClient {
     static volatile int energy = 1000, ray, cue, slow, stop, acc, gray;
     static volatile int shakeT = 0;
     static boolean grayLoaded = false;
+    static CronosModel mdlD, mdlK;
+    static boolean mdlFail = false;
+    static float keyAng = 0;
+    static final ResourceLocation TEX_D = new ResourceLocation("cronos", "textures/entity/chronosapien_default.png");
+    static final ResourceLocation TEX_K = new ResourceLocation("cronos", "textures/entity/chronosapien_10k.png");
+    static final ResourceLocation[] GLOW_D = {new ResourceLocation("cronos", "textures/entity/glow_default_0.png"), new ResourceLocation("cronos", "textures/entity/glow_default_1.png")};
+    static final ResourceLocation[] GLOW_K = {new ResourceLocation("cronos", "textures/entity/glow_10k_0.png"), new ResourceLocation("cronos", "textures/entity/glow_10k_1.png")};
     static boolean windDown = false;
     static long windStartMs = 0;
 
@@ -40,6 +56,7 @@ public class CronosClient {
         MinecraftForge.EVENT_BUS.addListener(CronosClient::tick);
         MinecraftForge.EVENT_BUS.addListener(CronosClient::render);
         MinecraftForge.EVENT_BUS.addListener(CronosClient::cam);
+        MinecraftForge.EVENT_BUS.addListener(CronosClient::arm);
     }
 
     static void keys(RegisterKeyMappingsEvent e) {
@@ -56,13 +73,14 @@ public class CronosClient {
     }
 
     static void onSync(CronosMod.Sync m) {
-        boolean sizeChanged = big != m.big;
+        boolean sizeChanged = big != m.big || on != m.on || f10k != m.f10k;
         on = m.on; f10k = m.f10k; big = m.big; energy = m.energy;
         ray = m.ray; cue = m.cue; slow = m.slow; stop = m.stop; acc = m.acc; gray = m.gray;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
             mc.player.getPersistentData().putBoolean("cr_big", big);
             mc.player.getPersistentData().putBoolean("cr_on", on);
+            mc.player.getPersistentData().putBoolean("cr_10k", f10k);
             if (sizeChanged) mc.player.refreshDimensions();
         }
     }
@@ -96,6 +114,12 @@ public class CronosClient {
             grayLoaded = false;
         }
         boolean free = mc.screen == null;
+        if (on && stop > 0 && mc.player.isInWater() && !mc.options.keyShift.isDown()) {
+            Vec3 dm = mc.player.getDeltaMovement();
+            mc.player.setDeltaMovement(dm.x, Math.max(dm.y, 0.11), dm.z);
+            mc.player.fallDistance = 0;
+        }
+        if (windDown || slow > 0 || acc > 0 || stop > 0) keyAng = (keyAng + 36f) % 360f;
         while (K_TRANS.consumeClick()) { if (free) send(0); }
         while (K_RAY.consumeClick()) { if (free) send(2); }
         while (K_CUE.consumeClick()) { if (free) send(5); }
@@ -109,11 +133,60 @@ public class CronosClient {
         windDown = w;
     }
 
+    static void arm(RenderArmEvent e) {
+        if (on && !mdlFail && e.getPlayer() == Minecraft.getInstance().player) e.setCanceled(true);
+    }
+
     static void render(RenderPlayerEvent.Pre e) {
         Minecraft mc = Minecraft.getInstance();
-        if (e.getEntity() == mc.player && big) {
-            e.getPoseStack().scale(1.6f, 1.6f, 1.6f);
+        if (e.getEntity() != mc.player || !on) return;
+        if (!mdlFail) {
+            PoseStack ps = e.getPoseStack();
+            boolean pushed = false;
+            try {
+                if (mdlD == null) mdlD = CronosModel.load("geo/chronosapien_default.geo.json");
+                if (f10k && mdlK == null) mdlK = CronosModel.load("geo/chronosapien_10k.geo.json");
+                CronosModel m = f10k ? mdlK : mdlD;
+                Player p = e.getEntity();
+                float pt = e.getPartialTick();
+                float bodyYaw = Mth.rotLerp(pt, p.yBodyRotO, p.yBodyRot);
+                float headYaw = Mth.clamp(Mth.rotLerp(pt, p.yHeadRotO, p.yHeadRot) - bodyYaw, -75f, 75f);
+                float pitch = Mth.clamp(Mth.lerp(pt, p.xRotO, p.getXRot()), -89f, 89f);
+                double dx = p.getX() - p.xo, dz = p.getZ() - p.zo;
+                float amp = (float) Math.min(1.0, Math.sqrt(dx * dx + dz * dz) * 4.0);
+                float sw = (float) Math.cos(Mth.lerp(pt, p.walkDistO, p.walkDist) * 4.0f) * amp;
+                float ka = keyAng;
+                final float fsw = sw, fh = headYaw, fp = pitch;
+                java.util.function.Function<String, float[]> anim = name -> switch (name) {
+                    case "Head" -> new float[]{-fp, -fh, 0};
+                    case "LeftArm" -> new float[]{fsw * 38f, 0, 0};
+                    case "RightArm" -> new float[]{-fsw * 38f, 0, 0};
+                    case "LeftLeg" -> new float[]{-fsw * 35f, 0, 0};
+                    case "RightLeg" -> new float[]{fsw * 35f, 0, 0};
+                    case "Key" -> new float[]{0, -ka, 0};
+                    default -> null;
+                };
+                ps.pushPose();
+                pushed = true;
+                ps.mulPose(Axis.YP.rotationDegrees(180f - bodyYaw));
+                float sc = (1f / 16f) * (big ? 1.6f : 1f);
+                ps.scale(sc, sc, sc);
+                MultiBufferSource buf = e.getMultiBufferSource();
+                VertexConsumer vc = buf.getBuffer(RenderType.entityCutoutNoCull(f10k ? TEX_K : TEX_D));
+                m.render(ps, vc, e.getPackedLight(), 1f, 1f, 1f, 1f, anim);
+                int gi = (int) ((mc.level.getGameTime() / 10) % 2);
+                VertexConsumer gv = buf.getBuffer(RenderType.eyes((f10k ? GLOW_K : GLOW_D)[gi]));
+                m.render(ps, gv, 0xF000F0, 1f, 1f, 1f, 1f, anim);
+                ps.popPose();
+                pushed = false;
+                e.setCanceled(true);
+                return;
+            } catch (Throwable t) {
+                mdlFail = true;
+                if (pushed) ps.popPose();
+            }
         }
+        if (big) e.getPoseStack().scale(1.6f, 1.6f, 1.6f);
     }
 
     static void hud(ForgeGui gui, GuiGraphics g, float pt, int w, int h) {
