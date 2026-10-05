@@ -35,6 +35,7 @@ public class JarvisClient {
     public static void init() {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(JarvisClient::overlays);
         MinecraftForge.EVENT_BUS.addListener(JarvisClient::onChat);
+        MinecraftForge.EVENT_BUS.addListener(JarvisClient::onJoin);
     }
 
     public static void say(String text, int color) {
@@ -46,6 +47,10 @@ public class JarvisClient {
 
     static void overlays(RegisterGuiOverlaysEvent e) {
         e.registerAboveAll("jarvis", JarvisClient::render);
+    }
+
+    static void onJoin(net.minecraftforge.client.event.ClientPlayerNetworkEvent.LoggingIn e) {
+        JarvisMic.start();
     }
 
     static void onChat(ClientChatEvent e) {
@@ -63,6 +68,14 @@ public class JarvisClient {
     public static void ask(String q) {
         Minecraft mc = Minecraft.getInstance();
         say("Usted: " + q, 0xFFFFFF);
+        if (JarvisMod.MUSIC_ON.get()) {
+            String m = JarvisMusic.tryHandle(q);
+            if (m != null) {
+                say("Jarvis: " + m, 0x66E0FF);
+                JarvisVoice.speak(m);
+                return;
+            }
+        }
         String ctx = context(mc);
         thinking = true;
         final String question = q;
@@ -108,7 +121,14 @@ public class JarvisClient {
         synchronized (LINES) {
             for (Line l : LINES) if (now - l.time < 20000L) vis.add(l);
         }
-        if (vis.isEmpty() && !thinking) return;
+        String st = JarvisMic.status;
+        if (vis.isEmpty() && !thinking) {
+            if (!st.isEmpty()) {
+                boolean on = JarvisMic.listening;
+                g.drawString(mc.font, (on ? "\u25CF " : "\u25CB ") + "Jarvis: " + st, 8, 6, on ? 0xFF33CCFF : 0xFF999999);
+            }
+            return;
+        }
         int maxW = Math.min(260, w / 2 - 12);
         List<FormattedCharSequence> rows = new ArrayList<>();
         List<Integer> cols = new ArrayList<>();
