@@ -3,21 +3,21 @@ loaderVersion="[47,)"
 license="MIT"
 
 [[mods]]
-modId="cronos"
+modId="policia"
 version="1.0.0"
-displayName="Cronosapiente"
+displayName="Policia"
 description='''
-Mod propio con poderes de control del tiempo: rayos temporales, detener, ralentizar y acelerar el tiempo, retroceso y mas.
+Personaje policia con skin propia y un arbol de habilidades que se desbloquea con experiencia. Primera habilidad: escudo balistico.
 '''
 
-[[dependencies.cronos]]
+[[dependencies.policia]]
     modId="forge"
     mandatory=true
     versionRange="[47,)"
     ordering="NONE"
     side="BOTH"
 
-[[dependencies.cronos]]
+[[dependencies.policia]]
     modId="minecraft"
     mandatory=true
     versionRange="[1.20.1,1.21)"
