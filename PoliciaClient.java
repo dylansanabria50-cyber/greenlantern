@@ -33,9 +33,9 @@ import java.util.UUID;
 /** Teclas, skin de policia, escudo visible y HUD del arbol de habilidades. */
 public class PoliciaClient {
     static final String CAT = "Policia";
-    static final KeyMapping K_FORM = new KeyMapping("Policia: Modo policia (skin)", GLFW.GLFW_KEY_V, CAT);
-    static final KeyMapping K_USE = new KeyMapping("Policia: Usar habilidad", GLFW.GLFW_KEY_Z, CAT);
-    static final KeyMapping K_NEXT = new KeyMapping("Policia: Cambiar habilidad", GLFW.GLFW_KEY_X, CAT);
+    static final KeyMapping K_FORM = new KeyMapping("Policia: Modo policia (skin)", GLFW.GLFW_KEY_H, CAT);
+    static final KeyMapping K_USE = new KeyMapping("Policia: Usar habilidad", GLFW.GLFW_KEY_J, CAT);
+    static final KeyMapping K_NEXT = new KeyMapping("Policia: Cambiar habilidad", GLFW.GLFW_KEY_K, CAT);
 
     static final ResourceLocation TEX_SKIN = new ResourceLocation("policia", "textures/entity/policia.png");
     static final ResourceLocation TEX_FRONT = new ResourceLocation("policia", "textures/entity/escudo_frente.png");
@@ -192,7 +192,7 @@ public class PoliciaClient {
         String st;
         if (s.shield > 0) st = "Escudo activo: " + (s.shield + 19) / 20 + " s";
         else if (s.cooldown > 0) st = "Escudo en enfriamiento: " + (s.cooldown + 19) / 20 + " s";
-        else st = "Escudo listo (Z)";
+        else st = "Escudo listo (J)";
         g.drawString(mc.font, st, x, y + 12 + PoliciaMod.SKILLS.length * 10 + 4, 0xFF80E0FF, true);
     }
 }
