@@ -6,7 +6,7 @@ plugins {
 }
 
 version = '1.0.0'
-group = 'com.example.cronos'
+group = 'com.example.policia'
 base { archivesName = 'greenlantern' }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -18,10 +18,10 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
-            mods { "cronos" { source sourceSets.main } }
+            mods { "policia" { source sourceSets.main } }
         }
-        client { property 'forge.enabledGameTestNamespaces', 'cronos' }
-        server { property 'forge.enabledGameTestNamespaces', 'cronos'; args '--nogui' }
+        client { property 'forge.enabledGameTestNamespaces', 'policia' }
+        server { property 'forge.enabledGameTestNamespaces', 'policia'; args '--nogui' }
     }
 }
 
@@ -31,12 +31,12 @@ dependencies {
 
 tasks.named('jar', Jar).configure {
     manifest.attributes([
-        'Specification-Title': 'cronos',
-        'Specification-Vendor': 'cronos',
+        'Specification-Title': 'policia',
+        'Specification-Vendor': 'policia',
         'Specification-Version': '1',
-        'Implementation-Title': 'cronos',
+        'Implementation-Title': 'policia',
         'Implementation-Version': project.jar.archiveVersion,
-        'Implementation-Vendor': 'cronos'
+        'Implementation-Vendor': 'policia'
     ])
     finalizedBy 'reobfJar'
 }
@@ -55,7 +55,7 @@ sourceSets {
     main {
         java {
             srcDirs = [projectDir]
-            include 'Cronos*.java'
+            include 'Policia*.java'
         }
         resources {
             srcDirs = [flatResDir]
