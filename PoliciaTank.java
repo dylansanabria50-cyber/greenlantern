@@ -3,6 +3,7 @@ package com.example.policia;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -202,6 +203,7 @@ public class PoliciaTank {
             for (int y = top; y >= bot; y--) {
                 mp.set(bx, y, bz);
                 BlockState bs = level().getBlockState(mp);
+                if (bs.is(BlockTags.LEAVES) || bs.is(BlockTags.LOGS)) continue; // el tanque aplasta los arboles
                 FluidState fs = bs.getFluidState();
                 if (!fs.isEmpty()) return y + fs.getHeight(level(), mp);
                 VoxelShape sh = bs.getCollisionShape(level(), mp);
