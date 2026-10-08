@@ -59,12 +59,17 @@ public class PoliciaClient {
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::noClicks);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::screenPre);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::setup);
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::renderers);
     }
 
     static void setup(net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent e) {
         e.enqueueWork(() -> net.minecraft.client.renderer.item.ItemProperties.register(PoliciaShield.SHIELD.get(),
                 new net.minecraft.resources.ResourceLocation("blocking"),
                 (st, lv, en, sd) -> en != null && en.isUsingItem() && en.getUseItem() == st ? 1.0F : 0.0F));
+    }
+
+    static void renderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers e) {
+        e.registerEntityRenderer(PoliciaTank.TANK.get(), PoliciaTankRender::new);
     }
 
     static void keys(RegisterKeyMappingsEvent e) {
@@ -132,6 +137,13 @@ public class PoliciaClient {
 
     /** Con el escudo activo no se puede golpear ni interactuar. */
     static void noClicks(net.minecraftforge.client.event.InputEvent.InteractionKeyMappingTriggered e) {
+        Minecraft mc0 = Minecraft.getInstance();
+        if (mc0.player != null && mc0.player.getVehicle() instanceof PoliciaTank.TankEntity) {
+            if (e.isUseItem()) send(3);
+            e.setCanceled(true);
+            e.setSwingHand(false);
+            return;
+        }
         PoliciaMod.Sync s = mine();
         if (s != null && s.on && s.shield > 0) {
             e.setCanceled(true);
@@ -373,7 +385,9 @@ public class PoliciaClient {
             g.drawString(mc.font, line, x, y + 12 + i * 10, open ? (i == s.sel ? 0xFFFFFFFF : 0xFFB0C4DE) : 0xFF707070, true);
         }
         String st;
-        if (s.shield > 0) st = "Escudo activo: " + (s.shield + 19) / 20 + " s";
+        if (mc.player.getVehicle() instanceof PoliciaTank.TankEntity) st = "TANQUE: clic derecho para disparar";
+        else if (s.sel == 1) st = s.tcd > 0 ? "Tanque en enfriamiento: " + (s.tcd + 19) / 20 + " s" : "Tanque listo (J)";
+        else if (s.shield > 0) st = "Escudo activo: " + (s.shield + 19) / 20 + " s";
         else if (s.cooldown > 0) st = "Escudo en enfriamiento: " + (s.cooldown + 19) / 20 + " s";
         else st = "Escudo listo (J)";
         g.drawString(mc.font, st, x, y + 12 + PoliciaMod.SKILLS.length * 10 + 4, 0xFF80E0FF, true);
