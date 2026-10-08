@@ -66,7 +66,7 @@ public class PoliciaMod {
             "Sirena y torreta",
             "Dron de vigilancia"};
     /** Habilidad previa necesaria para desbloquear cada una. */
-    public static final int[] PRE = {-1, 0, 1, 2, 2, 3, 5, 6, 7};
+    public static final int[] PRE = {-1, 0, 0, 0, 2, 1, 1, 3, 3};
     /** Niveles de experiencia que cuesta desbloquear (0 = se paga con XP_PER_NODE). */
     public static final int[] LEVEL_COST = {0, 0, 0, 0, 20, 0, 0, 0, 0};
     public static final int XP_PER_NODE = 10;
