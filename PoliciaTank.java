@@ -32,10 +32,12 @@ public class PoliciaTank {
     public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, "policia");
     public static final RegistryObject<EntityType<TankEntity>> TANK = ENTITIES.register("tanque",
             () -> EntityType.Builder.<TankEntity>of(TankEntity::new, MobCategory.MISC)
-                    .sized(1.9f, 1.2f).fireImmune().noSave().clientTrackingRange(10).updateInterval(1)
+                    .sized(2.4f, 3.0f).fireImmune().noSave().clientTrackingRange(10).updateInterval(1)
                     .build("policia:tanque"));
 
     public static final float SCALE = 0.45f;
+    /** Tamano final: cuerpo de 4 bloques de largo y 3 de alto. */
+    public static final float SX = 0.48f, SY = 0.62f;
     public static final int COOLDOWN = 600;   // 30 s
     static final int LOAD_TICKS = 12;         // carga antes del disparo
     static final int END_TICKS = 62;          // el tanque se retira
@@ -94,7 +96,7 @@ public class PoliciaTank {
         @Override
         public Packet<ClientGamePacketListener> getAddEntityPacket() { return NetworkHooks.getEntitySpawningPacket(this); }
         @Override
-        public double getPassengersRidingOffset() { return 1.85; }
+        public double getPassengersRidingOffset() { return 3.3; }
         @Override
         public boolean shouldRiderSit() { return false; }
         @Override
@@ -114,12 +116,14 @@ public class PoliciaTank {
         /** Posicion mundial de la boca del canon (aproximada). */
         Vec3 muzzle() {
             double hy = Math.toRadians(getYRot());
-            double px = getX() + PT[2] * SCALE * Math.sin(hy);
-            double pz = getZ() - PT[2] * SCALE * Math.cos(hy);
-            double py = getY() + PB[1] * SCALE;
             double yaw = Math.toRadians(turretYaw), pit = Math.toRadians(pitch);
+            double fwdT = -PT[2] * SX;
+            double fwdB = -(PB[2] - PT[2]) * SX;
+            double px = getX() - Math.sin(hy) * fwdT - Math.sin(yaw) * fwdB;
+            double pz = getZ() + Math.cos(hy) * fwdT + Math.cos(yaw) * fwdB;
+            double py = getY() + PB[1] * SY;
             Vec3 dir = new Vec3(-Math.sin(yaw) * Math.cos(pit), -Math.sin(pit), Math.cos(yaw) * Math.cos(pit));
-            return new Vec3(px, py, pz).add(dir.scale(6.25 * SCALE));
+            return new Vec3(px, py, pz).add(dir.scale(5.4 * SX));
         }
 
         @Override
