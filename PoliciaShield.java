@@ -71,10 +71,6 @@ public class PoliciaShield extends ShieldItem {
         @Override
         public void renderByItem(ItemStack stack, ItemDisplayContext ctx, PoseStack ps, MultiBufferSource buf, int light, int overlay) {
             // en la mano no se dibuja: el escudo grande se pinta delante del cuerpo (tercera persona) o como pantalla (primera persona)
-            if (ctx == ItemDisplayContext.FIRST_PERSON_LEFT_HAND || ctx == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND
-                    || ctx == ItemDisplayContext.THIRD_PERSON_LEFT_HAND || ctx == ItemDisplayContext.THIRD_PERSON_RIGHT_HAND) {
-                return;
-            }
             if (model == null) {
                 model = new ShieldModel(Minecraft.getInstance().getEntityModels().bakeLayer(ModelLayers.SHIELD));
             }
