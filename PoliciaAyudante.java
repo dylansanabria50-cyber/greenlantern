@@ -70,7 +70,7 @@ public class PoliciaAyudante {
         e.put(AYU.get(), Helper.attrs().build());
     }
 
-    static Item pick(int t) {
+    static Item pickItem(int t) {
         switch (t) {
             case 1: return Items.STONE_PICKAXE;
             case 2: return Items.IRON_PICKAXE;
@@ -145,7 +145,7 @@ public class PoliciaAyudante {
         }
 
         void equip(int t) {
-            setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(pick(t)));
+            setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(pickItem(t)));
             setDropChance(EquipmentSlot.MAINHAND, 0.0f);
         }
 
