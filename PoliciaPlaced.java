@@ -52,7 +52,7 @@ public class PoliciaPlaced extends SavedData {
         if (st.is(BlockTags.BASE_STONE_OVERWORLD) || st.is(BlockTags.BASE_STONE_NETHER) || st.is(BlockTags.DIRT)
                 || st.is(BlockTags.SAND) || st.is(BlockTags.LEAVES) || st.is(BlockTags.LOGS) || st.is(BlockTags.SNOW)
                 || st.is(BlockTags.ICE) || st.is(Tags.Blocks.ORES) || st.is(BlockTags.FLOWERS) || st.is(BlockTags.SAPLINGS)
-                || st.is(BlockTags.REPLACEABLE_PLANTS)) return true;
+                || st.canBeReplaced()) return true;
         Block b = st.getBlock();
         return b == Blocks.GRAVEL || b == Blocks.CLAY || b == Blocks.MUD || b == Blocks.MAGMA_BLOCK || b == Blocks.SOUL_SAND
                 || b == Blocks.SOUL_SOIL || b == Blocks.END_STONE || b == Blocks.DRIPSTONE_BLOCK || b == Blocks.POINTED_DRIPSTONE
