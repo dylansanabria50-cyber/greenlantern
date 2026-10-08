@@ -16,7 +16,7 @@ import java.util.List;
 /** Pantalla de habilidades: personaje a la izquierda, rama de habilidades a la derecha. */
 public class PoliciaTreeScreen extends Screen {
     static final int PW = 460, PH = 340, LEFT_W = 104;
-    static final String[] NAMES = {"Escudo balistico", "REFUERZO", "Tanque", "Helicoptero", "Tanque movil", "Esposas", "Perro K9", "Sirena y torreta", "Dron de vigilancia"};
+    static final String[] NAMES = {"Escudo balistico", "REFUERZO", "Tanque", "Helicoptero", "Tanque movil", "Esposas", "Perro K9", "Sirena y torreta", "Dron de vigilancia", "Escudo de burbuja"};
     static final String[] DESC = {
             "Despliega un escudo antidisturbios durante 12 s. Bloquea los golpes de frente.",
             "Policias de refuerzo que te protegen y atacan a tus enemigos.",
@@ -26,10 +26,11 @@ public class PoliciaTreeScreen extends Screen {
             "Apunta a un objetivo (hasta 12 m) y lo esposas 15 s: no puede atacar ni interactuar y tu puedes arrastrarlo. Enfriamiento: 30 s.",
             "Invoca un perro policia que te protege, ataca amenazas y marca con brillo a los enemigos cercanos. Dura 45 s. Enfriamiento: 60 s.",
             "Despliega una patrulla con sirena: los mobs hostiles cercanos huyen de miedo y la torreta dispara a los que esten a tiro. Dura 20 s. Enfriamiento: 40 s.",
-            "Un dron vigila sobre ti 45 s y marca con brillo, incluso tras las paredes, a las amenazas en 32 m. Enfriamiento: 60 s."};
+            "Un dron vigila sobre ti 45 s y marca con brillo, incluso tras las paredes, a las amenazas en 32 m. Enfriamiento: 60 s.",
+            "Recompensa de la mision especial El cerebro de la organizacion. Una esfera azul de 2,5 bloques te sigue 10 s: todo lo que entra (enemigos, flechas, otros jugadores) se mueve muy lento, menos tu. Bloquea proyectiles y reduce el dano cuerpo a cuerpo. Enfriamiento: 40 s."};
     /** Posicion de cada habilidad en la cuadricula (columna, fila). */
-    static final int[] CX = {174, 72, 174, 276, 174, 38, 106, 242, 310};
-    static final int[] ROW = {0, 1, 1, 1, 2, 2, 2, 2, 2};
+    static final int[] CX = {174, 72, 174, 276, 174, 38, 106, 242, 310, 276};
+    static final int[] ROW = {0, 1, 1, 1, 2, 2, 2, 2, 2, 0};
     int px, py;
     float zoom = 1.0f;
 
@@ -179,6 +180,19 @@ public class PoliciaTreeScreen extends Screen {
         g.fill(x + 6, y + 13, x + 10, y + 14, 0xFF50565E);
     }
 
+    /** Icono de burbuja azul (16x16). */
+    static void bubbleIcon(GuiGraphics g, int x, int y) {
+        for (int r = 0; r < 16; r++) {
+            double dy = r - 7.5;
+            int w = (int) Math.round(Math.sqrt(Math.max(0.0, 64.0 - dy * dy)));
+            g.fill(x + 8 - w, y + r, x + 8 + w, y + r + 1, 0xFF2F7FE0);
+            if (w > 2) g.fill(x + 8 - w + 1, y + r, x + 8 + w - 1, y + r + 1, 0xFF6FB6FF);
+        }
+        g.fill(x + 4, y + 3, x + 7, y + 5, 0xFFFFFFFF);
+        g.fill(x + 4, y + 5, x + 5, y + 7, 0xFFFFFFFF);
+        g.fill(x + 10, y + 11, x + 12, y + 12, 0xFFD8F0FF);
+    }
+
     void padlock(GuiGraphics g, int x, int y) {
         g.fill(x + 8, y + 3, x + 10, y + 11, 0xFFD8D8D8);
         g.fill(x + 14, y + 3, x + 16, y + 11, 0xFFD8D8D8);
@@ -218,6 +232,11 @@ public class PoliciaTreeScreen extends Screen {
         // conexiones
         for (int i = 1; i < n; i++) {
             int pre = PoliciaMod.PRE[i];
+            if (i == 9) {
+                int cy = nodeY(9) + 12;
+                g.fill(nodeX(0) + 25, cy, nodeX(9) - 1, cy + 2, has(s, 9) ? 0xFF60B0FF : 0xFF2A4A6A);
+                continue;
+            }
             int col = has(s, i) ? 0xFFE070D8 : 0xFF6A3A66;
             int x0 = nodeX(pre) + 11, x1 = nodeX(i) + 11;
             int y0 = nodeY(pre) + 44, y1 = nodeY(i);
@@ -243,6 +262,7 @@ public class PoliciaTreeScreen extends Screen {
             else if (i == 6) dogIcon(g, nx + 4, y + 4);
             else if (i == 7) sirenIcon(g, nx + 4, y + 4);
             else if (i == 8) droneIcon(g, nx + 4, y + 4);
+            else if (i == 9) bubbleIcon(g, nx + 4, y + 4);
             else g.renderItem(icon(i), nx + 4, y + 4);
             if (!open) {
                 g.fill(nx, y, nx + 24, y + 24, 0x99000000);
@@ -271,7 +291,7 @@ public class PoliciaTreeScreen extends Screen {
             g.drawString(font, upg, bx0 + 5, by0 + 46, 0xFF9AA4B0, false);
         }
         if (!open) {
-            g.drawString(font, "Bloqueada - cuesta " + cost(show), bx0 + 5, by1 - 11, 0xFFE8B830, false);
+            g.drawString(font, show == 9 ? "Bloqueada - se gana con la mision especial del comisario" : "Bloqueada - cuesta " + cost(show), bx0 + 5, by1 - 11, 0xFFE8B830, false);
         } else if (show == sel) {
             g.drawString(font, "Elegida (tecla J)", bx0 + 5, by1 - 11, 0xFF60E060, false);
         } else {
