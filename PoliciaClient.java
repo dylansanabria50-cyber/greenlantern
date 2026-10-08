@@ -54,6 +54,8 @@ public class PoliciaClient {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::overlays);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::tick);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::render);
+        MinecraftForge.EVENT_BUS.addListener(PoliciaClient::screenInit);
+        MinecraftForge.EVENT_BUS.addListener(PoliciaClient::screenPre);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::setup);
     }
 
@@ -69,6 +71,48 @@ public class PoliciaClient {
 
     static void overlays(RegisterGuiOverlaysEvent e) {
         e.registerAboveAll("policia", PoliciaClient::hud);
+    }
+
+    /** Boton de la rama de habilidades, junto al libro de recetas. */
+    static class TreeButton extends net.minecraft.client.gui.components.Button {
+        TreeButton() {
+            super(0, 0, 20, 18, net.minecraft.network.chat.Component.literal(""),
+                    b -> Minecraft.getInstance().setScreen(new PoliciaTreeScreen()), DEFAULT_NARRATION);
+            setTooltip(net.minecraft.client.gui.components.Tooltip.create(
+                    net.minecraft.network.chat.Component.literal("Rama de habilidades: Policia")));
+        }
+
+        @Override
+        public void renderWidget(GuiGraphics g, int mx, int my, float pt) {
+            super.renderWidget(g, mx, my, pt);
+            g.renderItem(new net.minecraft.world.item.ItemStack(PoliciaShield.SHIELD.get()), getX() + 2, getY() + 1);
+        }
+    }
+
+    static void screenInit(net.minecraftforge.client.event.ScreenEvent.Init.Post e) {
+        if (e.getScreen() instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen) {
+            e.addListener(new TreeButton());
+        }
+    }
+
+    static void screenPre(net.minecraftforge.client.event.ScreenEvent.Render.Pre e) {
+        if (!(e.getScreen() instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen inv)) return;
+        TreeButton tb = null;
+        for (Object o : inv.children()) {
+            if (o instanceof TreeButton t) tb = t;
+        }
+        if (tb == null) return;
+        int left = inv.getGuiLeft(), top = inv.getGuiTop();
+        int maxRight = left + 124;
+        for (Object o : inv.children()) {
+            if (o instanceof net.minecraft.client.gui.components.AbstractWidget w && w != tb
+                    && w.getY() >= top + 55 && w.getY() <= top + 70
+                    && w.getX() >= left + 100 && w.getX() + w.getWidth() > maxRight) {
+                maxRight = w.getX() + w.getWidth();
+            }
+        }
+        tb.setX(maxRight + 2);
+        tb.setY(top + 61);
     }
 
     static void send(int id) {
