@@ -138,6 +138,15 @@ public class PoliciaMod {
             return;
         }
         if (!on(p)) { msg(p, "Activa el modo policia (H) primero"); return; }
+        if (id >= 10) { // elegir habilidad concreta desde la pantalla
+            int s = id - 10;
+            if (s >= 0 && s < unlocked(p)) {
+                d.putInt("pol_sel", s);
+                msg(p, "Habilidad: " + SKILLS[s]);
+                sync(p);
+            }
+            return;
+        }
         if (id == 2) { // cambiar habilidad seleccionada
             int n = unlocked(p);
             int s = (sel(p) + 1) % n;
