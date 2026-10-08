@@ -114,6 +114,9 @@ public class PoliciaMod {
     }
 
     // ---------- estado (en los datos persistentes del jugador) ----------
+    /** Oficio elegido (vacio si todavia no tiene ninguno). Se fija al usar la placa del oficio. */
+    static String job(Player p) { return p.getPersistentData().getString("pol_job"); }
+
     static boolean on(Player p) {
         CompoundTag d = p.getPersistentData();
         return d.getBoolean("pol_on");
@@ -150,6 +153,7 @@ public class PoliciaMod {
         PoliciaRefuerzo.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
         PoliciaExtra.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
         PoliciaHeli.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
+        PoliciaPlaca.init();
         PoliciaExtra.EFFECTS.register(FMLJavaModLoadingContext.get().getModEventBus());
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaExtra::attrs);
         MinecraftForge.EVENT_BUS.register(new PoliciaExtra());
@@ -176,6 +180,7 @@ public class PoliciaMod {
     static void act(ServerPlayer p, int id) {
         CompoundTag d = p.getPersistentData();
         if (id == 0) { // alternar forma policia (skin)
+            if (!on(p) && !"policia".equals(job(p))) { msg(p, "Necesitas el oficio de policia: craftea una Placa de policia y usala"); return; }
             d.putBoolean("pol_on", !on(p));
             if (!on(p)) { d.putInt("pol_shield", 0); endShield(p); }
             d.putInt("pol_tf", 40);
@@ -227,7 +232,7 @@ public class PoliciaMod {
             return;
         }
         if (id == 3) { PoliciaTank.fire(p); return; }
-        if (!on(p)) { msg(p, "Activa el modo policia (H) primero"); return; }
+        if (!on(p)) { msg(p, "Activa el modo policia (B) primero"); return; }
         if (id == 2) { // cambiar habilidad seleccionada
             int s = sel(p);
             for (int k = 1; k <= SKILLS.length; k++) {
@@ -472,14 +477,17 @@ public class PoliciaMod {
     public void onClone(PlayerEvent.Clone e) {
         CompoundTag o = e.getOriginal().getPersistentData();
         CompoundTag n = e.getEntity().getPersistentData();
-        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver", "pol_rl"}) {
+        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver", "pol_rl", "pol_job", "pol_hcd_t"}) {
             if (o.contains(k)) n.put(k, o.get(k).copy());
         }
     }
 
     @SubscribeEvent
     public void login(PlayerEvent.PlayerLoggedInEvent e) {
-        if (e.getEntity() instanceof ServerPlayer p) sync(p);
+        if (e.getEntity() instanceof ServerPlayer p) {
+            if (on(p) && !"policia".equals(job(p))) p.getPersistentData().putBoolean("pol_on", false);
+            sync(p);
+        }
     }
 
     @SubscribeEvent
