@@ -37,6 +37,7 @@ public class PoliciaClient {
     static final KeyMapping K_USE = new KeyMapping("Policia: Usar habilidad", GLFW.GLFW_KEY_J, CAT);
     static final KeyMapping K_NEXT = new KeyMapping("Policia: Cambiar habilidad", GLFW.GLFW_KEY_K, CAT);
     static final KeyMapping K_LIGHT = new KeyMapping("Policia: Modo linterna (helicoptero)", GLFW.GLFW_KEY_G, CAT);
+    static final KeyMapping K_ORDER = new KeyMapping("Albanil: orden a los ayudantes", GLFW.GLFW_KEY_H, CAT);
 
     static final ResourceLocation TEX_POL = new ResourceLocation("policia", "textures/entity/policia.png");
     static final ResourceLocation TEX_ALB = new ResourceLocation("policia", "textures/entity/albanil.png");
@@ -64,6 +65,8 @@ public class PoliciaClient {
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::livingPre);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::noClicks);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::screenPre);
+        MinecraftForge.EVENT_BUS.addListener(PoliciaXray::tick);
+        MinecraftForge.EVENT_BUS.addListener(PoliciaXray::render);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::setup);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::renderers);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaExtraRender::layers);
@@ -80,6 +83,7 @@ public class PoliciaClient {
     static void renderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers e) {
         e.registerEntityRenderer(PoliciaTank.TANK.get(), PoliciaTankRender::new);
         e.registerEntityRenderer(PoliciaRefuerzo.AGENT.get(), PoliciaRefuerzoRender::new);
+        e.registerEntityRenderer(PoliciaAyudante.AYU.get(), PoliciaAyudanteRender::new);
         PoliciaExtraRender.register(e);
         e.registerEntityRenderer(PoliciaHeli.HELI.get(), PoliciaHeliRender::new);
     }
@@ -154,7 +158,7 @@ public class PoliciaClient {
     }
 
     static void keys(RegisterKeyMappingsEvent e) {
-        e.register(K_FORM); e.register(K_USE); e.register(K_NEXT); e.register(K_LIGHT);
+        e.register(K_FORM); e.register(K_USE); e.register(K_NEXT); e.register(K_LIGHT); e.register(K_ORDER);
     }
 
     static void overlays(RegisterGuiOverlaysEvent e) {
@@ -421,6 +425,7 @@ public class PoliciaClient {
         while (K_USE.consumeClick()) { if (free) send(1); }
         while (K_NEXT.consumeClick()) { if (free) send(2); }
         while (K_LIGHT.consumeClick()) { if (free) send(4); }
+        while (K_ORDER.consumeClick()) { if (free) send(7); }
         if (free && mc.player.getVehicle() instanceof PoliciaHeli.HeliEntity) {
             if (mc.options.keyJump.isDown()) send(5);
             else if (mc.options.keySprint.isDown()) send(6);
