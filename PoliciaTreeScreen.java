@@ -1,16 +1,27 @@
 package com.example.policia;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
-/** Pantalla de la rama de habilidades (se abre desde el boton junto al libro de recetas). */
+import java.util.List;
+
+/** Pantalla de habilidades: personaje a la izquierda, rama de habilidades a la derecha. */
 public class PoliciaTreeScreen extends Screen {
-    static final String[] SHORT = {"Escudo", "Tanque", "Jet"};
+    static final int PW = 340, PH = 200, LEFT_W = 104;
+    static final String[] NAMES = {"Escudo balistico", "Invocar tanque", "Jet de combate"};
+    static final String[] DESC = {
+            "Despliega un escudo antidisturbios durante 12 s. Bloquea los golpes de frente.",
+            "Invoca un tanque que dispara una sola vez y desaparece. (Proximamente)",
+            "Invoca un jet de combate pilotable. (Proximamente)"};
     int px, py;
-    static final int PW = 230, PH = 150;
 
     public PoliciaTreeScreen() {
         super(Component.literal("Rama de habilidades"));
@@ -20,57 +31,104 @@ public class PoliciaTreeScreen extends Screen {
     protected void init() {
         px = (width - PW) / 2;
         py = (height - PH) / 2;
-        addRenderableWidget(Button.builder(Component.literal("Usar habilidad"), b -> PoliciaClient.send(1))
-                .bounds(px + 10, py + PH - 28, 110, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Cerrar"), b -> onClose())
-                .bounds(px + PW - 70, py + PH - 28, 60, 20).build());
+                .bounds(px + PW - 66, py + PH + 4, 60, 20).build());
     }
 
-    int nodeX(int i) { return px + 28 + i * 70; }
-    int nodeY() { return py + 50; }
+    static ItemStack icon(int i) {
+        if (i == 0) return new ItemStack(PoliciaShield.SHIELD.get());
+        if (i == 1) return new ItemStack(Items.TNT_MINECART);
+        return new ItemStack(Items.ELYTRA);
+    }
+
+    static boolean has(PoliciaMod.Sync s, int i) {
+        return i == 0 || (s != null && ((s.un >> i) & 1) == 1);
+    }
+
+    int nodeX() { return px + LEFT_W + 24; }
+    int nodeY(int i) { return py + 34 + i * 52; }
+
+    static void panel(GuiGraphics g, int x0, int y0, int x1, int y1) {
+        g.fill(x0 - 1, y0 - 1, x1 + 1, y1 + 1, 0xFF555C66);
+        g.fill(x0, y0, x1, y1, 0xFF0A0C12);
+    }
+
+    void tag(GuiGraphics g, String text, int x, int y) {
+        int w = font.width(text) + 8;
+        g.fill(x - 1, y - 1, x + w + 1, y + 13, 0xFF555C66);
+        g.fill(x, y, x + w, y + 12, 0xFF8A8F99);
+        g.drawString(font, text, x + 4, y + 2, 0xFFFFFFFF, true);
+    }
+
+    void padlock(GuiGraphics g, int x, int y) {
+        g.fill(x + 8, y + 3, x + 10, y + 11, 0xFFD8D8D8);
+        g.fill(x + 14, y + 3, x + 16, y + 11, 0xFFD8D8D8);
+        g.fill(x + 8, y + 3, x + 16, y + 5, 0xFFD8D8D8);
+        g.fill(x + 6, y + 10, x + 18, y + 20, 0xFFE8B830);
+        g.fill(x + 11, y + 13, x + 13, y + 17, 0xFF2A2A2A);
+    }
 
     @Override
     public void render(GuiGraphics g, int mx, int my, float pt) {
         renderBackground(g);
-        g.fill(px - 2, py - 2, px + PW + 2, py + PH + 2, 0xFF3A4452);
-        g.fill(px, py, px + PW, py + PH, 0xF0101820);
         PoliciaMod.Sync s = PoliciaClient.mine();
         int xp = s == null ? 0 : s.xp;
         int sel = s == null ? 0 : s.sel;
-        int unlocked = Math.min(PoliciaMod.SKILLS.length, 1 + xp / PoliciaMod.XP_PER_NODE);
-        g.drawCenteredString(font, "RAMA DE HABILIDADES - POLICIA", px + PW / 2, py + 8, 0xFFE8C040);
-        g.drawCenteredString(font, "XP: " + xp + "   (una habilidad nueva cada " + PoliciaMod.XP_PER_NODE + " XP)", px + PW / 2, py + 22, 0xFFB0C4DE);
-        for (int i = 0; i < PoliciaMod.SKILLS.length; i++) {
-            int x = nodeX(i), y = nodeY();
-            if (i + 1 < PoliciaMod.SKILLS.length) {
-                g.fill(x + 30, y + 13, nodeX(i + 1) - 2, y + 15, i + 1 < unlocked ? 0xFF4C8DFF : 0xFF555555);
-            }
-            boolean open = i < unlocked;
-            int border = (open && i == sel) ? 0xFFFFE040 : (open ? 0xFF4C8DFF : 0xFF555555);
-            g.fill(x - 2, y - 2, x + 30, y + 30, border);
-            g.fill(x, y, x + 28, y + 28, open ? 0xFF1B3A66 : 0xFF2A2A2A);
-            if (i == 0) {
-                g.renderItem(new ItemStack(PoliciaShield.SHIELD.get()), x + 6, y + 6);
-            } else {
-                g.drawCenteredString(font, open ? "!" : "?", x + 14, y + 10, open ? 0xFFFFFFFF : 0xFF777777);
-            }
-            g.drawCenteredString(font, SHORT[Math.min(i, SHORT.length - 1)], x + 14, y + 34, open ? 0xFFFFFFFF : 0xFF808080);
-            if (!open) g.drawCenteredString(font, (i * PoliciaMod.XP_PER_NODE) + " XP", x + 14, y + 46, 0xFF808080);
-            else if (i == sel) g.drawCenteredString(font, "elegida", x + 14, y + 46, 0xFFFFE040);
+        // panel izquierdo: personaje
+        panel(g, px, py, px + LEFT_W, py + PH);
+        tag(g, "Policia", px + 6, py - 6);
+        if (minecraft != null && minecraft.player != null) {
+            InventoryScreen.renderEntityInInventoryFollowsMouse(g, px + LEFT_W / 2, py + PH - 30, 55,
+                    (px + LEFT_W / 2) - mx, (py + 60) - my, minecraft.player);
         }
-        g.drawCenteredString(font, "Clic en una habilidad para elegirla (tecla J la usa)", px + PW / 2, py + 108, 0xFF909090);
+        // panel derecho: habilidades
+        int rx = px + LEFT_W + 8;
+        panel(g, rx, py, px + PW, py + PH);
+        tag(g, "Habilidades", rx + 6, py - 6);
+        g.drawString(font, "XP disponible: " + xp, rx + 8, py + 10, 0xFFE8C040, true);
+        g.drawString(font, "Desbloquear: clic izquierdo (" + PoliciaMod.XP_PER_NODE + " XP)", rx + 8, py + 20, 0xFF9AA4B0, false);
+        int nx = nodeX();
+        for (int i = 0; i < PoliciaMod.SKILLS.length; i++) {
+            int y = nodeY(i);
+            boolean open = has(s, i);
+            if (i + 1 < PoliciaMod.SKILLS.length) {
+                g.fill(nx + 11, y + 24, nx + 13, nodeY(i + 1), has(s, i + 1) ? 0xFFE070D8 : 0xFF6A3A66);
+            }
+            boolean hover = mx >= nx && mx <= nx + 24 && my >= y && my <= y + 24;
+            int border = (open && i == sel) ? 0xFFFFFFFF : (hover ? 0xFFFFE9A0 : 0xFF6B4A0C);
+            g.fill(nx - 1, y - 1, nx + 25, y + 25, border);
+            g.fill(nx, y, nx + 24, y + 24, open ? 0xFFC8921C : 0xFF8A6612);
+            g.renderItem(icon(i), nx + 4, y + 4);
+            if (!open) {
+                g.fill(nx, y, nx + 24, y + 24, 0x99000000);
+                padlock(g, nx, y);
+            }
+            int tx = nx + 34;
+            g.drawString(font, NAMES[i], tx, y, open ? 0xFFFFFFFF : 0xFFA0A0A0, true);
+            List<FormattedCharSequence> lines = font.split(FormattedText.of(DESC[i]), px + PW - tx - 8);
+            for (int k = 0; k < lines.size() && k < 3; k++) {
+                g.drawString(font, lines.get(k), tx, y + 11 + k * 9, open ? 0xFFC8D0DC : 0xFF808890, false);
+            }
+            if (!open) {
+                g.drawString(font, "Bloqueada - cuesta " + PoliciaMod.XP_PER_NODE + " XP", tx, y + 11 + Math.min(lines.size(), 3) * 9, 0xFFE8B830, false);
+            } else if (i == sel) {
+                g.drawString(font, "Elegida (tecla J)", tx, y + 11 + Math.min(lines.size(), 3) * 9, 0xFF60E060, false);
+            }
+        }
         super.render(g, mx, my, pt);
     }
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
-        PoliciaMod.Sync s = PoliciaClient.mine();
-        int xp = s == null ? 0 : s.xp;
-        int unlocked = Math.min(PoliciaMod.SKILLS.length, 1 + xp / PoliciaMod.XP_PER_NODE);
-        for (int i = 0; i < unlocked; i++) {
-            if (mx >= nodeX(i) && mx <= nodeX(i) + 28 && my >= nodeY() && my <= nodeY() + 28) {
-                PoliciaClient.send(10 + i);
-                return true;
+        if (btn == 0) {
+            PoliciaMod.Sync s = PoliciaClient.mine();
+            int nx = nodeX();
+            for (int i = 0; i < PoliciaMod.SKILLS.length; i++) {
+                int y = nodeY(i);
+                if (mx >= nx && mx <= nx + 24 && my >= y && my <= y + 24) {
+                    PoliciaClient.send(has(s, i) ? 10 + i : 20 + i);
+                    return true;
+                }
             }
         }
         return super.mouseClicked(mx, my, btn);
