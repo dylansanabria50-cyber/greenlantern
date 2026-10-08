@@ -89,16 +89,16 @@ public class PoliciaMod {
     public static class Sync {
         UUID id = new UUID(0, 0);
         boolean on;
-        int shield, cooldown, xp, sel, un, tcd;
+        int shield, cooldown, xp, sel, un, tcd, rl, rcd;
         Sync() { }
         static void enc(Sync m, FriendlyByteBuf b) {
             b.writeUUID(m.id); b.writeBoolean(m.on);
-            b.writeVarInt(m.shield); b.writeVarInt(m.cooldown); b.writeVarInt(m.xp); b.writeVarInt(m.sel); b.writeVarInt(m.un); b.writeVarInt(m.tcd);
+            b.writeVarInt(m.shield); b.writeVarInt(m.cooldown); b.writeVarInt(m.xp); b.writeVarInt(m.sel); b.writeVarInt(m.un); b.writeVarInt(m.tcd); b.writeVarInt(m.rl); b.writeVarInt(m.rcd);
         }
         static Sync dec(FriendlyByteBuf b) {
             Sync m = new Sync();
             m.id = b.readUUID(); m.on = b.readBoolean();
-            m.shield = b.readVarInt(); m.cooldown = b.readVarInt(); m.xp = b.readVarInt(); m.sel = b.readVarInt(); m.un = b.readVarInt(); m.tcd = b.readVarInt();
+            m.shield = b.readVarInt(); m.cooldown = b.readVarInt(); m.xp = b.readVarInt(); m.sel = b.readVarInt(); m.un = b.readVarInt(); m.tcd = b.readVarInt(); m.rl = b.readVarInt(); m.rcd = b.readVarInt();
             return m;
         }
         static void handle(Sync m, Supplier<NetworkEvent.Context> c) {
@@ -126,6 +126,8 @@ public class PoliciaMod {
         return d.getInt("pol_un") | 1;
     }
     static boolean has(Player p, int i) { return ((un(p) >> i) & 1) == 1; }
+    /** Nivel de REFUERZO: 0 si esta bloqueada, de 1 a 4 si no. */
+    static int rlevel(Player p) { return has(p, 1) ? Math.max(1, Math.min(4, p.getPersistentData().getInt("pol_rl"))) : 0; }
     static int sel(Player p) { return p.getPersistentData().getInt("pol_sel"); }
     static int shield(Player p) { return p.getPersistentData().getInt("pol_shield"); }
     static int cooldown(Player p) { return p.getPersistentData().getInt("pol_cd"); }
@@ -139,6 +141,8 @@ public class PoliciaMod {
         MinecraftForge.EVENT_BUS.register(this);
         PoliciaShield.ITEMS.register(FMLJavaModLoadingContext.get().getModEventBus());
         PoliciaTank.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
+        PoliciaRefuerzo.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaRefuerzo::attrs);
         if (FMLEnvironment.dist.isClient()) {
             PoliciaClient.init();
         }
@@ -147,7 +151,7 @@ public class PoliciaMod {
     static Sync snapshot(Player p) {
         Sync m = new Sync();
         m.id = p.getUUID(); m.on = on(p);
-        m.shield = shield(p); m.cooldown = cooldown(p); m.xp = xp(p); m.sel = sel(p); m.un = un(p); m.tcd = p.getPersistentData().getInt("pol_tcd");
+        m.shield = shield(p); m.cooldown = cooldown(p); m.xp = xp(p); m.sel = sel(p); m.un = un(p); m.tcd = p.getPersistentData().getInt("pol_tcd"); m.rl = rlevel(p); m.rcd = p.getPersistentData().getInt("pol_rcd");
         return m;
     }
 
@@ -169,7 +173,20 @@ public class PoliciaMod {
             sync(p);
             return;
         }
-        if (id >= 20) { // desbloquear habilidad (clic en el icono): cuesta XP
+        if (id == 30) { // mejorar REFUERZO (cuesta XP)
+            int lv = rlevel(p);
+            if (lv <= 0) { msg(p, "Desbloquea primero REFUERZO"); return; }
+            if (lv >= 4) { msg(p, "REFUERZO ya esta al nivel maximo"); return; }
+            int cost = XP_PER_NODE * lv;
+            if (xp(p) < cost) { msg(p, "Necesitas " + cost + " XP para REFUERZO nivel " + (lv + 1) + " (tienes " + xp(p) + ")"); return; }
+            d.putInt("pol_xp", xp(p) - cost);
+            d.putInt("pol_rl", lv + 1);
+            msg(p, "REFUERZO nivel " + (lv + 1) + ": " + PoliciaRefuerzo.COUNT[lv + 1] + " policias, espada de " + PoliciaRefuerzo.SWORD[lv + 1]);
+            p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.4f);
+            sync(p);
+            return;
+        }
+        if (id >= 20 && id < 30) { // desbloquear habilidad (clic en el icono): cuesta XP
             int s = id - 20;
             if (s <= 0 || s >= SKILLS.length || has(p, s)) return;
             if (!has(p, PRE[s])) { msg(p, "Desbloquea primero: " + SKILLS[PRE[s]]); return; }
@@ -181,6 +198,7 @@ public class PoliciaMod {
                 d.putInt("pol_xp", xp(p) - XP_PER_NODE);
             }
             d.putInt("pol_un", un(p) | (1 << s));
+            if (s == 1) d.putInt("pol_rl", 1);
             msg(p, "Habilidad desbloqueada: " + SKILLS[s]);
             p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.2f);
             sync(p);
@@ -228,6 +246,8 @@ public class PoliciaMod {
                 if (d.getInt("pol_tcd") > 0) { msg(p, "Tanque en enfriamiento: " + (d.getInt("pol_tcd") + 19) / 20 + " s"); return; }
                 PoliciaTank.summon(p);
                 sync(p);
+            } else if (s == 1) {
+                PoliciaRefuerzo.use(p);
             } else {
                 msg(p, SKILLS[s] + " (proximamente)");
             }
@@ -386,6 +406,11 @@ public class PoliciaMod {
             d.putInt("pol_tcd", tc - 1);
             if (tc - 1 == 0) { msg(p, "Tanque listo"); change = true; }
         }
+        int rc = d.getInt("pol_rcd");
+        if (rc > 0) {
+            d.putInt("pol_rcd", rc - 1);
+            if (rc - 1 == 0) { msg(p, "Refuerzo listo"); change = true; }
+        }
         int sh = d.getInt("pol_shield");
         if (sh > 0) {
             d.putInt("pol_shield", --sh);
@@ -430,7 +455,7 @@ public class PoliciaMod {
     public void onClone(PlayerEvent.Clone e) {
         CompoundTag o = e.getOriginal().getPersistentData();
         CompoundTag n = e.getEntity().getPersistentData();
-        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver"}) {
+        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver", "pol_rl"}) {
             if (o.contains(k)) n.put(k, o.get(k).copy());
         }
     }
