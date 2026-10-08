@@ -194,8 +194,8 @@ public class PoliciaMod {
             sync(p);
             return;
         }
-        if (id == 4) { if ("albanil".equals(job(p))) PoliciaAlbanil.toggleLamp(p); else PoliciaHeli.toggleLight(p); return; }
-        if (id == 5 || id == 6) { PoliciaHeli.vert(p, id == 5 ? 1 : -1); return; }
+        if (id == 4) { if (p.getVehicle() instanceof PoliciaTractor.TractorEntity) PoliciaTractor.lamp(p); else if ("albanil".equals(job(p))) PoliciaAlbanil.toggleLamp(p); else PoliciaHeli.toggleLight(p); return; }
+        if (id == 5 || id == 6) { if (p.getVehicle() instanceof PoliciaTractor.TractorEntity) PoliciaTractor.arm(p, id == 5 ? 1 : -1); else PoliciaHeli.vert(p, id == 5 ? 1 : -1); return; }
         if ("albanil".equals(job(p))) { PoliciaAlbanil.act(p, id); return; }
         if (id == 30) { // mejorar REFUERZO (cuesta XP)
             int lv = rlevel(p);
@@ -337,17 +337,17 @@ public class PoliciaMod {
 
     @SubscribeEvent
     public void noAttack(AttackEntityEvent e) {
-        if (e.getEntity() instanceof ServerPlayer p && (p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity)) e.setCanceled(true);
+        if (e.getEntity() instanceof ServerPlayer p && (p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity || p.getVehicle() instanceof PoliciaTractor.TractorEntity)) e.setCanceled(true);
     }
 
     @SubscribeEvent
     public void noInteract(PlayerInteractEvent e) {
-        if (e.getEntity() instanceof ServerPlayer p && (p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity) && e.isCancelable()) e.setCanceled(true);
+        if (e.getEntity() instanceof ServerPlayer p && (p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity || p.getVehicle() instanceof PoliciaTractor.TractorEntity) && e.isCancelable()) e.setCanceled(true);
     }
 
     @SubscribeEvent
     public void noBreak(BlockEvent.BreakEvent e) {
-        if (e.getPlayer() instanceof ServerPlayer p && (p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity)) e.setCanceled(true);
+        if (e.getPlayer() instanceof ServerPlayer p && (p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity || p.getVehicle() instanceof PoliciaTractor.TractorEntity)) e.setCanceled(true);
     }
 
     static boolean isMine(ItemStack s) { return s.getItem() instanceof PoliciaShield; }
@@ -464,8 +464,8 @@ public class PoliciaMod {
     public void arrowBounce(net.minecraftforge.event.entity.ProjectileImpactEvent e) {
         if (!(e.getRayTraceResult() instanceof net.minecraft.world.phys.EntityHitResult eh)) return;
         net.minecraft.world.entity.Entity tg = eh.getEntity();
-        boolean veh = tg instanceof PoliciaTank.TankEntity || tg instanceof PoliciaHeli.HeliEntity
-                || tg.getVehicle() instanceof PoliciaTank.TankEntity || tg.getVehicle() instanceof PoliciaHeli.HeliEntity;
+        boolean veh = tg instanceof PoliciaTank.TankEntity || tg instanceof PoliciaHeli.HeliEntity || tg instanceof PoliciaTractor.TractorEntity
+                || tg.getVehicle() instanceof PoliciaTank.TankEntity || tg.getVehicle() instanceof PoliciaHeli.HeliEntity || tg.getVehicle() instanceof PoliciaTractor.TractorEntity;
         if (!veh || !(e.getProjectile() instanceof net.minecraft.world.entity.projectile.AbstractArrow a)) return;
         e.setCanceled(true);
         CompoundTag ad = a.getPersistentData();
@@ -482,7 +482,7 @@ public class PoliciaMod {
 
     @SubscribeEvent
     public void noKnock(net.minecraftforge.event.entity.living.LivingKnockBackEvent e) {
-        if (e.getEntity() instanceof ServerPlayer p && (p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity)) e.setCanceled(true);
+        if (e.getEntity() instanceof ServerPlayer p && (p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity || p.getVehicle() instanceof PoliciaTractor.TractorEntity)) e.setCanceled(true);
     }
 
     @SubscribeEvent
@@ -501,7 +501,7 @@ public class PoliciaMod {
     public void onClone(PlayerEvent.Clone e) {
         CompoundTag o = e.getOriginal().getPersistentData();
         CompoundTag n = e.getEntity().getPersistentData();
-        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver", "pol_rl", "pol_job", "pol_hcd_t", "alb_lv","alb_hl","alb_ench","alb_mode","alb_bank","alb_lu", "alb_sel", "alb_chest", "alb_inner", "alb_c0", "alb_c1"}) {
+        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver", "pol_rl", "pol_job", "pol_hcd_t", "alb_lv","alb_hl","alb_ench","alb_mode","alb_bank","alb_lu", "alb_tu", "alb_tinv", "alb_sel", "alb_chest", "alb_inner", "alb_c0", "alb_c1"}) {
             if (o.contains(k)) n.put(k, o.get(k).copy());
         }
     }
