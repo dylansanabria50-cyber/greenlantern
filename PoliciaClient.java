@@ -499,24 +499,41 @@ public class PoliciaClient {
             RenderSystem.disableBlend();
         }
         if (mc.player.getVehicle() instanceof PoliciaTank.TankEntity tk && mc.options.getCameraType().isFirstPerson()) scope(g, mc, tk, sw, sh);
-        int x = 8, y = 8;
-        g.drawString(mc.font, "ARBOL DE HABILIDADES - XP " + s.xp, x, y, 0xFFE8C040, true);
-        for (int i = 0; i < PoliciaMod.SKILLS.length; i++) {
+        // lista de habilidades: arriba a la derecha, mas pequena
+        boolean up = ((s.un >> 4) & 1) == 1;
+        java.util.List<String> ls = new java.util.ArrayList<>();
+        java.util.List<Integer> cs = new java.util.ArrayList<>();
+        ls.add("ARBOL DE HABILIDADES - XP " + s.xp); cs.add(0xFFE8C040);
+        for (int i = 0; i < 4; i++) {
             boolean open = i == 0 || ((s.un >> i) & 1) == 1;
-            String line = (i == s.sel && open ? "> " : "  ") + (i + 1) + ". " + PoliciaMod.SKILLS[i];
+            String nm = (i == 2 && up) ? PoliciaMod.SKILLS[4] : PoliciaMod.SKILLS[i];
+            String line = (i == s.sel && open ? "> " : "  ") + (i + 1) + ". " + nm;
             if (!open) line += "  [" + (PoliciaMod.LEVEL_COST[i] > 0 ? PoliciaMod.LEVEL_COST[i] + " niveles" : PoliciaMod.XP_PER_NODE + " XP") + "]";
-            g.drawString(mc.font, line, x, y + 12 + i * 10, open ? (i == s.sel ? 0xFFFFFFFF : 0xFFB0C4DE) : 0xFF707070, true);
+            ls.add(line);
+            cs.add(open ? (i == s.sel ? 0xFFFFFFFF : 0xFFB0C4DE) : 0xFF707070);
         }
         String st;
         if (mc.player.getVehicle() instanceof PoliciaTank.TankEntity tk0) {
             st = tk0.isMobile() ? "TANQUE: WASD mover, clic derecho disparar (" + tk0.shotsLeft() + "), Shift bajar"
                     : "TANQUE: clic derecho para disparar";
         }
-        else if (s.sel == 3) st = s.tcd > 0 ? "Tanque en enfriamiento: " + (s.tcd + 19) / 20 + " s" : "Tanque movil listo (J)";
-        else if (s.sel == 1) st = s.tcd > 0 ? "Tanque en enfriamiento: " + (s.tcd + 19) / 20 + " s" : "Tanque listo (J)";
+        else if (s.sel == 2) st = s.tcd > 0 ? "Tanque en enfriamiento: " + (s.tcd + 19) / 20 + " s" : (up ? "Tanque movil listo (J)" : "Tanque listo (J)");
+        else if (s.sel == 1) st = "REFUERZO: proximamente";
+        else if (s.sel == 3) st = "Helicoptero: proximamente";
         else if (s.shield > 0) st = "Escudo activo: " + (s.shield + 19) / 20 + " s";
         else if (s.cooldown > 0) st = "Escudo en enfriamiento: " + (s.cooldown + 19) / 20 + " s";
         else st = "Escudo listo (J)";
-        g.drawString(mc.font, st, x, y + 12 + PoliciaMod.SKILLS.length * 10 + 4, 0xFF80E0FF, true);
+        ls.add(st); cs.add(0xFF80E0FF);
+        float sc = 0.75f;
+        int wmax = 0;
+        for (String l : ls) wmax = Math.max(wmax, mc.font.width(l));
+        g.pose().pushPose();
+        g.pose().translate(sw - 6 - wmax * sc, 6.0f, 0.0f);
+        g.pose().scale(sc, sc, 1.0f);
+        for (int i = 0; i < ls.size(); i++) {
+            int yy = i == 0 ? 0 : (i == ls.size() - 1 ? i * 10 + 6 : i * 10 + 2);
+            g.drawString(mc.font, ls.get(i), 0, yy, cs.get(i), true);
+        }
+        g.pose().popPose();
     }
 }
