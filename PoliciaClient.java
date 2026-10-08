@@ -236,9 +236,9 @@ public class PoliciaClient {
         int x = 8, y = 8;
         g.drawString(mc.font, "ARBOL DE HABILIDADES - XP " + s.xp, x, y, 0xFFE8C040, true);
         for (int i = 0; i < PoliciaMod.SKILLS.length; i++) {
-            boolean open = i < unlocked;
+            boolean open = i == 0 || ((s.un >> i) & 1) == 1;
             String line = (i == s.sel && open ? "> " : "  ") + (i + 1) + ". " + PoliciaMod.SKILLS[i];
-            if (!open) line += "  [" + (i * PoliciaMod.XP_PER_NODE) + " XP]";
+            if (!open) line += "  [" + PoliciaMod.XP_PER_NODE + " XP]";
             g.drawString(mc.font, line, x, y + 12 + i * 10, open ? (i == s.sel ? 0xFFFFFFFF : 0xFFB0C4DE) : 0xFF707070, true);
         }
         String st;
