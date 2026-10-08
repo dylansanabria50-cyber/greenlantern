@@ -58,7 +58,12 @@ public class PoliciaMod {
     public static final String[] SKILLS = {
             "Escudo balistico",
             "Tanque",
-            "Jet de combate (proximamente)"};
+            "Jet de combate (proximamente)",
+            "Tanque movil"};
+    /** Habilidad previa necesaria para desbloquear cada una. */
+    public static final int[] PRE = {-1, 0, 1, 1};
+    /** Niveles de experiencia que cuesta desbloquear (0 = se paga con XP_PER_NODE). */
+    public static final int[] LEVEL_COST = {0, 0, 0, 20};
     public static final int XP_PER_NODE = 10;
     public static final int SHIELD_TICKS = 240;   // 12 s
     public static final int SHIELD_COOLDOWN = 80; // 15 s
@@ -155,9 +160,14 @@ public class PoliciaMod {
         if (id >= 20) { // desbloquear habilidad (clic en el icono): cuesta XP
             int s = id - 20;
             if (s <= 0 || s >= SKILLS.length || has(p, s)) return;
-            if (!has(p, s - 1)) { msg(p, "Desbloquea primero: " + SKILLS[s - 1]); return; }
-            if (xp(p) < XP_PER_NODE) { msg(p, "Necesitas " + XP_PER_NODE + " XP para desbloquear " + SKILLS[s]); return; }
-            d.putInt("pol_xp", xp(p) - XP_PER_NODE);
+            if (!has(p, PRE[s])) { msg(p, "Desbloquea primero: " + SKILLS[PRE[s]]); return; }
+            if (LEVEL_COST[s] > 0) {
+                if (p.experienceLevel < LEVEL_COST[s]) { msg(p, "Necesitas " + LEVEL_COST[s] + " niveles de experiencia para desbloquear " + SKILLS[s] + " (tienes " + p.experienceLevel + ")"); return; }
+                p.giveExperienceLevels(-LEVEL_COST[s]);
+            } else {
+                if (xp(p) < XP_PER_NODE) { msg(p, "Necesitas " + XP_PER_NODE + " XP para desbloquear " + SKILLS[s]); return; }
+                d.putInt("pol_xp", xp(p) - XP_PER_NODE);
+            }
             d.putInt("pol_un", un(p) | (1 << s));
             msg(p, "Habilidad desbloqueada: " + SKILLS[s]);
             p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.2f);
@@ -202,6 +212,8 @@ public class PoliciaMod {
                 if (d.getInt("pol_tcd") > 0) { msg(p, "Tanque en enfriamiento: " + (d.getInt("pol_tcd") + 19) / 20 + " s"); return; }
                 PoliciaTank.summon(p);
                 sync(p);
+            } else if (s == 3) {
+                PoliciaTank.useMobile(p);
             } else {
                 msg(p, SKILLS[s]);
             }
