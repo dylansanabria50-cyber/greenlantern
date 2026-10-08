@@ -5,6 +5,15 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
+import net.minecraftforge.event.entity.player.AttackEntityEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.level.BlockEvent;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
@@ -52,7 +61,7 @@ public class PoliciaMod {
             "Jet de combate (proximamente)"};
     public static final int XP_PER_NODE = 10;
     public static final int SHIELD_TICKS = 240;   // 12 s
-    public static final int SHIELD_COOLDOWN = 300; // 15 s
+    public static final int SHIELD_COOLDOWN = 80; // 15 s
     static final double BLOCK_COS = 0.25;          // ~75 grados a cada lado del frente
     static final float BLOCK_FACTOR = 0.15f;       // recibe el 15% del dano de frente
 
@@ -134,7 +143,7 @@ public class PoliciaMod {
         CompoundTag d = p.getPersistentData();
         if (id == 0) { // alternar forma policia (skin)
             d.putBoolean("pol_on", !on(p));
-            if (!on(p)) { d.putInt("pol_shield", 0); endShield(p); }
+            if (!on(p)) { d.putInt("pol_shield", 0); endShield(p); } else { d.putInt("pol_tf", 40); transformFx(p); }
             msg(p, on(p) ? "Modo policia activado" : "Modo policia desactivado");
             sync(p);
             return;
@@ -189,6 +198,67 @@ public class PoliciaMod {
     }
 
     // ---------- escudo (item real en la mano izquierda) ----------
+    static final UUID SLOW_ID = UUID.fromString("7c1d2e3a-5b6f-4a90-8c11-2d3e4f5a6b7c");
+
+    /** Al terminar el escudo, aparta a todo lo que este a un bloque del jugador. */
+    static void pushMobs(ServerPlayer p) {
+        for (LivingEntity m : p.level().getEntitiesOfClass(LivingEntity.class, p.getBoundingBox().inflate(1.0), x -> x != p && x.isAlive())) {
+            m.knockback(1.8F, p.getX() - m.getX(), p.getZ() - m.getZ());
+            m.hurtMarked = true;
+        }
+        p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 0.4f, 1.8f);
+        p.serverLevel().sendParticles(ParticleTypes.CLOUD, p.getX(), p.getY() + 0.3, p.getZ(), 18, 0.5, 0.1, 0.5, 0.15);
+    }
+
+    /** Efecto de transformacion en policia: destello, sonido y espiral de luz. */
+    static void transformFx(ServerPlayer p) {
+        p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 1.0f, 1.4f);
+        p.serverLevel().sendParticles(ParticleTypes.FLASH, p.getX(), p.getY() + 1.0, p.getZ(), 1, 0, 0, 0, 0);
+        p.serverLevel().sendParticles(ParticleTypes.POOF, p.getX(), p.getY() + 0.1, p.getZ(), 25, 0.5, 0.05, 0.5, 0.08);
+    }
+
+    static void transformTick(ServerPlayer p) {
+        CompoundTag d = p.getPersistentData();
+        int tf = d.getInt("pol_tf");
+        if (tf <= 0) return;
+        d.putInt("pol_tf", --tf);
+        int t = 40 - tf;
+        double a = t * 0.55;
+        double y = p.getY() + Math.min(2.0, t * 0.055);
+        for (int k = 0; k < 2; k++) {
+            double ang = a + k * Math.PI;
+            p.serverLevel().sendParticles(ParticleTypes.END_ROD, p.getX() + Math.cos(ang) * 0.8, y, p.getZ() + Math.sin(ang) * 0.8, 1, 0, 0, 0, 0);
+        }
+        if (tf == 0) {
+            p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.PLAYERS, 0.6f, 1.5f);
+            p.serverLevel().sendParticles(ParticleTypes.FIREWORK, p.getX(), p.getY() + 1.0, p.getZ(), 30, 0.4, 0.8, 0.4, 0.12);
+        }
+    }
+
+    // ---------- con el escudo activo: nada de dano, ni golpear, ni interactuar ----------
+    @SubscribeEvent
+    public void noDamage(LivingAttackEvent e) {
+        if (!(e.getEntity() instanceof ServerPlayer p) || shield(p) <= 0 || !on(p)) return;
+        if (e.getSource().is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY)) return;
+        e.setCanceled(true);
+        p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 1.0f, 0.8f);
+    }
+
+    @SubscribeEvent
+    public void noAttack(AttackEntityEvent e) {
+        if (e.getEntity() instanceof ServerPlayer p && shield(p) > 0) e.setCanceled(true);
+    }
+
+    @SubscribeEvent
+    public void noInteract(PlayerInteractEvent e) {
+        if (e.getEntity() instanceof ServerPlayer p && shield(p) > 0 && e.isCancelable()) e.setCanceled(true);
+    }
+
+    @SubscribeEvent
+    public void noBreak(BlockEvent.BreakEvent e) {
+        if (e.getPlayer() instanceof ServerPlayer p && shield(p) > 0) e.setCanceled(true);
+    }
+
     static boolean isMine(ItemStack s) { return s.getItem() instanceof PoliciaShield; }
 
     static void purge(ServerPlayer p) {
@@ -210,6 +280,10 @@ public class PoliciaMod {
             }
             p.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(PoliciaShield.SHIELD.get()));
         }
+        AttributeInstance mv = p.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (mv != null && mv.getModifier(SLOW_ID) == null) {
+            mv.addTransientModifier(new AttributeModifier(SLOW_ID, "policia_shield_slow", -0.30, AttributeModifier.Operation.MULTIPLY_TOTAL));
+        }
         if (!p.isUsingItem() || !isMine(p.getUseItem())) p.startUsingItem(InteractionHand.OFF_HAND);
     }
 
@@ -221,6 +295,8 @@ public class PoliciaMod {
     static void endShield(ServerPlayer p) {
         CompoundTag d = p.getPersistentData();
         if (p.isUsingItem() && isMine(p.getUseItem())) p.stopUsingItem();
+        AttributeInstance mv = p.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (mv != null) mv.removeModifier(SLOW_ID);
         purge(p);
         if (d.getBoolean("pol_saved")) {
             ItemStack orig = d.contains("pol_off") ? ItemStack.of(d.getCompound("pol_off")) : ItemStack.EMPTY;
@@ -260,12 +336,14 @@ public class PoliciaMod {
         if (e.phase != TickEvent.Phase.END || !(e.player instanceof ServerPlayer p)) return;
         CompoundTag d = p.getPersistentData();
         boolean change = false;
+        transformTick(p);
         int sh = d.getInt("pol_shield");
         if (sh > 0) {
             d.putInt("pol_shield", --sh);
             if (sh > 0) keepShield(p);
             if (sh == 0) {
                 endShield(p);
+                pushMobs(p);
                 d.putInt("pol_cd", SHIELD_COOLDOWN);
                 p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.SHIELD_BREAK, SoundSource.PLAYERS, 0.5f, 1.4f);
                 msg(p, "El escudo se retiro");
@@ -279,22 +357,6 @@ public class PoliciaMod {
             }
         }
         if (change || p.tickCount % 40 == 0) sync(p);
-    }
-
-    @SubscribeEvent
-    public void hurt(LivingHurtEvent e) {
-        if (!(e.getEntity() instanceof ServerPlayer p) || shield(p) <= 0 || !on(p)) return;
-        DamageSource src = e.getSource();
-        Vec3 from = src.getSourcePosition();
-        if (from == null) return;
-        Vec3 dir = from.subtract(p.position()).multiply(1, 0, 1);
-        if (dir.lengthSqr() < 1.0E-4) return;
-        dir = dir.normalize();
-        Vec3 look = Vec3.directionFromRotation(0, p.yBodyRot);
-        if (look.dot(dir) >= BLOCK_COS) {
-            e.setAmount(e.getAmount() * BLOCK_FACTOR);
-            p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 1.0f, 0.8f);
-        }
     }
 
     @SubscribeEvent
