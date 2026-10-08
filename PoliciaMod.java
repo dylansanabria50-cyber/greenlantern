@@ -64,11 +64,12 @@ public class PoliciaMod {
             "Esposas",
             "Perro K9",
             "Sirena y torreta",
-            "Dron de vigilancia"};
+            "Dron de vigilancia",
+            "Escudo de burbuja"};
     /** Habilidad previa necesaria para desbloquear cada una. */
-    public static final int[] PRE = {-1, 0, 0, 0, 2, 1, 1, 3, 3};
+    public static final int[] PRE = {-1, 0, 0, 0, 2, 1, 1, 3, 3, 0};
     /** Niveles de experiencia que cuesta desbloquear (0 = se paga con XP_PER_NODE). */
-    public static final int[] LEVEL_COST = {0, 0, 0, 0, 20, 0, 0, 0, 0};
+    public static final int[] LEVEL_COST = {0, 0, 0, 0, 20, 0, 0, 0, 0, 0};
     public static final int XP_PER_NODE = 10;
     public static final int SHIELD_TICKS = 240;   // 12 s
     public static final int SHIELD_COOLDOWN = 80; // 15 s
@@ -93,18 +94,18 @@ public class PoliciaMod {
     public static class Sync {
         UUID id = new UUID(0, 0);
         boolean on;
-        int shield, cooldown, xp, sel, un, tcd, rl, rcd, c5, c6, c7, c8, jb;
+        int shield, cooldown, xp, sel, un, tcd, rl, rcd, c5, c6, c7, c8, c9, jb;
         Sync() { }
         static void enc(Sync m, FriendlyByteBuf b) {
             b.writeUUID(m.id); b.writeBoolean(m.on);
             b.writeVarInt(m.shield); b.writeVarInt(m.cooldown); b.writeVarInt(m.xp); b.writeVarInt(m.sel); b.writeVarInt(m.un); b.writeVarInt(m.tcd); b.writeVarInt(m.rl); b.writeVarInt(m.rcd);
-            b.writeVarInt(m.c5); b.writeVarInt(m.c6); b.writeVarInt(m.c7); b.writeVarInt(m.c8); b.writeVarInt(m.jb);
+            b.writeVarInt(m.c5); b.writeVarInt(m.c6); b.writeVarInt(m.c7); b.writeVarInt(m.c8); b.writeVarInt(m.c9); b.writeVarInt(m.jb);
         }
         static Sync dec(FriendlyByteBuf b) {
             Sync m = new Sync();
             m.id = b.readUUID(); m.on = b.readBoolean();
             m.shield = b.readVarInt(); m.cooldown = b.readVarInt(); m.xp = b.readVarInt(); m.sel = b.readVarInt(); m.un = b.readVarInt(); m.tcd = b.readVarInt(); m.rl = b.readVarInt(); m.rcd = b.readVarInt();
-            m.c5 = b.readVarInt(); m.c6 = b.readVarInt(); m.c7 = b.readVarInt(); m.c8 = b.readVarInt(); m.jb = b.readVarInt();
+            m.c5 = b.readVarInt(); m.c6 = b.readVarInt(); m.c7 = b.readVarInt(); m.c8 = b.readVarInt(); m.c9 = b.readVarInt(); m.jb = b.readVarInt();
             return m;
         }
         static void handle(Sync m, Supplier<NetworkEvent.Context> c) {
@@ -169,7 +170,7 @@ public class PoliciaMod {
         Sync m = new Sync();
         m.id = p.getUUID(); m.on = on(p);
         m.shield = shield(p); m.cooldown = cooldown(p); m.xp = xp(p); m.sel = sel(p); m.un = un(p); m.tcd = p.getPersistentData().getInt("pol_tcd"); m.rl = rlevel(p); m.rcd = p.getPersistentData().getInt("pol_rcd");
-        m.c5 = PoliciaExtra.cd(p, 5); m.c6 = PoliciaExtra.cd(p, 6); m.c7 = PoliciaExtra.cd(p, 7); m.c8 = PoliciaExtra.cd(p, 8);
+        m.c5 = PoliciaExtra.cd(p, 5); m.c6 = PoliciaExtra.cd(p, 6); m.c7 = PoliciaExtra.cd(p, 7); m.c8 = PoliciaExtra.cd(p, 8); m.c9 = PoliciaExtra.cd(p, 9);
         m.jb = "albanil".equals(job(p)) ? 2 : ("policia".equals(job(p)) ? 1 : 0);
         return m;
     }
@@ -213,6 +214,7 @@ public class PoliciaMod {
         if (id >= 20 && id < 30) { // desbloquear habilidad (clic en el icono): cuesta XP
             int s = id - 20;
             if (s <= 0 || s >= SKILLS.length || has(p, s)) return;
+            if (s == 9) { msg(p, "Se gana completando la mision especial del comisario"); return; }
             if (!has(p, PRE[s])) { msg(p, "Desbloquea primero: " + SKILLS[PRE[s]]); return; }
             if (LEVEL_COST[s] > 0) {
                 if (p.experienceLevel < LEVEL_COST[s]) { msg(p, "Necesitas " + LEVEL_COST[s] + " niveles de experiencia para desbloquear " + SKILLS[s] + " (tienes " + p.experienceLevel + ")"); return; }
@@ -501,7 +503,7 @@ public class PoliciaMod {
     public void onClone(PlayerEvent.Clone e) {
         CompoundTag o = e.getOriginal().getPersistentData();
         CompoundTag n = e.getEntity().getPersistentData();
-        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver", "pol_rl", "pol_job", "pol_hcd_t", "alb_lv","alb_hl","alb_ench","alb_mode","alb_bank","alb_lu", "alb_tu", "alb_tinv", "alb_sel", "alb_chest", "alb_inner", "alb_c0", "alb_c1"}) {
+        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver", "pol_rl", "pol_job", "pol_hcd_t", "alb_lv","alb_hl","alb_ench","alb_mode","alb_bank","alb_lu", "alb_tu", "alb_tinv", "alb_sel", "alb_chest", "alb_inner", "alb_c0", "alb_c1", "pol_mdone", "pol_bdone", "pol_cerebro"}) {
             if (o.contains(k)) n.put(k, o.get(k).copy());
         }
     }
