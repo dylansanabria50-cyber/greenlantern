@@ -104,7 +104,7 @@ public class PoliciaMod {
     // ---------- estado (en los datos persistentes del jugador) ----------
     static boolean on(Player p) {
         CompoundTag d = p.getPersistentData();
-        return !d.contains("pol_on") || d.getBoolean("pol_on");
+        return d.getBoolean("pol_on");
     }
     static int xp(Player p) { return p.getPersistentData().getInt("pol_xp"); }
     static int un(Player p) { return p.getPersistentData().getInt("pol_un") | 1; }
@@ -143,7 +143,10 @@ public class PoliciaMod {
         CompoundTag d = p.getPersistentData();
         if (id == 0) { // alternar forma policia (skin)
             d.putBoolean("pol_on", !on(p));
-            if (!on(p)) { d.putInt("pol_shield", 0); endShield(p); } else { d.putInt("pol_tf", 40); transformFx(p); }
+            if (!on(p)) { d.putInt("pol_shield", 0); endShield(p); }
+            d.putInt("pol_tf", 40);
+            d.putInt("pol_tfd", on(p) ? 1 : -1);
+            transformFx(p);
             msg(p, on(p) ? "Modo policia activado" : "Modo policia desactivado");
             sync(p);
             return;
@@ -210,28 +213,42 @@ public class PoliciaMod {
         p.serverLevel().sendParticles(ParticleTypes.CLOUD, p.getX(), p.getY() + 0.3, p.getZ(), 18, 0.5, 0.1, 0.5, 0.15);
     }
 
-    /** Efecto de transformacion en policia: destello, sonido y espiral de luz. */
+    static final net.minecraft.core.particles.DustParticleOptions NANO =
+            new net.minecraft.core.particles.DustParticleOptions(new org.joml.Vector3f(0.25f, 0.85f, 1.0f), 0.8f);
+    static final net.minecraft.core.particles.DustParticleOptions NANO2 =
+            new net.minecraft.core.particles.DustParticleOptions(new org.joml.Vector3f(0.85f, 0.92f, 1.0f), 0.6f);
+
+    /** Transformacion con nanotecnologia: inicio (sonido). */
     static void transformFx(ServerPlayer p) {
-        p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 1.0f, 1.4f);
-        p.serverLevel().sendParticles(ParticleTypes.FLASH, p.getX(), p.getY() + 1.0, p.getZ(), 1, 0, 0, 0, 0);
-        p.serverLevel().sendParticles(ParticleTypes.POOF, p.getX(), p.getY() + 0.1, p.getZ(), 25, 0.5, 0.05, 0.5, 0.08);
+        boolean form = p.getPersistentData().getInt("pol_tfd") > 0;
+        p.level().playSound(null, p.getX(), p.getY(), p.getZ(),
+                form ? SoundEvents.BEACON_POWER_SELECT : SoundEvents.BEACON_DEACTIVATE, SoundSource.PLAYERS, 1.0f, form ? 1.6f : 1.2f);
     }
 
+    /** Enjambre de nanobots: converge sobre el cuerpo al formarse y se dispersa al deshacerse. */
     static void transformTick(ServerPlayer p) {
         CompoundTag d = p.getPersistentData();
         int tf = d.getInt("pol_tf");
         if (tf <= 0) return;
         d.putInt("pol_tf", --tf);
-        int t = 40 - tf;
-        double a = t * 0.55;
-        double y = p.getY() + Math.min(2.0, t * 0.055);
-        for (int k = 0; k < 2; k++) {
-            double ang = a + k * Math.PI;
-            p.serverLevel().sendParticles(ParticleTypes.END_ROD, p.getX() + Math.cos(ang) * 0.8, y, p.getZ() + Math.sin(ang) * 0.8, 1, 0, 0, 0, 0);
+        boolean form = d.getInt("pol_tfd") > 0;
+        float prog = (40 - tf) / 40.0f;
+        var lv = p.serverLevel();
+        for (int k = 0; k < 14; k++) {
+            double ang = p.getRandom().nextDouble() * Math.PI * 2;
+            double yy = p.getY() + p.getRandom().nextDouble() * 1.9;
+            double r = form ? 1.6 - 1.2 * prog : 0.4 + 1.3 * prog;
+            lv.sendParticles(k % 3 == 0 ? NANO2 : NANO, p.getX() + Math.cos(ang) * r, yy, p.getZ() + Math.sin(ang) * r, 1, 0, 0, 0, 0);
+        }
+        if (tf % 4 == 0) lv.sendParticles(ParticleTypes.ELECTRIC_SPARK, p.getX(), p.getY() + 0.9, p.getZ(), 6, 0.35, 0.8, 0.35, 0.05);
+        if (tf % 8 == 0) {
+            p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS, 0.7f, 0.8f + prog);
         }
         if (tf == 0) {
-            p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.PLAYERS, 0.6f, 1.5f);
-            p.serverLevel().sendParticles(ParticleTypes.FIREWORK, p.getX(), p.getY() + 1.0, p.getZ(), 30, 0.4, 0.8, 0.4, 0.12);
+            p.level().playSound(null, p.getX(), p.getY(), p.getZ(),
+                    form ? SoundEvents.BEACON_ACTIVATE : SoundEvents.AMETHYST_BLOCK_RESONATE, SoundSource.PLAYERS, 0.8f, form ? 1.8f : 1.2f);
+            lv.sendParticles(ParticleTypes.FLASH, p.getX(), p.getY() + 1.1, p.getZ(), 1, 0, 0, 0, 0);
+            lv.sendParticles(ParticleTypes.END_ROD, p.getX(), p.getY() + 1.0, p.getZ(), 20, 0.4, 0.8, 0.4, 0.1);
         }
     }
 
