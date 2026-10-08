@@ -201,7 +201,7 @@ public class PoliciaClient {
     static void livingPre(net.minecraftforge.client.event.RenderLivingEvent.Pre<?, ?> e) {
         if (!(e.getEntity() instanceof Player p)) return;
         PoliciaMod.Sync s = STATE.get(p.getUUID());
-        if (s == null || !s.on || s.shield <= 0) return;
+        if (true) return;
         if (e.getRenderer().getModel() instanceof net.minecraft.client.model.PlayerModel<?> pm) {
             pm.rightArmPose = net.minecraft.client.model.HumanoidModel.ArmPose.BLOCK;
             pm.leftArmPose = net.minecraft.client.model.HumanoidModel.ArmPose.BLOCK;
@@ -493,7 +493,7 @@ public class PoliciaClient {
         PoliciaMod.Sync s = mine();
         if (mc.player == null || mc.options.hideGui || s == null || !s.on) return;
         // escudo visto desde atras, en primera persona
-        if (s.shield > 0 && mc.options.getCameraType().isFirstPerson()) {
+        if (false && s.shield > 0 && mc.options.getCameraType().isFirstPerson()) {
             int bw = 120, bh = 180;
             RenderSystem.enableBlend();
             g.blit(new net.minecraft.resources.ResourceLocation("policia", "textures/entity/escudo_hud.png"), 0, 0, sw, sh, 0f, 0f, 192, 108, 192, 108);
