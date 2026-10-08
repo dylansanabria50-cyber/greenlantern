@@ -17,8 +17,8 @@ public class PoliciaAlbanilScreen extends Screen {
     static final String[] NAMES = {"Pico de albanil", "MURO", "REFUGIO"};
     static final String[] DESC = {
             "Te da un pico de diamante durante 7 s, con Fuerza I y Prisa minera I. No se puede soltar. Enfriamiento: 8 s.",
-            "Levanta un muro de 3 de alto por 3 de largo frente a ti. Desaparece a los 15 s. Enfriamiento: 5 s.",
-            "Mejora de MURO: lo reemplaza. Levanta una casa simple con cama y cofre durante 35 s. Lo que dejes en el cofre vuelve a estar ahi cuando la invocas de nuevo. Enfriamiento: 40 s."};
+            "Levanta un muro de 3 de alto por 3 de largo frente a ti. Puedes hacer hasta 3 muros (pulsa J de nuevo para cada uno). Desaparecen a los 15 s. Enfriamiento: 5 s.",
+            "Mejora de MURO: lo reemplaza. Casa sobre la superficie con puerta y piso de madera, cama y cofre, durante 35 s. Lo que dejes dentro (cofre, bloques, objetos) vuelve a estar en el mismo lugar cuando la invocas de nuevo. Enfriamiento: 40 s."};
     static final int[] CX = {174, 174, 174};
     static final int[] ROW = {0, 1, 2};
     int px, py;
@@ -191,7 +191,7 @@ public class PoliciaAlbanilScreen extends Screen {
             else if (s.c0 > 0) st = "Pico en enfriamiento: " + (s.c0 + 19) / 20 + " s";
             else st = "Pico listo (J)";
         } else {
-            if (s.structT > 0) st = n1 + " activo: " + (s.structT + 19) / 20 + " s";
+            if (s.structT > 0) st = n1 + " activo: " + (s.structT + 19) / 20 + " s" + (s.lv < 2 ? " - muros " + s.walls + "/3 (J: otro)" : "");
             else if (s.c1 > 0) st = n1 + " en enfriamiento: " + (s.c1 + 19) / 20 + " s";
             else st = n1 + " listo (J)";
         }
