@@ -74,6 +74,7 @@ public class PoliciaClient {
     static void renderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers e) {
         e.registerEntityRenderer(PoliciaTank.TANK.get(), PoliciaTankRender::new);
         e.registerEntityRenderer(PoliciaRefuerzo.AGENT.get(), PoliciaRefuerzoRender::new);
+        PoliciaExtraRender.register(e);
     }
 
     static java.lang.reflect.Method CAM_MOVE;
@@ -505,10 +506,13 @@ public class PoliciaClient {
         java.util.List<String> ls = new java.util.ArrayList<>();
         java.util.List<Integer> cs = new java.util.ArrayList<>();
         ls.add("ARBOL DE HABILIDADES - XP " + s.xp); cs.add(0xFFE8C040);
-        for (int i = 0; i < 4; i++) {
+        int num = 0;
+        for (int i = 0; i < PoliciaMod.SKILLS.length; i++) {
+            if (i == 4) continue;
+            num++;
             boolean open = i == 0 || ((s.un >> i) & 1) == 1;
             String nm = (i == 2 && up) ? PoliciaMod.SKILLS[4] : PoliciaMod.SKILLS[i];
-            String line = (i == s.sel && open ? "> " : "  ") + (i + 1) + ". " + nm;
+            String line = (i == s.sel && open ? "> " : "  ") + num + ". " + nm;
             if (!open) line += "  [" + (PoliciaMod.LEVEL_COST[i] > 0 ? PoliciaMod.LEVEL_COST[i] + " niveles" : PoliciaMod.XP_PER_NODE + " XP") + "]";
             ls.add(line);
             cs.add(open ? (i == s.sel ? 0xFFFFFFFF : 0xFFB0C4DE) : 0xFF707070);
@@ -520,6 +524,10 @@ public class PoliciaClient {
         }
         else if (s.sel == 2) st = s.tcd > 0 ? "Tanque en enfriamiento: " + (s.tcd + 19) / 20 + " s" : (up ? "Tanque movil listo (J)" : "Tanque listo (J)");
         else if (s.sel == 1) st = s.rcd > 0 ? "Refuerzo en enfriamiento: " + (s.rcd + 19) / 20 + " s" : "Refuerzo nv " + Math.max(1, s.rl) + " listo (J)";
+        else if (s.sel >= 5) {
+            int cc = s.sel == 5 ? s.c5 : (s.sel == 6 ? s.c6 : (s.sel == 7 ? s.c7 : s.c8));
+            st = PoliciaMod.SKILLS[s.sel] + (cc > 0 ? " en enfriamiento: " + (cc + 19) / 20 + " s" : " listo (J)");
+        }
         else if (s.sel == 3) st = "Helicoptero: proximamente";
         else if (s.shield > 0) st = "Escudo activo: " + (s.shield + 19) / 20 + " s";
         else if (s.cooldown > 0) st = "Escudo en enfriamiento: " + (s.cooldown + 19) / 20 + " s";
