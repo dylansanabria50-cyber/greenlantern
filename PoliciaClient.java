@@ -54,6 +54,13 @@ public class PoliciaClient {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::overlays);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::tick);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::render);
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::setup);
+    }
+
+    static void setup(net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent e) {
+        e.enqueueWork(() -> net.minecraft.client.renderer.item.ItemProperties.register(PoliciaShield.SHIELD.get(),
+                new net.minecraft.resources.ResourceLocation("blocking"),
+                (st, lv, en, sd) -> en != null && en.isUsingItem() && en.getUseItem() == st ? 1.0F : 0.0F));
     }
 
     static void keys(RegisterKeyMappingsEvent e) {
@@ -137,7 +144,7 @@ public class PoliciaClient {
     static void render(RenderPlayerEvent.Post e) {
         Player p = e.getEntity();
         PoliciaMod.Sync s = STATE.get(p.getUUID());
-        if (s == null || !s.on || s.shield <= 0) return;
+        if (true || s == null || !s.on || s.shield <= 0) return;
         PoseStack ps = e.getPoseStack();
         MultiBufferSource buf = e.getMultiBufferSource();
         int light = e.getPackedLight();
@@ -175,7 +182,7 @@ public class PoliciaClient {
         PoliciaMod.Sync s = mine();
         if (mc.player == null || mc.options.hideGui || s == null || !s.on) return;
         // escudo visto desde atras, en primera persona
-        if (s.shield > 0 && mc.options.getCameraType().isFirstPerson()) {
+        if (false && s.shield > 0 && mc.options.getCameraType().isFirstPerson()) {
             int bw = 120, bh = 180;
             RenderSystem.enableBlend();
             g.blit(TEX_BACK, sw / 2 - bw / 2, sh - bh + 20, bw, bh, 0f, 0f, 32, 48, 32, 48);
