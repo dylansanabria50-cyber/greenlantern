@@ -78,6 +78,7 @@ public class PoliciaClient {
         e.registerEntityRenderer(PoliciaTank.TANK.get(), PoliciaTankRender::new);
         e.registerEntityRenderer(PoliciaRefuerzo.AGENT.get(), PoliciaRefuerzoRender::new);
         PoliciaExtraRender.register(e);
+        e.registerEntityRenderer(PoliciaHeli.HELI.get(), PoliciaHeliRender::new);
     }
 
     static java.lang.reflect.Method CAM_MOVE;
@@ -87,7 +88,7 @@ public class PoliciaClient {
     static void camera(net.minecraftforge.client.event.ViewportEvent.ComputeCameraAngles e) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.getCameraType().isFirstPerson()) return;
-        if (!(mc.player.getVehicle() instanceof PoliciaTank.TankEntity)) return;
+        if (!(mc.player.getVehicle() instanceof PoliciaTank.TankEntity || mc.player.getVehicle() instanceof PoliciaHeli.HeliEntity)) return;
         if (!camTried) {
             camTried = true;
             try {
@@ -215,6 +216,11 @@ public class PoliciaClient {
     /** Con el escudo activo no se puede golpear ni interactuar. */
     static void noClicks(net.minecraftforge.client.event.InputEvent.InteractionKeyMappingTriggered e) {
         Minecraft mc0 = Minecraft.getInstance();
+        if (mc0.player != null && mc0.player.getVehicle() instanceof PoliciaHeli.HeliEntity) {
+            e.setCanceled(true);
+            e.setSwingHand(false);
+            return;
+        }
         if (mc0.player != null && mc0.player.getVehicle() instanceof PoliciaTank.TankEntity) {
             if (e.isUseItem()) send(3);
             e.setCanceled(true);
@@ -531,7 +537,7 @@ public class PoliciaClient {
             int cc = s.sel == 5 ? s.c5 : (s.sel == 6 ? s.c6 : (s.sel == 7 ? s.c7 : s.c8));
             st = PoliciaMod.SKILLS[s.sel] + (cc > 0 ? " en enfriamiento: " + (cc + 19) / 20 + " s" : " listo (J)");
         }
-        else if (s.sel == 3) st = "Helicoptero: proximamente";
+        else if (s.sel == 3) st = mc.player.getVehicle() instanceof PoliciaHeli.HeliEntity ? "HELICOPTERO: W/S avanzar, A/D desplazar, mira arriba/abajo para subir/bajar, Shift bajar" : "Helicoptero listo (J)";
         else if (s.shield > 0) st = "Escudo activo: " + (s.shield + 19) / 20 + " s";
         else if (s.cooldown > 0) st = "Escudo en enfriamiento: " + (s.cooldown + 19) / 20 + " s";
         else st = "Escudo listo (J)";
