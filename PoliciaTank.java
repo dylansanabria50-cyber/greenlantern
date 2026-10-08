@@ -32,16 +32,16 @@ public class PoliciaTank {
     public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, "policia");
     public static final RegistryObject<EntityType<TankEntity>> TANK = ENTITIES.register("tanque",
             () -> EntityType.Builder.<TankEntity>of(TankEntity::new, MobCategory.MISC)
-                    .sized(2.4f, 3.0f).fireImmune().noSave().clientTrackingRange(10).updateInterval(1)
+                    .sized(7.2f, 9.0f).fireImmune().noSave().clientTrackingRange(10).updateInterval(1)
                     .build("policia:tanque"));
 
     public static final float SCALE = 0.45f;
-    /** Tamano final: cuerpo de 4 bloques de largo y 3 de alto. */
-    public static final float SX = 0.48f, SY = 0.62f;
+    /** Tamano final: 3 veces el anterior (12 x 9 bloques). */
+    public static final float SX = 1.44f, SY = 1.86f;
     public static final int COOLDOWN = 600;   // 30 s
     static final int LOAD_TICKS = 12;         // carga antes del disparo
     static final int END_TICKS = 62;          // el tanque se retira
-    static final double MIN_RANGE = 7.0;
+    static final double MIN_RANGE = 16.0;
     /** Pivotes del modelo (unidades del modelo): torreta y canon. */
     static final float[] PT = {0f, 2.6875f, -0.4375f};
     static final float[] PB = {0f, 2.3125f, -1.4375f};
@@ -96,7 +96,7 @@ public class PoliciaTank {
         @Override
         public Packet<ClientGamePacketListener> getAddEntityPacket() { return NetworkHooks.getEntitySpawningPacket(this); }
         @Override
-        public double getPassengersRidingOffset() { return 3.3; }
+        public double getPassengersRidingOffset() { return 9.9; }
         @Override
         public boolean shouldRiderSit() { return false; }
         @Override
