@@ -24,6 +24,17 @@ public class PoliciaXray {
     static final List<BlockPos> POS = new ArrayList<>();
     static final List<float[]> COL = new ArrayList<>();
     static final int R = 4;
+    /** Seleccion del area de picado (tecla X mantenida). */
+    static boolean zoning;
+    static int zl = 8, zw = 3;
+
+    static void scroll(net.minecraftforge.client.event.InputEvent.MouseScrollingEvent e) {
+        if (!zoning) return;
+        e.setCanceled(true);
+        int s = e.getScrollDelta() > 0 ? 1 : -1;
+        if (e.isShiftDown()) zw = Math.max(1, Math.min(9, zw + s));
+        else zl = Math.max(1, Math.min(24, zl + s));
+    }
 
     static boolean active() {
         PoliciaAlbanil.AlbSync s = PoliciaAlbanil.CL;
@@ -73,7 +84,7 @@ public class PoliciaXray {
     }
 
     static void render(RenderLevelStageEvent e) {
-        if (e.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS || POS.isEmpty()) return;
+        if (e.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS || (POS.isEmpty() && !zoning)) return;
         Minecraft mc = Minecraft.getInstance();
         Vec3 cam = e.getCamera().getPosition();
         PoseStack ps = e.getPoseStack();
@@ -85,6 +96,17 @@ public class PoliciaXray {
             float[] c = COL.get(i);
             LevelRenderer.renderLineBox(ps, vc, b.getX() - cam.x, b.getY() - cam.y, b.getZ() - cam.z,
                     b.getX() + 1 - cam.x, b.getY() + 1 - cam.y, b.getZ() + 1 - cam.z, c[0], c[1], c[2], 1.0f);
+        }
+        if (zoning && mc.player != null) {
+            net.minecraft.core.Direction f = mc.player.getDirection();
+            net.minecraft.core.Direction r = f.getClockWise();
+            BlockPos o = mc.player.blockPosition();
+            int lo = -((zw - 1) / 2), hi = zw / 2;
+            BlockPos a = PoliciaAlbanil.at(o, f, r, 1, lo, 0);
+            BlockPos b = PoliciaAlbanil.at(o, f, r, zl, hi, 2);
+            double x0 = Math.min(a.getX(), b.getX()), y0 = Math.min(a.getY(), b.getY()), z0 = Math.min(a.getZ(), b.getZ());
+            double x1 = Math.max(a.getX(), b.getX()) + 1, y1 = Math.max(a.getY(), b.getY()) + 1, z1 = Math.max(a.getZ(), b.getZ()) + 1;
+            LevelRenderer.renderLineBox(ps, vc, x0 - cam.x, y0 - cam.y, z0 - cam.z, x1 - cam.x, y1 - cam.y, z1 - cam.z, 0.2f, 1.0f, 0.3f, 1.0f);
         }
         bs.endBatch(RenderType.lines());
         RenderSystem.enableDepthTest();
