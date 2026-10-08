@@ -21,7 +21,7 @@ public class PoliciaTreeScreen extends Screen {
             "Despliega un escudo antidisturbios durante 12 s. Bloquea los golpes de frente.",
             "Policias de refuerzo que te protegen y atacan a tus enemigos.",
             "Invoca un tanque bajo tus pies. Apunta y dispara con clic derecho una sola vez; luego se retira. Enfriamiento: 30 s.",
-            "Invoca un helicoptero pilotable. (Proximamente)",
+            "Invoca un helicoptero policial pilotable: W/S avanzar, A/D desplazar, mira arriba o abajo para subir o bajar. Dura 2 min y aterriza solo. Enfriamiento: 60 s.",
             "Mejora del Tanque: lo reemplaza. Conduce con WASD, 3 disparos con clic derecho; baja con Mayus y vuelve a subir con clic derecho. Enfriamiento: 30 s.",
             "Apunta a un objetivo (hasta 12 m) y lo esposas 15 s: no puede atacar ni interactuar y tu puedes arrastrarlo. Enfriamiento: 30 s.",
             "Invoca un perro policia que te protege, ataca amenazas y marca con brillo a los enemigos cercanos. Dura 45 s. Enfriamiento: 60 s.",
