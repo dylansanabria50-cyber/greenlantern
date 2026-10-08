@@ -151,10 +151,8 @@ public class PoliciaRefuerzo {
             this.goalSelector.addGoal(3, new FollowGoal(this));
             this.goalSelector.addGoal(5, new LookAtPlayerGoal(this, Player.class, 8.0f));
             this.goalSelector.addGoal(6, new RandomLookAroundGoal(this));
-            this.targetSelector.addGoal(1, new DefendGoal(this, true));
-            this.targetSelector.addGoal(2, new DefendGoal(this, false));
-            this.targetSelector.addGoal(3, new HurtByTargetGoal(this));
-            this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<LivingEntity>(this, LivingEntity.class, 5, true, false, this::threat));
+            this.targetSelector.addGoal(1, new SpreadGoal(this));
+            this.targetSelector.addGoal(2, new HurtByTargetGoal(this));
         }
 
         @Override
@@ -240,6 +238,73 @@ public class PoliciaRefuerzo {
 
         @Override
         public void stop() { a.getNavigation().stop(); }
+    }
+
+    /** Reparte a los policias: con varios enemigos, cada policia elige un objetivo distinto. */
+    static class SpreadGoal extends TargetGoal {
+        final AgentEntity a;
+        LivingEntity cand;
+
+        SpreadGoal(AgentEntity a) {
+            super(a, false);
+            this.a = a;
+            setFlags(EnumSet.of(Flag.TARGET));
+        }
+
+        @Override
+        public boolean canUse() {
+            if ((a.tickCount + a.getId()) % 8 != 0) return false;
+            ServerPlayer o = a.ownerPlayer();
+            if (o == null) return false;
+            LivingEntity my = a.getTarget();
+            if (my != null && !my.isAlive()) {
+                a.setTarget(null);
+                my = null;
+            }
+            java.util.List<LivingEntity> threats = new java.util.ArrayList<>();
+            for (LivingEntity e : a.level().getEntitiesOfClass(LivingEntity.class, o.getBoundingBox().inflate(24.0),
+                    x -> x.isAlive() && a.threat(x) && a.canAttack(x))) {
+                threats.add(e);
+            }
+            LivingEntity hb = o.getLastHurtByMob();
+            if (hb != null && hb.isAlive() && !threats.contains(hb) && a.canAttack(hb) && a.distanceToSqr(hb) < 900.0) threats.add(hb);
+            LivingEntity hm = o.getLastHurtMob();
+            if (hm != null && hm.isAlive() && !threats.contains(hm) && a.canAttack(hm) && a.distanceToSqr(hm) < 900.0) threats.add(hm);
+            if (threats.isEmpty()) return false;
+            java.util.Set<LivingEntity> claimed = new java.util.HashSet<>();
+            for (AgentEntity b : a.level().getEntitiesOfClass(AgentEntity.class, o.getBoundingBox().inflate(48.0),
+                    x -> x != a && o.getUUID().equals(x.owner))) {
+                if (b.getTarget() != null) claimed.add(b.getTarget());
+            }
+            boolean shared = my != null && claimed.contains(my);
+            if (my != null && !shared) return false;
+            LivingEntity best = null;
+            double bd = 1.0E18;
+            for (LivingEntity e : threats) {
+                if (claimed.contains(e)) continue;
+                double dd = a.distanceToSqr(e);
+                if (dd < bd) { bd = dd; best = e; }
+            }
+            if (best == null) {
+                if (my != null) return false;
+                for (LivingEntity e : threats) {
+                    double dd = a.distanceToSqr(e);
+                    if (dd < bd) { bd = dd; best = e; }
+                }
+            }
+            if (best == null || best == my) return false;
+            cand = best;
+            return true;
+        }
+
+        @Override
+        public boolean canContinueToUse() { return false; }
+
+        @Override
+        public void start() { a.setTarget(cand); }
+
+        @Override
+        public void stop() { }
     }
 
     /** Ataca a quien dane al jugador o a lo que el jugador ataca. */
