@@ -353,6 +353,8 @@ public class PoliciaMod {
         CompoundTag d = p.getPersistentData();
         boolean change = false;
         transformTick(p);
+        int nf = d.getInt("pol_nofall");
+        if (nf > 0) { d.putInt("pol_nofall", nf - 1); p.fallDistance = 0.0f; }
         int tc = d.getInt("pol_tcd");
         if (tc > 0) {
             d.putInt("pol_tcd", tc - 1);
@@ -378,6 +380,11 @@ public class PoliciaMod {
             }
         }
         if (change || p.tickCount % 40 == 0) sync(p);
+    }
+
+    @SubscribeEvent
+    public void noFall(net.minecraftforge.event.entity.living.LivingFallEvent e) {
+        if (e.getEntity() instanceof ServerPlayer p && p.getPersistentData().getInt("pol_nofall") > 0) e.setCanceled(true);
     }
 
     @SubscribeEvent
