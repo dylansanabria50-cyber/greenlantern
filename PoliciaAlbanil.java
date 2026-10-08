@@ -62,13 +62,13 @@ public class PoliciaAlbanil {
 
     /** Estado del propio jugador, visto por su cliente. */
     public static class AlbSync {
-        int lv, sel, pickT, structT, c0, c1, walls, hl, ht, hc, mode, lu, lt, lc, zl, zw;
+        int lv, sel, pickT, structT, c0, c1, walls, hl, ht, hc, mode, lu, lt, lc, zl, zw, tu, tc, ta;
         static void enc(AlbSync m, FriendlyByteBuf b) {
-            b.writeVarInt(m.lv); b.writeVarInt(m.sel); b.writeVarInt(m.pickT); b.writeVarInt(m.structT); b.writeVarInt(m.c0); b.writeVarInt(m.c1); b.writeVarInt(m.walls); b.writeVarInt(m.hl); b.writeVarInt(m.ht); b.writeVarInt(m.hc); b.writeVarInt(m.mode); b.writeVarInt(m.lu); b.writeVarInt(m.lt); b.writeVarInt(m.lc); b.writeVarInt(m.zl); b.writeVarInt(m.zw);
+            b.writeVarInt(m.lv); b.writeVarInt(m.sel); b.writeVarInt(m.pickT); b.writeVarInt(m.structT); b.writeVarInt(m.c0); b.writeVarInt(m.c1); b.writeVarInt(m.walls); b.writeVarInt(m.hl); b.writeVarInt(m.ht); b.writeVarInt(m.hc); b.writeVarInt(m.mode); b.writeVarInt(m.lu); b.writeVarInt(m.lt); b.writeVarInt(m.lc); b.writeVarInt(m.zl); b.writeVarInt(m.zw); b.writeVarInt(m.tu); b.writeVarInt(m.tc); b.writeVarInt(m.ta);
         }
         static AlbSync dec(FriendlyByteBuf b) {
             AlbSync m = new AlbSync();
-            m.lv = b.readVarInt(); m.sel = b.readVarInt(); m.pickT = b.readVarInt(); m.structT = b.readVarInt(); m.c0 = b.readVarInt(); m.c1 = b.readVarInt(); m.walls = b.readVarInt(); m.hl = b.readVarInt(); m.ht = b.readVarInt(); m.hc = b.readVarInt(); m.mode = b.readVarInt(); m.lu = b.readVarInt(); m.lt = b.readVarInt(); m.lc = b.readVarInt(); m.zl = b.readVarInt(); m.zw = b.readVarInt();
+            m.lv = b.readVarInt(); m.sel = b.readVarInt(); m.pickT = b.readVarInt(); m.structT = b.readVarInt(); m.c0 = b.readVarInt(); m.c1 = b.readVarInt(); m.walls = b.readVarInt(); m.hl = b.readVarInt(); m.ht = b.readVarInt(); m.hc = b.readVarInt(); m.mode = b.readVarInt(); m.lu = b.readVarInt(); m.lt = b.readVarInt(); m.lc = b.readVarInt(); m.zl = b.readVarInt(); m.zw = b.readVarInt(); m.tu = b.readVarInt(); m.tc = b.readVarInt(); m.ta = b.readVarInt();
             return m;
         }
         static void handle(AlbSync m, Supplier<NetworkEvent.Context> c) {
@@ -82,6 +82,7 @@ public class PoliciaAlbanil {
     static void init() {
         PoliciaMod.NET.registerMessage(2, AlbSync.class, AlbSync::enc, AlbSync::dec, AlbSync::handle);
         PoliciaAyudante.init();
+        PoliciaTractor.init();
     }
 
     static boolean isAlb(net.minecraft.world.entity.player.Player p) { return JOB.equals(PoliciaMod.job(p)); }
@@ -105,12 +106,16 @@ public class PoliciaAlbanil {
         m.lc = d.getInt("alb_lcd");
         m.zl = d.getInt("alb_zon") == 1 ? d.getInt("alb_zl") : 0;
         m.zw = d.getInt("alb_zw");
+        m.tu = d.getInt("alb_tu");
+        m.tc = d.getInt("alb_tcd");
+        m.ta = d.getInt("alb_tact");
         PoliciaMod.NET.send(PacketDistributor.PLAYER.with(() -> p), m);
     }
 
     static String nm(ServerPlayer p, int s) {
         if (s == 2) return "AYUDANTE";
         if (s == 3) return "LINTERNA";
+        if (s == 4) return "TRACTOR";
         return s == 0 ? NAMES[0] : (lv(p) >= 2 ? NAMES[2] : NAMES[1]);
     }
 
@@ -120,7 +125,12 @@ public class PoliciaAlbanil {
     static void act(ServerPlayer p, int id) {
         CompoundTag d = p.getPersistentData();
         if (id >= 1000) { setZone(p, (id - 1000) / 10, (id - 1000) % 10); return; }
-        if (id == 50) { PoliciaAyudante.openBank(p); return; }
+        if (id == 50) { if (p.getVehicle() instanceof PoliciaTractor.TractorEntity) PoliciaTractor.openInv(p); else PoliciaAyudante.openBank(p); return; }
+        if (id == 42) { PoliciaTractor.unlock(p); return; }
+        if (id == 15) {
+            if (d.getInt("alb_tu") >= 1) { d.putInt("alb_sel", 4); PoliciaMod.msg(p, "Habilidad: TRACTOR"); PoliciaMod.sync(p); }
+            return;
+        }
         if (id == 41) { // desbloquear LINTERNA
             if (d.getInt("alb_lu") >= 1) { PoliciaMod.msg(p, "LINTERNA ya esta desbloqueada"); return; }
             if (PoliciaMod.xp(p) < COST) { PoliciaMod.msg(p, "Necesitas " + COST + " XP (tienes " + PoliciaMod.xp(p) + ")"); return; }
@@ -187,9 +197,9 @@ public class PoliciaAlbanil {
         if (id == 2) {
             int cur = d.getInt("alb_sel");
             int s = cur;
-            for (int k = 1; k <= 4; k++) {
-                int c = (cur + k) % 4;
-                if (c == 0 || (c == 1 && lv(p) >= 1) || (c == 2 && d.getInt("alb_hl") >= 1) || (c == 3 && d.getInt("alb_lu") >= 1)) { s = c; break; }
+            for (int k = 1; k <= 5; k++) {
+                int c = (cur + k) % 5;
+                if (c == 0 || (c == 1 && lv(p) >= 1) || (c == 2 && d.getInt("alb_hl") >= 1) || (c == 3 && d.getInt("alb_lu") >= 1) || (c == 4 && d.getInt("alb_tu") >= 1)) { s = c; break; }
             }
             d.putInt("alb_sel", s);
             PoliciaMod.msg(p, "Habilidad: " + nm(p, s));
@@ -210,6 +220,7 @@ public class PoliciaAlbanil {
         if (s == 1 && lv(p) < 1) s = 0;
         if (s == 2) { PoliciaAyudante.use(p); return; }
         if (s == 3) { toggleLamp(p); return; }
+        if (s == 4) { PoliciaTractor.use(p); return; }
         if (s == 0) {
             if (d.getInt("alb_pick") > 0) { PoliciaMod.msg(p, "El pico ya esta activo"); return; }
             if (d.getInt("alb_c0") > 0) { PoliciaMod.msg(p, "Pico en enfriamiento: " + (d.getInt("alb_c0") + 19) / 20 + " s"); return; }
@@ -603,6 +614,7 @@ public class PoliciaAlbanil {
         if (d.getInt("alb_ht") > 0) { d.putInt("alb_ht", 0); PoliciaAyudante.clear(p); }
         if (d.getInt("alb_lamp") > 0) d.putInt("alb_lamp", 0);
         lampClear(p);
+        PoliciaTractor.retire(p);
     }
 
     // ---------- eventos ----------
@@ -656,6 +668,11 @@ public class PoliciaAlbanil {
             d.putInt("alb_lcd", c);
             if (c == 0) { PoliciaMod.msg(p, "Linterna lista"); ch = true; }
         }
+        if (d.getInt("alb_tact") == 0 && d.getInt("alb_tcd") > 0) {
+            int c = d.getInt("alb_tcd") - 1;
+            d.putInt("alb_tcd", c);
+            if (c == 0) { PoliciaMod.msg(p, "Tractor listo"); ch = true; }
+        }
         int ht = d.getInt("alb_ht");
         if (ht > 0) {
             d.putInt("alb_ht", --ht);
@@ -698,7 +715,7 @@ public class PoliciaAlbanil {
 
     @SubscribeEvent
     public void logout(PlayerEvent.PlayerLoggedOutEvent e) {
-        if (e.getEntity() instanceof ServerPlayer p) { reset(p); PoliciaAyudante.BANKS.remove(p.getUUID()); }
+        if (e.getEntity() instanceof ServerPlayer p) { reset(p); PoliciaAyudante.BANKS.remove(p.getUUID()); PoliciaTractor.INVS.remove(p.getUUID()); }
     }
 
     @SubscribeEvent
