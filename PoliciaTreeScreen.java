@@ -19,7 +19,7 @@ public class PoliciaTreeScreen extends Screen {
     static final String[] NAMES = {"Escudo balistico", "Invocar tanque", "Jet de combate"};
     static final String[] DESC = {
             "Despliega un escudo antidisturbios durante 12 s. Bloquea los golpes de frente.",
-            "Invoca un tanque que dispara una sola vez y desaparece. (Proximamente)",
+            "Invoca un tanque bajo tus pies. Apunta con la mira y dispara con clic derecho una sola vez; luego se retira. Enfriamiento: 30 s.",
             "Invoca un jet de combate pilotable. (Proximamente)"};
     int px, py;
 
