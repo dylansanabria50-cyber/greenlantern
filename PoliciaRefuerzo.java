@@ -54,8 +54,8 @@ public class PoliciaRefuerzo {
     public static final int[] COUNT = {0, 1, 3, 5, 6};
     /** Material de la espada por nivel. */
     public static final String[] SWORD = {"", "piedra", "hierro", "diamante", "netherita"};
-    static final int LIFE = 1200;      // 60 s en el campo
-    static final int COOLDOWN = 1800;  // 90 s desde que se invocan
+    static final int LIFE = 700;       // 35 s en el campo
+    static final int COOLDOWN = 300;   // 15 s desde que se invocan
 
     public static void attrs(EntityAttributeCreationEvent e) {
         e.put(AGENT.get(), AgentEntity.attrs().build());
