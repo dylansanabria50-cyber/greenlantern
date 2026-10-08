@@ -117,7 +117,7 @@ public class PoliciaClient {
                         if (F_MODEL != null) ORIG_MODEL.put(en.getKey(), (String) F_MODEL.get(info));
                     }
                     tex.put(MinecraftProfileTexture.Type.SKIN, TEX_SKIN);
-                    if (F_MODEL != null) F_MODEL.set(info, "default");
+                    if (F_MODEL != null) F_MODEL.set(info, "slim");
                 } else if (TEX_SKIN.equals(cur)) {
                     ResourceLocation o = ORIG_SKIN.remove(en.getKey());
                     if (o != null) tex.put(MinecraftProfileTexture.Type.SKIN, o);
