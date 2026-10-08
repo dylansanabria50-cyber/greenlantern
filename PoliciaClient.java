@@ -407,7 +407,7 @@ public class PoliciaClient {
     static void render(RenderPlayerEvent.Post e) {
         Player p = e.getEntity();
         PoliciaMod.Sync s = STATE.get(p.getUUID());
-        if (s == null || !s.on || s.shield <= 0) return;
+        if (true) return;
         PoseStack ps = e.getPoseStack();
         MultiBufferSource buf = e.getMultiBufferSource();
         int light = e.getPackedLight();
