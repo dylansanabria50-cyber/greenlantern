@@ -57,13 +57,14 @@ public class PoliciaMod {
     /** Rama de habilidades, en orden. Solo la primera esta implementada por ahora. */
     public static final String[] SKILLS = {
             "Escudo balistico",
+            "REFUERZO",
             "Tanque",
-            "Jet de combate (proximamente)",
+            "Helicoptero",
             "Tanque movil"};
     /** Habilidad previa necesaria para desbloquear cada una. */
-    public static final int[] PRE = {-1, 0, 1, 1};
+    public static final int[] PRE = {-1, 0, 1, 2, 2};
     /** Niveles de experiencia que cuesta desbloquear (0 = se paga con XP_PER_NODE). */
-    public static final int[] LEVEL_COST = {0, 0, 0, 20};
+    public static final int[] LEVEL_COST = {0, 0, 0, 0, 20};
     public static final int XP_PER_NODE = 10;
     public static final int SHIELD_TICKS = 240;   // 12 s
     public static final int SHIELD_COOLDOWN = 80; // 15 s
@@ -112,7 +113,18 @@ public class PoliciaMod {
         return d.getBoolean("pol_on");
     }
     static int xp(Player p) { return p.getPersistentData().getInt("pol_xp"); }
-    static int un(Player p) { return p.getPersistentData().getInt("pol_un") | 1; }
+    static int un(Player p) {
+        CompoundTag d = p.getPersistentData();
+        if (d.getInt("pol_ver") < 2) { // el orden de la rama cambio: pasa lo desbloqueado a su nueva posicion
+            int o = d.getInt("pol_un");
+            int n = (o & 1) | (((o >> 1) & 1) << 2) | (((o >> 2) & 1) << 3) | (((o >> 3) & 1) << 4);
+            d.putInt("pol_un", n);
+            int so = d.getInt("pol_sel");
+            d.putInt("pol_sel", so == 0 ? 0 : (so == 2 ? 3 : 2));
+            d.putInt("pol_ver", 2);
+        }
+        return d.getInt("pol_un") | 1;
+    }
     static boolean has(Player p, int i) { return ((un(p) >> i) & 1) == 1; }
     static int sel(Player p) { return p.getPersistentData().getInt("pol_sel"); }
     static int shield(Player p) { return p.getPersistentData().getInt("pol_shield"); }
@@ -176,6 +188,7 @@ public class PoliciaMod {
         }
         if (id >= 10) { // elegir habilidad desbloqueada
             int s = id - 10;
+            if (s == 4) s = 2; // el tanque movil mejora la habilidad Tanque
             if (s >= 0 && s < SKILLS.length && has(p, s)) {
                 d.putInt("pol_sel", s);
                 msg(p, "Habilidad: " + SKILLS[s]);
@@ -189,6 +202,7 @@ public class PoliciaMod {
             int s = sel(p);
             for (int k = 1; k <= SKILLS.length; k++) {
                 int c = (sel(p) + k) % SKILLS.length;
+                if (c == 4) continue;
                 if (has(p, c)) { s = c; break; }
             }
             d.putInt("pol_sel", s);
@@ -206,16 +220,16 @@ public class PoliciaMod {
                 p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.ANVIL_PLACE, SoundSource.PLAYERS, 0.6f, 1.6f);
                 msg(p, "Escudo balistico desplegado");
                 sync(p);
-            } else if (s == 1) {
+            } else if (s == 2 && has(p, 4)) {
+                PoliciaTank.useMobile(p);
+            } else if (s == 2) {
                 if (p.getVehicle() instanceof PoliciaTank.TankEntity) { msg(p, "El tanque ya esta invocado"); return; }
                 if (shield(p) > 0) { msg(p, "Espera a que termine el escudo"); return; }
                 if (d.getInt("pol_tcd") > 0) { msg(p, "Tanque en enfriamiento: " + (d.getInt("pol_tcd") + 19) / 20 + " s"); return; }
                 PoliciaTank.summon(p);
                 sync(p);
-            } else if (s == 3) {
-                PoliciaTank.useMobile(p);
             } else {
-                msg(p, SKILLS[s]);
+                msg(p, SKILLS[s] + " (proximamente)");
             }
         }
     }
@@ -416,7 +430,7 @@ public class PoliciaMod {
     public void onClone(PlayerEvent.Clone e) {
         CompoundTag o = e.getOriginal().getPersistentData();
         CompoundTag n = e.getEntity().getPersistentData();
-        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un"}) {
+        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver"}) {
             if (o.contains(k)) n.put(k, o.get(k).copy());
         }
     }
