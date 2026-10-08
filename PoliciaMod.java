@@ -394,6 +394,12 @@ public class PoliciaMod {
         if (change || p.tickCount % 40 == 0) sync(p);
     }
 
+    /** Sin retroceso para el jugador que va dentro del tanque. */
+    @SubscribeEvent
+    public void noKnock(net.minecraftforge.event.entity.living.LivingKnockBackEvent e) {
+        if (e.getEntity() instanceof ServerPlayer p && p.getVehicle() instanceof PoliciaTank.TankEntity) e.setCanceled(true);
+    }
+
     @SubscribeEvent
     public void noFall(net.minecraftforge.event.entity.living.LivingFallEvent e) {
         if (e.getEntity() instanceof ServerPlayer p && p.getPersistentData().getInt("pol_nofall") > 0) e.setCanceled(true);
