@@ -51,6 +51,7 @@ public class PoliciaPlaca {
                 sp.serverLevel().sendParticles(ParticleTypes.HAPPY_VILLAGER, sp.getX(), sp.getY() + 1.0, sp.getZ(), 24, 0.6, 0.8, 0.6, 0.05);
                 PoliciaMod.msg(sp, "Ahora eres " + label + ". " + hint);
                 PoliciaMod.sync(sp);
+                PoliciaBook.give(sp, job);
             }
             return InteractionResultHolder.sidedSuccess(st, level.isClientSide);
         }
