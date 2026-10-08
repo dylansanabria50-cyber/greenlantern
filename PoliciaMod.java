@@ -149,6 +149,7 @@ public class PoliciaMod {
         PoliciaTank.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
         PoliciaRefuerzo.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
         PoliciaExtra.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
+        PoliciaHeli.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
         PoliciaExtra.EFFECTS.register(FMLJavaModLoadingContext.get().getModEventBus());
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaExtra::attrs);
         MinecraftForge.EVENT_BUS.register(new PoliciaExtra());
@@ -257,6 +258,8 @@ public class PoliciaMod {
                 if (d.getInt("pol_tcd") > 0) { msg(p, "Tanque en enfriamiento: " + (d.getInt("pol_tcd") + 19) / 20 + " s"); return; }
                 PoliciaTank.summon(p);
                 sync(p);
+            } else if (s == 3) {
+                PoliciaHeli.use(p);
             } else if (s >= 5) {
                 PoliciaExtra.use(p, s);
             } else if (s == 1) {
@@ -321,17 +324,17 @@ public class PoliciaMod {
 
     @SubscribeEvent
     public void noAttack(AttackEntityEvent e) {
-        if (e.getEntity() instanceof ServerPlayer p && (shield(p) > 0 || p.getVehicle() instanceof PoliciaTank.TankEntity)) e.setCanceled(true);
+        if (e.getEntity() instanceof ServerPlayer p && (shield(p) > 0 || p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity)) e.setCanceled(true);
     }
 
     @SubscribeEvent
     public void noInteract(PlayerInteractEvent e) {
-        if (e.getEntity() instanceof ServerPlayer p && (shield(p) > 0 || p.getVehicle() instanceof PoliciaTank.TankEntity) && e.isCancelable()) e.setCanceled(true);
+        if (e.getEntity() instanceof ServerPlayer p && (shield(p) > 0 || p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity) && e.isCancelable()) e.setCanceled(true);
     }
 
     @SubscribeEvent
     public void noBreak(BlockEvent.BreakEvent e) {
-        if (e.getPlayer() instanceof ServerPlayer p && (shield(p) > 0 || p.getVehicle() instanceof PoliciaTank.TankEntity)) e.setCanceled(true);
+        if (e.getPlayer() instanceof ServerPlayer p && (shield(p) > 0 || p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity)) e.setCanceled(true);
     }
 
     static boolean isMine(ItemStack s) { return s.getItem() instanceof PoliciaShield; }
@@ -450,7 +453,7 @@ public class PoliciaMod {
     /** Sin retroceso para el jugador que va dentro del tanque. */
     @SubscribeEvent
     public void noKnock(net.minecraftforge.event.entity.living.LivingKnockBackEvent e) {
-        if (e.getEntity() instanceof ServerPlayer p && p.getVehicle() instanceof PoliciaTank.TankEntity) e.setCanceled(true);
+        if (e.getEntity() instanceof ServerPlayer p && (p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity)) e.setCanceled(true);
     }
 
     @SubscribeEvent
