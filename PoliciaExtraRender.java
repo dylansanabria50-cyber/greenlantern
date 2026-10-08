@@ -15,6 +15,19 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.animal.Wolf;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import org.joml.Matrix3f;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.PlayerModel;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.renderer.entity.RenderLayerParent;
+import net.minecraft.client.renderer.entity.layers.RenderLayer;
+import net.minecraft.client.renderer.entity.player.PlayerRenderer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.client.event.RenderHandEvent;
+import net.minecraftforge.client.event.RenderLivingEvent;
 import org.joml.Matrix4f;
 
 /** Dibujo del perro K9, la patrulla con torreta y el dron de vigilancia. */
@@ -147,5 +160,113 @@ public class PoliciaExtraRender {
             }
             ps.popPose();
         }
+    }
+
+    // ---------- esposas ----------
+    static void ring(PoseStack ps, VertexConsumer vc, int light) {
+        box(ps, vc, -0.1f, -0.1f, -0.03f, 0.1f, -0.06f, 0.03f, 196, 202, 212, light);
+        box(ps, vc, -0.1f, 0.06f, -0.03f, 0.1f, 0.1f, 0.03f, 196, 202, 212, light);
+        box(ps, vc, -0.1f, -0.06f, -0.03f, -0.06f, 0.06f, 0.03f, 196, 202, 212, light);
+        box(ps, vc, 0.06f, -0.06f, -0.03f, 0.1f, 0.06f, 0.03f, 196, 202, 212, light);
+        box(ps, vc, -0.035f, 0.1f, -0.04f, 0.035f, 0.14f, 0.04f, 96, 100, 110, light);
+    }
+
+    /** Esposas: dos aros de acero unidos por una cadena. */
+    static void drawCuffs(PoseStack ps, VertexConsumer vc, int light, float spread) {
+        for (int s = -1; s <= 1; s += 2) {
+            ps.pushPose();
+            ps.translate(s * (0.14f + spread), 0.0f, 0.0f);
+            ring(ps, vc, light);
+            ps.popPose();
+        }
+        float w = 0.04f + spread;
+        for (int i = 0; i < 3; i++) {
+            float cx = -w + (2.0f * w) * (i + 0.5f) / 3.0f;
+            box(ps, vc, cx - 0.03f, -0.015f, -0.015f, cx + 0.03f, 0.015f, 0.015f, 120, 124, 134, light);
+        }
+    }
+
+    static boolean cuffsSelected(Player p) {
+        PoliciaMod.Sync s = PoliciaClient.STATE.get(p.getUUID());
+        return s != null && s.on && s.sel == 5 && p.getMainHandItem().isEmpty();
+    }
+
+    public static void layers(EntityRenderersEvent.AddLayers e) {
+        for (String sk : new String[]{"default", "slim"}) {
+            Object r = e.getSkin(sk);
+            if (r instanceof PlayerRenderer pr) pr.addLayer(new CuffHandLayer(pr));
+        }
+    }
+
+    /** Esposas en la mano (tercera persona) cuando la habilidad esta elegida. */
+    public static class CuffHandLayer extends RenderLayer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> {
+        public CuffHandLayer(RenderLayerParent<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> parent) { super(parent); }
+
+        @Override
+        public void render(PoseStack ps, MultiBufferSource buf, int light, AbstractClientPlayer p,
+                           float limb, float limbAmt, float pt, float age, float yawHead, float pitch) {
+            if (!cuffsSelected(p)) return;
+            HumanoidArm arm = p.getMainArm();
+            ps.pushPose();
+            this.getParentModel().translateToHand(arm, ps);
+            ps.mulPose(Axis.XP.rotationDegrees(-90.0f));
+            ps.mulPose(Axis.YP.rotationDegrees(180.0f));
+            ps.translate((arm == HumanoidArm.LEFT ? -1.0f : 1.0f) / 16.0f, 0.125f, -0.625f);
+            ps.scale(0.7f, 0.7f, 0.7f);
+            drawCuffs(ps, buf.getBuffer(RenderType.entityCutoutNoCull(WHITE)), light, 0.0f);
+            ps.popPose();
+        }
+    }
+
+    /** Esposas en la mano (primera persona). */
+    public static void handFirst(RenderHandEvent e) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || e.getHand() != InteractionHand.MAIN_HAND || !cuffsSelected(mc.player)) return;
+        PoseStack ps = e.getPoseStack();
+        float sq = Mth.sin(e.getSwingProgress() * (float) Math.PI);
+        ps.pushPose();
+        ps.translate(0.5f, -0.38f - e.getEquipProgress() * 0.6f - sq * 0.1f, -0.7f - sq * 0.2f);
+        ps.mulPose(Axis.XP.rotationDegrees(-20.0f - sq * 35.0f));
+        ps.mulPose(Axis.YP.rotationDegrees(-12.0f));
+        drawCuffs(ps, e.getMultiBufferSource().getBuffer(RenderType.entityCutoutNoCull(WHITE)), e.getPackedLight(), 0.0f);
+        ps.popPose();
+    }
+
+    /** Esposas sobre el esposado: se cierran con animacion y se abren al terminar. */
+    public static void livingPost(RenderLivingEvent.Post<?, ?> e) {
+        LivingEntity t = e.getEntity();
+        MobEffectInstance ef = t.getEffect(PoliciaExtra.CUFF.get());
+        if (ef == null) return;
+        float pt = e.getPartialTick();
+        float age = PoliciaExtra.CUFF_T - ef.getDuration() + pt;
+        float c = Mth.clamp(age / 8.0f, 0.0f, 1.0f);
+        c = Math.min(c, Mth.clamp((ef.getDuration() - pt) / 10.0f, 0.0f, 1.0f));
+        float w = t.getBbWidth();
+        float h = t.getBbHeight();
+        float snap = 1.0f + 0.3f * Math.max(0.0f, 1.0f - Math.abs(age - 8.0f) / 3.0f);
+        PoseStack ps = e.getPoseStack();
+        VertexConsumer vc = e.getMultiBufferSource().getBuffer(RenderType.entityCutoutNoCull(WHITE));
+        int light = e.getPackedLight();
+        ps.pushPose();
+        ps.mulPose(Axis.YP.rotationDegrees(-Mth.rotLerp(pt, t.yBodyRotO, t.yBodyRot)));
+        float y = h * 0.42f;
+        float ox = w * 0.5f + 0.1f;
+        for (int s = -1; s <= 1; s += 2) {
+            ps.pushPose();
+            ps.translate(s * (ox + (1.0f - c) * 0.9f), y, 0.0f);
+            ps.mulPose(Axis.XP.rotationDegrees(90.0f));
+            ps.mulPose(Axis.ZP.rotationDegrees((1.0f - c) * 540.0f));
+            ps.scale(snap, snap, snap);
+            ring(ps, vc, light);
+            ps.popPose();
+        }
+        if (c > 0.95f) {
+            float zb = -(w * 0.5f + 0.06f);
+            for (int i = 0; i < 6; i++) {
+                float cx = -ox + 2.0f * ox * (i + 0.5f) / 6.0f;
+                box(ps, vc, cx - 0.05f, y - 0.02f, zb - 0.02f, cx + 0.05f, y + 0.02f, zb + 0.02f, 120, 124, 134, light);
+            }
+        }
+        ps.popPose();
     }
 }
