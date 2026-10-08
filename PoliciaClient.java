@@ -38,6 +38,10 @@ public class PoliciaClient {
     static final KeyMapping K_NEXT = new KeyMapping("Policia: Cambiar habilidad", GLFW.GLFW_KEY_K, CAT);
     static final KeyMapping K_LIGHT = new KeyMapping("Policia: Modo linterna (helicoptero)", GLFW.GLFW_KEY_G, CAT);
     static final KeyMapping K_ORDER = new KeyMapping("Albanil: orden a los ayudantes", GLFW.GLFW_KEY_H, CAT);
+    static final KeyMapping K_YES = new KeyMapping("Albanil: aceptar aviso del ayudante", GLFW.GLFW_KEY_Y, CAT);
+    static final KeyMapping K_NO = new KeyMapping("Albanil: rechazar aviso del ayudante", GLFW.GLFW_KEY_N, CAT);
+    static final KeyMapping K_BANK = new KeyMapping("Albanil: inventario de los ayudantes", GLFW.GLFW_KEY_U, CAT);
+    static final KeyMapping K_ZONE = new KeyMapping("Albanil: elegir area de picado (mantener)", GLFW.GLFW_KEY_X, CAT);
 
     static final ResourceLocation TEX_POL = new ResourceLocation("policia", "textures/entity/policia.png");
     static final ResourceLocation TEX_ALB = new ResourceLocation("policia", "textures/entity/albanil.png");
@@ -67,6 +71,7 @@ public class PoliciaClient {
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::screenPre);
         MinecraftForge.EVENT_BUS.addListener(PoliciaXray::tick);
         MinecraftForge.EVENT_BUS.addListener(PoliciaXray::render);
+        MinecraftForge.EVENT_BUS.addListener(PoliciaXray::scroll);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::setup);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::renderers);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaExtraRender::layers);
@@ -158,7 +163,7 @@ public class PoliciaClient {
     }
 
     static void keys(RegisterKeyMappingsEvent e) {
-        e.register(K_FORM); e.register(K_USE); e.register(K_NEXT); e.register(K_LIGHT); e.register(K_ORDER);
+        e.register(K_FORM); e.register(K_USE); e.register(K_NEXT); e.register(K_LIGHT); e.register(K_ORDER); e.register(K_YES); e.register(K_NO); e.register(K_BANK); e.register(K_ZONE);
     }
 
     static void overlays(RegisterGuiOverlaysEvent e) {
@@ -426,6 +431,17 @@ public class PoliciaClient {
         while (K_NEXT.consumeClick()) { if (free) send(2); }
         while (K_LIGHT.consumeClick()) { if (free) send(4); }
         while (K_ORDER.consumeClick()) { if (free) send(7); }
+        while (K_YES.consumeClick()) { if (free && alb()) send(8); }
+        while (K_NO.consumeClick()) { if (free && alb()) send(9); }
+        while (K_BANK.consumeClick()) { if (free && alb()) send(50); }
+        boolean zk = K_ZONE.isDown() && free && alb() && PoliciaAlbanil.CL.hl >= 1;
+        if (zk) {
+            PoliciaXray.zoning = true;
+            mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("Area de picado: largo " + PoliciaXray.zl + " x ancho " + PoliciaXray.zw + " (rueda: largo, Mayus+rueda: ancho). Suelta X para fijarla"), true);
+        } else if (PoliciaXray.zoning) {
+            PoliciaXray.zoning = false;
+            if (free && alb()) send(1000 + PoliciaXray.zl * 10 + PoliciaXray.zw);
+        }
         if (free && mc.player.getVehicle() instanceof PoliciaHeli.HeliEntity) {
             if (mc.options.keyJump.isDown()) send(5);
             else if (mc.options.keySprint.isDown()) send(6);
