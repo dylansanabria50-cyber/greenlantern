@@ -57,7 +57,7 @@ public class PoliciaMod {
     /** Rama de habilidades, en orden. Solo la primera esta implementada por ahora. */
     public static final String[] SKILLS = {
             "Escudo balistico",
-            "Invocar tanque",
+            "Tanque",
             "Jet de combate (proximamente)"};
     public static final int XP_PER_NODE = 10;
     public static final int SHIELD_TICKS = 240;   // 12 s
