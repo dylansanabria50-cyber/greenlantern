@@ -1,5 +1,7 @@
 package com.example.policia;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
@@ -15,72 +17,132 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
-import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.network.NetworkHooks;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 
+import java.util.List;
 import java.util.UUID;
 
-/** Habilidad 2: tanque invocado bajo el jugador. Apunta con la mira, dispara con clic derecho y desaparece. */
+/** Habilidades 2 y 4: tanque de un disparo (bajo los pies) y tanque pilotable de 3 disparos. */
 public class PoliciaTank {
     public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, "policia");
     public static final RegistryObject<EntityType<TankEntity>> TANK = ENTITIES.register("tanque",
             () -> EntityType.Builder.<TankEntity>of(TankEntity::new, MobCategory.MISC)
-                    .sized(7.2f, 9.0f).fireImmune().noSave().clientTrackingRange(10).updateInterval(1)
+                    .sized(7.2f, 9.0f).fireImmune().noSave().clientTrackingRange(16).updateInterval(1)
                     .build("policia:tanque"));
 
     public static final float SCALE = 0.45f;
     /** Tamano final: 3 veces el anterior (12 x 9 bloques). */
     public static final float SX = 1.44f, SY = 1.86f;
     public static final int COOLDOWN = 600;   // 30 s
+    public static final int SHOTS = 3;
     static final int LOAD_TICKS = 12;         // carga antes del disparo
     static final int END_TICKS = 62;          // el tanque se retira
+    static final int RESET_TICKS = 30;        // el tanque pilotable queda listo para otro disparo
     static final double MIN_RANGE = 16.0;
     /** Pivotes del modelo (unidades del modelo): torreta y canon. */
     static final float[] PT = {0f, 2.6875f, -0.4375f};
     static final float[] PB = {0f, 2.3125f, -1.4375f};
+    /** Radio de las ruedas en bloques (para la animacion). */
+    static final float WHEEL_R = 0.47f * SX;
 
-    public static void summon(ServerPlayer p) {
+    public static void summon(ServerPlayer p) { summon(p, false); }
+
+    public static void summon(ServerPlayer p, boolean mobile) {
         TankEntity t = TANK.get().create(p.level());
         if (t == null) return;
         t.moveTo(p.getX(), p.getY(), p.getZ(), p.getYRot(), 0f);
         t.owner = p.getUUID();
+        if (mobile) {
+            t.getEntityData().set(TankEntity.MOBILE, true);
+            t.getEntityData().set(TankEntity.SHOTS_LEFT, SHOTS);
+            double g = t.footGround(p.getX(), p.getZ(), p.getYRot(), p.getY());
+            if (g > p.getY() - 6.0) t.setPos(p.getX(), Math.max(g, p.getY() - 0.5), p.getZ());
+        }
         p.level().addFreshEntity(t);
         p.startRiding(t, true);
         p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.ANVIL_LAND, SoundSource.PLAYERS, 0.8f, 0.6f);
         p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PISTON_EXTEND, SoundSource.PLAYERS, 1.0f, 0.5f);
         p.serverLevel().sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, p.getX(), p.getY() + 0.1, p.getZ(), 14, 1.0, 0.1, 1.0, 0.02);
-        PoliciaMod.msg(p, "Tanque listo: apunta y haz clic derecho para disparar");
+        PoliciaMod.msg(p, mobile ? "Tanque listo: WASD para moverte, clic derecho para disparar (3 disparos)"
+                : "Tanque listo: apunta y haz clic derecho para disparar");
+    }
+
+    /** Habilidad del tanque pilotable: invocar, bajarse o volver a subir. */
+    public static void useMobile(ServerPlayer p) {
+        if (p.getVehicle() instanceof TankEntity t) {
+            if (t.isMobile()) {
+                p.stopRiding();
+                PoliciaMod.msg(p, "Bajaste del tanque (J para volver a subir)");
+            } else {
+                PoliciaMod.msg(p, "El tanque ya esta invocado");
+            }
+            return;
+        }
+        if (p.isPassenger()) { PoliciaMod.msg(p, "Ya vas montado en algo"); return; }
+        List<TankEntity> mine = p.level().getEntitiesOfClass(TankEntity.class, p.getBoundingBox().inflate(48.0),
+                e -> e.isMobile() && p.getUUID().equals(e.owner));
+        if (!mine.isEmpty()) {
+            TankEntity t = mine.get(0);
+            if (t.isRemoved() || t.getFirstPassenger() != null) return;
+            p.startRiding(t, true);
+            p.level().playSound(null, t.getX(), t.getY(), t.getZ(), SoundEvents.IRON_DOOR_OPEN, SoundSource.PLAYERS, 1.0f, 0.6f);
+            PoliciaMod.msg(p, "Subiste al tanque (" + t.shotsLeft() + " disparos)");
+            return;
+        }
+        CompoundTag d = p.getPersistentData();
+        if (PoliciaMod.shield(p) > 0) { PoliciaMod.msg(p, "Espera a que termine el escudo"); return; }
+        if (d.getInt("pol_tcd") > 0) { PoliciaMod.msg(p, "Tanque en enfriamiento: " + (d.getInt("pol_tcd") + 19) / 20 + " s"); return; }
+        summon(p, true);
+        PoliciaMod.sync(p);
     }
 
     /** Orden de disparo: el objetivo es donde mira el jugador. */
     public static void fire(ServerPlayer p) {
         if (!(p.getVehicle() instanceof TankEntity t)) return;
         if (t.fireState() >= 0) return;
+        if (t.isMobile() && t.shotsLeft() <= 0) return;
         Vec3 eye = p.getEyePosition();
         Vec3 look = p.getLookAngle();
-        HitResult hr = p.pick(80.0, 1.0f, false);
+        HitResult hr = p.pick(96.0, 1.0f, false);
         Vec3 loc = hr.getLocation();
         if (eye.distanceTo(loc) < MIN_RANGE) loc = eye.add(look.scale(MIN_RANGE));
         t.target = loc;
         t.boomAt = LOAD_TICKS + Mth.clamp((int) (eye.distanceTo(loc) / 4.0), 2, 14);
+        if (t.isMobile()) t.getEntityData().set(TankEntity.SHOTS_LEFT, t.shotsLeft() - 1);
         t.setFireState(0);
         p.level().playSound(null, t.getX(), t.getY(), t.getZ(), SoundEvents.IRON_TRAPDOOR_CLOSE, SoundSource.PLAYERS, 1.0f, 0.5f);
-        PoliciaMod.msg(p, "Cargando...");
+        PoliciaMod.msg(p, t.isMobile() ? "Cargando... (quedan " + t.shotsLeft() + ")" : "Cargando...");
     }
 
     public static class TankEntity extends Entity {
         static final EntityDataAccessor<Integer> FIRE = SynchedEntityData.defineId(TankEntity.class, EntityDataSerializers.INT);
+        static final EntityDataAccessor<Integer> SHOTS_LEFT = SynchedEntityData.defineId(TankEntity.class, EntityDataSerializers.INT);
+        static final EntityDataAccessor<Boolean> MOBILE = SynchedEntityData.defineId(TankEntity.class, EntityDataSerializers.BOOLEAN);
+        static final EntityDataAccessor<Float> WL = SynchedEntityData.defineId(TankEntity.class, EntityDataSerializers.FLOAT);
+        static final EntityDataAccessor<Float> WR = SynchedEntityData.defineId(TankEntity.class, EntityDataSerializers.FLOAT);
         public float turretYaw, prevTurretYaw, pitch, prevPitch;
+        /** Giro acumulado de las ruedas (radianes). */
+        public float wl, wr, prevWL, prevWR;
         UUID owner;
         Vec3 target;
         int boomAt = -1;
+        double speed;
+        int idle;
+        // interpolacion en el cliente
+        double lx, ly, lz;
+        float lyr;
+        int lsteps;
 
         public TankEntity(EntityType<? extends TankEntity> type, Level level) {
             super(type, level);
@@ -90,7 +152,13 @@ public class PoliciaTank {
         }
 
         @Override
-        protected void defineSynchedData() { this.entityData.define(FIRE, -1); }
+        protected void defineSynchedData() {
+            this.entityData.define(FIRE, -1);
+            this.entityData.define(SHOTS_LEFT, 0);
+            this.entityData.define(MOBILE, false);
+            this.entityData.define(WL, 0.0f);
+            this.entityData.define(WR, 0.0f);
+        }
         @Override
         protected void readAdditionalSaveData(CompoundTag t) { }
         @Override
@@ -111,18 +179,76 @@ public class PoliciaTank {
         public boolean hurt(DamageSource s, float a) { return false; }
         @Override
         public boolean isInvulnerableTo(DamageSource s) { return true; }
+        /** El movimiento lo calcula el servidor a partir de las teclas del jugador. */
+        @Override
+        public boolean isControlledByLocalInstance() { return false; }
 
         @Override
-        public Vec3 getDismountLocationForPassenger(net.minecraft.world.entity.LivingEntity p) { return new Vec3(getX(), getY() + 0.1, getZ()); }
+        public void lerpTo(double x, double y, double z, float yr, float xr, int steps, boolean teleport) {
+            lx = x; ly = y; lz = z; lyr = yr; lsteps = 3;
+        }
+
+        public boolean isMobile() { return entityData.get(MOBILE); }
+        public int shotsLeft() { return entityData.get(SHOTS_LEFT); }
+        public int fireState() { return entityData.get(FIRE); }
+        void setFireState(int v) { entityData.set(FIRE, v); }
+
+        // ---------- terreno ----------
+        double ground(double x, double z, double refY) {
+            int bx = Mth.floor(x), bz = Mth.floor(z);
+            int top = Mth.floor(refY) + 4;
+            int bot = Math.max(Mth.floor(refY) - 14, level().getMinBuildHeight());
+            BlockPos.MutableBlockPos mp = new BlockPos.MutableBlockPos();
+            for (int y = top; y >= bot; y--) {
+                mp.set(bx, y, bz);
+                BlockState bs = level().getBlockState(mp);
+                FluidState fs = bs.getFluidState();
+                if (!fs.isEmpty()) return y + fs.getHeight(level(), mp);
+                VoxelShape sh = bs.getCollisionShape(level(), mp);
+                if (!sh.isEmpty()) return y + sh.max(Direction.Axis.Y);
+            }
+            return refY - 14;
+        }
+
+        /** Altura mas alta bajo la huella del tanque (9 puntos). */
+        double footGround(double cx, double cz, float yaw, double ref) {
+            double rad = Math.toRadians(yaw);
+            double fx = -Math.sin(rad), fz = Math.cos(rad), px = Math.cos(rad), pz = Math.sin(rad);
+            double best = -1.0e9;
+            for (int a = -1; a <= 1; a++) {
+                for (int b = -1; b <= 1; b++) {
+                    best = Math.max(best, ground(cx + px * a * 2.5 + fx * b * 4.6, cz + pz * a * 2.5 + fz * b * 4.6, ref));
+                }
+            }
+            return best;
+        }
+
+        /** Sitio donde se baja el jugador: a la derecha del tanque, sobre el suelo. */
+        Vec3 dismountSpot() {
+            double rad = Math.toRadians(getYRot());
+            double x = getX() - Math.cos(rad) * 5.2, z = getZ() - Math.sin(rad) * 5.2;
+            double g = ground(x, z, getY() + 2.0);
+            return new Vec3(x, g + 0.05, z);
+        }
+
+        @Override
+        public Vec3 getDismountLocationForPassenger(LivingEntity p) {
+            if (isMobile()) return dismountSpot();
+            return new Vec3(getX(), getY() + 0.1, getZ());
+        }
+
         @Override
         protected void removePassenger(Entity e) {
             super.removePassenger(e);
             e.fallDistance = 0.0f;
-            if (e instanceof ServerPlayer sp) sp.getPersistentData().putInt("pol_nofall", 100);
+            if (e instanceof ServerPlayer sp) {
+                sp.getPersistentData().putInt("pol_nofall", 100);
+                if (isMobile() && !level().isClientSide) {
+                    Vec3 d = dismountSpot();
+                    sp.connection.teleport(d.x, d.y, d.z, sp.getYRot(), sp.getXRot());
+                }
+            }
         }
-
-        int fireState() { return entityData.get(FIRE); }
-        void setFireState(int v) { entityData.set(FIRE, v); }
 
         /** Posicion mundial de la boca del canon (aproximada). */
         Vec3 muzzle() {
@@ -137,12 +263,45 @@ public class PoliciaTank {
             return new Vec3(px, py, pz).add(dir.scale(5.4 * SX));
         }
 
+        /** Conduccion: W/S avanzan, A/D giran el casco. */
+        void drive(Entity r) {
+            float fw = 0f, st = 0f;
+            if (r instanceof LivingEntity le) { fw = le.zza; st = le.xxa; }
+            if (Math.abs(fw) < 0.05f) fw = 0f;
+            if (Math.abs(st) < 0.05f) st = 0f;
+            if (fw != 0f) speed += fw * 0.05; else speed *= 0.85;
+            speed = Mth.clamp(speed, -0.2, 0.42);
+            if (Math.abs(speed) < 0.004) speed = 0.0;
+            float dyaw = -st * 2.4f;
+            float ny = getYRot() + dyaw;
+            double rad = Math.toRadians(ny);
+            double nx = getX() - Math.sin(rad) * speed, nz = getZ() + Math.cos(rad) * speed;
+            double g = footGround(nx, nz, ny, getY());
+            if (g - getY() > 2.3) {
+                speed = 0.0;
+                nx = getX(); nz = getZ();
+                g = footGround(nx, nz, ny, getY());
+                if (g - getY() > 2.3) { ny = getYRot(); dyaw = 0f; g = footGround(nx, nz, ny, getY()); }
+            }
+            double ny2 = getY() + Mth.clamp(g - getY(), -0.7, 0.5);
+            setPos(nx, ny2, nz);
+            setYRot(ny);
+            // ruedas: el lado exterior de un giro va mas rapido
+            double turn = Math.toRadians(dyaw) * 2.8;
+            wl += (float) ((speed + turn) / WHEEL_R);
+            wr += (float) ((speed - turn) / WHEEL_R);
+            entityData.set(WL, wl);
+            entityData.set(WR, wr);
+        }
+
         @Override
         public void tick() {
             super.tick();
             if (tickCount == 1) { turretYaw = prevTurretYaw = getYRot(); }
             prevTurretYaw = turretYaw;
             prevPitch = pitch;
+            prevWL = wl;
+            prevWR = wr;
             Entity r = getFirstPassenger();
             int f = entityData.get(FIRE);
             if (r != null && f < 0) {
@@ -152,9 +311,26 @@ public class PoliciaTank {
                 float tp = Mth.clamp(r.getXRot(), -25.0f, 8.0f);
                 pitch += Mth.clamp(tp - pitch, -3.0f, 3.0f);
             }
-            if (level().isClientSide) return;
+            if (level().isClientSide) {
+                if (lsteps > 0) {
+                    double k = 1.0 / lsteps;
+                    setPos(getX() + (lx - getX()) * k, getY() + (ly - getY()) * k, getZ() + (lz - getZ()) * k);
+                    setYRot(getYRot() + (float) Mth.wrapDegrees(lyr - getYRot()) * (float) k);
+                    lsteps--;
+                }
+                wl = entityData.get(WL);
+                wr = entityData.get(WR);
+                return;
+            }
             setDeltaMovement(Vec3.ZERO);
             ServerLevel sl = (ServerLevel) level();
+            boolean mobile = isMobile();
+            if (mobile && r != null) drive(r);
+            else if (mobile) speed = 0.0;
+            if (tickCount % 20 == 0 && owner != null) {
+                ServerPlayer o = sl.getServer().getPlayerList().getPlayer(owner);
+                if (o == null || !o.isAlive()) { ejectPassengers(); discard(); return; }
+            }
             if (f >= 0) {
                 f++;
                 entityData.set(FIRE, f);
@@ -174,7 +350,14 @@ public class PoliciaTank {
                 if (f == boomAt && target != null) {
                     level().explode(this, target.x, target.y, target.z, 3.2f, Level.ExplosionInteraction.NONE);
                 }
-                if (f >= END_TICKS) finish(sl);
+                if (mobile && shotsLeft() > 0) {
+                    if (f >= RESET_TICKS) { setFireState(-1); target = null; boomAt = -1; }
+                } else if (f >= END_TICKS) {
+                    finish(sl);
+                }
+            } else if (mobile) {
+                idle = r == null ? idle + 1 : 0;
+                if (idle > 1200 || tickCount > 24000) finish(sl);
             } else if ((r == null && tickCount > 20) || tickCount > 1200) {
                 finish(sl);
             }
