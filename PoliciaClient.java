@@ -53,6 +53,7 @@ public class PoliciaClient {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::keys);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::overlays);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::tick);
+        MinecraftForge.EVENT_BUS.addListener(PoliciaClient::camera);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::render);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::screenInit);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::livingPre);
@@ -70,6 +71,33 @@ public class PoliciaClient {
 
     static void renderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers e) {
         e.registerEntityRenderer(PoliciaTank.TANK.get(), PoliciaTankRender::new);
+    }
+
+    static java.lang.reflect.Method CAM_MOVE;
+    static boolean camTried = false;
+
+    /** En tercera persona sobre el tanque, la camara se aleja para verlo completo. */
+    static void camera(net.minecraftforge.client.event.ViewportEvent.ComputeCameraAngles e) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.options.getCameraType().isFirstPerson()) return;
+        if (!(mc.player.getVehicle() instanceof PoliciaTank.TankEntity)) return;
+        if (!camTried) {
+            camTried = true;
+            try {
+                CAM_MOVE = net.minecraftforge.fml.util.ObfuscationReflectionHelper.findMethod(
+                        net.minecraft.client.Camera.class, "m_90568_", double.class, double.class, double.class);
+            } catch (Throwable t) {
+                try {
+                    CAM_MOVE = net.minecraft.client.Camera.class.getDeclaredMethod("move", double.class, double.class, double.class);
+                    CAM_MOVE.setAccessible(true);
+                } catch (Throwable t2) {
+                    CAM_MOVE = null;
+                }
+            }
+        }
+        if (CAM_MOVE != null) {
+            try { CAM_MOVE.invoke(e.getCamera(), -18.0, 3.0, 0.0); } catch (Throwable t) { CAM_MOVE = null; }
+        }
     }
 
     static void keys(RegisterKeyMappingsEvent e) {
