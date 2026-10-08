@@ -32,7 +32,7 @@ public class PoliciaXray {
         if (!zoning) return;
         e.setCanceled(true);
         int s = e.getScrollDelta() > 0 ? 1 : -1;
-        if (e.isShiftDown()) zw = Math.max(1, Math.min(9, zw + s));
+        if (net.minecraft.client.gui.screens.Screen.hasShiftDown()) zw = Math.max(1, Math.min(9, zw + s));
         else zl = Math.max(1, Math.min(24, zl + s));
     }
 
