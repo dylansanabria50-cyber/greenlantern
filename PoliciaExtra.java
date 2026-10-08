@@ -161,6 +161,7 @@ public class PoliciaExtra {
         t.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, CUFF_T, 6, false, false));
         t.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, CUFF_T, 4, false, false));
         t.addEffect(new MobEffectInstance(CUFF.get(), CUFF_T, 0, false, false, false));
+        t.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, CUFF_T, 0, false, false));
         ServerLevel sl = p.serverLevel();
         sl.playSound(null, t.getX(), t.getY(), t.getZ(), SoundEvents.CHAIN_PLACE, SoundSource.PLAYERS, 1.2f, 0.9f);
         sl.playSound(null, t.getX(), t.getY(), t.getZ(), SoundEvents.IRON_TRAPDOOR_CLOSE, SoundSource.PLAYERS, 1.0f, 1.3f);
@@ -196,17 +197,28 @@ public class PoliciaExtra {
         }
         t.setDeltaMovement(vx, vy, vz);
         if (t instanceof ServerPlayer && (vx != 0.0 || vz != 0.0)) t.hurtMarked = true;
-        if (c % 6 == 0 && t.level() instanceof ServerLevel sl) {
-            for (int i = 0; i < 6; i++) {
-                double a = i * Math.PI / 3.0 + c * 0.1;
-                sl.sendParticles(CUFF_DUST, t.getX() + Math.cos(a) * 0.45, t.getY() + 0.25, t.getZ() + Math.sin(a) * 0.45, 1, 0.0, 0.0, 0.0, 0.0);
-            }
+        if (c == 0) {
+            t.removeEffect(MobEffects.MOVEMENT_SLOWDOWN);
+            t.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 40, 2, false, true));
+            d.remove("pol_cuffo");
         }
-        if (c == 0) d.remove("pol_cuffo");
         if (c == 0 && d.getBoolean("pol_cuffai") && t instanceof Mob m2) {
             m2.setNoAi(false);
             d.remove("pol_cuffai");
         }
+    }
+
+    /** El policia que esposo a un jugador puede abrir su inventario (clic derecho sobre el esposado). */
+    @SubscribeEvent
+    public void cuffInspect(PlayerInteractEvent.EntityInteract e) {
+        if (!(e.getEntity() instanceof ServerPlayer o) || !(e.getTarget() instanceof ServerPlayer tp) || o == tp) return;
+        if (e.getHand() != net.minecraft.world.InteractionHand.MAIN_HAND) return;
+        CompoundTag td = tp.getPersistentData();
+        if (td.getInt("pol_cuff") <= 0 || !td.hasUUID("pol_cuffo") || !td.getUUID("pol_cuffo").equals(o.getUUID())) return;
+        e.setCanceled(true);
+        o.openMenu(new net.minecraft.world.SimpleMenuProvider(
+                (id, inv, pl) -> new net.minecraft.world.inventory.ChestMenu(net.minecraft.world.inventory.MenuType.GENERIC_9x4, id, inv, tp.getInventory(), 4),
+                net.minecraft.network.chat.Component.literal("Inventario de " + tp.getName().getString())));
     }
 
     static boolean cuffed(Entity e) {
