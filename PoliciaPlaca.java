@@ -18,6 +18,10 @@ public class PoliciaPlaca {
     public static final RegistryObject<Item> PLACA = PoliciaShield.ITEMS.register("placa_policia",
             () -> new JobBadge(new Item.Properties().stacksTo(1), "policia", "policia", "Pulsa B para activar el modo policia"));
 
+    /** Balde de albanil: como un balde de hierro, pero con bloques de hierro. */
+    public static final RegistryObject<Item> BALDE = PoliciaShield.ITEMS.register("balde_albanil",
+            () -> new JobBadge(new Item.Properties().stacksTo(1), "albanil", "albanil", "Pulsa B para activar el modo albanil"));
+
     /** Se llama desde el constructor del mod para que el objeto quede registrado a tiempo. */
     public static void init() { }
 
