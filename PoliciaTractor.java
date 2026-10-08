@@ -57,7 +57,7 @@ public class PoliciaTractor {
                     .sized(4.8f, 6.0f).fireImmune().noSave().clientTrackingRange(16).updateInterval(1)
                     .build("policia:tractor"));
 
-    static final int COST = 15, CD = 400, IDLE = 6000;   // 15 XP, 20 s, 5 min sin conductor
+    static final int COST = 15, CD = 700, IDLE = 6000, LIFE = 900;   // 15 XP, enfriamiento 35 s, dura 45 s
     static final double WHEEL_R = 1.15;
     /** Zonas de rotura (en bloques, respecto al centro de la cabina). */
     static final double A0 = 2.4, A1 = 5.3, AL = 2.1;      // pala
@@ -532,8 +532,10 @@ public class PoliciaTractor {
             if (tickCount % 20 == 0 && owner != null) {
                 ServerPlayer o = sl.getServer().getPlayerList().getPlayer(owner);
                 if (o == null || !o.isAlive()) { finish(sl); return; }
+                o.getPersistentData().putInt("alb_tact", Math.max(1, LIFE - tickCount));
+                if (tickCount == LIFE - 200) PoliciaMod.msg(o, "El tractor se retira en 10 s");
             }
-            if (idle > IDLE || tickCount > 72000) finish(sl);
+            if (idle > IDLE || tickCount > LIFE) finish(sl);
         }
 
         // ---------- linterna ----------
