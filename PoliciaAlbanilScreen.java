@@ -14,13 +14,16 @@ import java.util.List;
 /** Rama de habilidades del albanil. */
 public class PoliciaAlbanilScreen extends Screen {
     static final int PW = 460, PH = 340, LEFT_W = 104;
-    static final String[] NAMES = {"Pico de albanil", "MURO", "REFUGIO"};
+    static final String[] NAMES = {"Pico de albanil", "MURO", "REFUGIO", "AYUDANTE I", "AYUDANTE II", "AYUDANTE III"};
     static final String[] DESC = {
-            "Te da un pico de diamante durante 7 s, con Fuerza I y Prisa minera I. No se puede soltar. Enfriamiento: 8 s.",
+            "Te da un pico de diamante durante 7 s, con Fuerza I, Prisa minera I y Fortuna II. No se puede soltar ni guardar en cofres; puedes encantarlo y conserva los encantamientos. Enfriamiento: 8 s.",
             "Levanta un muro de 3 de alto por 3 de largo frente a ti. Puedes hacer hasta 3 muros (pulsa J de nuevo para cada uno). Desaparecen a los 15 s. Enfriamiento: 5 s.",
-            "Mejora de MURO: lo reemplaza. Casa sobre la superficie con puerta y piso de madera, cama y cofre, durante 35 s. Lo que dejes dentro (cofre, bloques, objetos) vuelve a estar en el mismo lugar cuando la invocas de nuevo. Enfriamiento: 40 s."};
-    static final int[] CX = {174, 174, 174};
-    static final int[] ROW = {0, 1, 2};
+            "Mejora de MURO: lo reemplaza. Casa sobre la superficie con puerta y piso de madera, cama y cofre, durante 35 s. Lo que dejes dentro (cofre, bloques, objetos) vuelve a estar en el mismo lugar cuando la invocas de nuevo. Enfriamiento: 40 s.",
+            "PEDIR AYUDANTE: aparece 1 ayudante con pico de piedra. Siguen y defienden. Tecla H: orden (seguir, picar alrededor, buscar minerales). Mientras estan activos ves los bloques y menas de carbon a 4 bloques. Dura 60 s. Enfriamiento: 30 s.",
+            "Nivel 2: aparecen 3 ayudantes con picos de hierro. Mientras estan activos ves todos los minerales (menos diamante y netherita) a 4 bloques.",
+            "Nivel 3: aparecen 4 ayudantes con picos de diamante. Mientras estan activos ves todos los minerales a 4 bloques."};
+    static final int[] CX = {100, 100, 100, 250, 250, 250};
+    static final int[] ROW = {0, 1, 2, 0, 1, 2};
     int px, py;
     float zoom = 1.0f;
 
@@ -38,6 +41,7 @@ public class PoliciaAlbanilScreen extends Screen {
 
     static boolean has(PoliciaAlbanil.AlbSync s, int i) {
         int lv = s == null ? 0 : s.lv;
+        if (i >= 3) return s != null && s.hl >= i - 2;
         return i == 0 || lv >= i;
     }
 
@@ -82,6 +86,17 @@ public class PoliciaAlbanilScreen extends Screen {
         g.fill(x + 3, y + 14, x + 13, y + 15, 0xFF8A6A3A);
     }
 
+    /** Icono del ayudante (16x16). */
+    static void helperIcon(GuiGraphics g, int x, int y) {
+        g.fill(x + 4, y + 6, x + 12, y + 14, 0xFFE0B48A);
+        g.fill(x + 3, y + 3, x + 13, y + 7, 0xFFF0C020);
+        g.fill(x + 2, y + 6, x + 14, y + 7, 0xFFC89A10);
+        g.fill(x + 5, y + 9, x + 7, y + 10, 0xFF202020);
+        g.fill(x + 9, y + 9, x + 11, y + 10, 0xFF202020);
+        g.fill(x + 6, y + 12, x + 10, y + 13, 0xFF8A4A2A);
+        g.fill(x + 4, y + 14, x + 12, y + 16, 0xFF3A5AA8);
+    }
+
     void padlock(GuiGraphics g, int x, int y) {
         g.fill(x + 8, y + 3, x + 10, y + 11, 0xFFD8D8D8);
         g.fill(x + 14, y + 3, x + 16, y + 11, 0xFFD8D8D8);
@@ -110,7 +125,7 @@ public class PoliciaAlbanilScreen extends Screen {
         PoliciaMod.Sync ms = PoliciaClient.mine();
         PoliciaAlbanil.AlbSync s = PoliciaAlbanil.CL;
         int xp = ms == null ? 0 : ms.xp;
-        int sel = s.sel == 1 ? (s.lv >= 2 ? 2 : 1) : 0;
+        int sel = s.sel == 1 ? (s.lv >= 2 ? 2 : 1) : (s.sel == 2 ? 2 + Math.max(1, s.hl) : 0);
         PoliciaTreeScreen.panel(g, px, py, px + LEFT_W, py + PH);
         tag(g, "Albanil", px + 6, py - 6);
         if (minecraft != null && minecraft.player != null) {
@@ -122,13 +137,14 @@ public class PoliciaAlbanilScreen extends Screen {
         tag(g, "Habilidades", rx + 6, py - 6);
         g.drawString(font, "XP: " + xp, rx + 8, py + 10, 0xFFE8C040, true);
         g.drawString(font, "Desbloquear: clic izquierdo en el icono", rx + 8, py + 20, 0xFF9AA4B0, false);
-        for (int i = 1; i < 3; i++) {
+        for (int i = 1; i < 6; i++) {
+            if (i == 3) continue;
             int col = has(s, i) ? 0xFFE0C070 : 0xFF6A5A36;
             int x0 = nodeX(i - 1) + 11, y0 = nodeY(i - 1) + 44, y1 = nodeY(i);
             g.fill(x0, y0, x0 + 2, y1, col);
         }
         int hov = -1;
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 6; i++) {
             int nx = nodeX(i), y = nodeY(i);
             boolean open = has(s, i);
             boolean hover = mx >= nx && mx <= nx + 24 && my >= y && my <= y + 24;
@@ -138,7 +154,8 @@ public class PoliciaAlbanilScreen extends Screen {
             g.fill(nx, y, nx + 24, y + 24, open ? 0xFFC8921C : 0xFF8A6612);
             if (i == 0) pickIcon(g, nx + 4, y + 4);
             else if (i == 1) wallIcon(g, nx + 4, y + 4);
-            else houseIcon(g, nx + 4, y + 4);
+            else if (i == 2) houseIcon(g, nx + 4, y + 4);
+            else helperIcon(g, nx + 4, y + 4);
             if (!open) {
                 g.fill(nx, y, nx + 24, y + 24, 0x99000000);
                 padlock(g, nx, y);
@@ -155,7 +172,7 @@ public class PoliciaAlbanilScreen extends Screen {
             g.drawString(font, lines.get(k), bx0 + 5, by0 + 15 + k * 9, open ? 0xFFC8D0DC : 0xFF808890, false);
         }
         if (!open) {
-            g.drawString(font, "Bloqueada - cuesta " + PoliciaAlbanil.COST + " XP", bx0 + 5, by1 - 11, 0xFFE8B830, false);
+            g.drawString(font, "Bloqueada - cuesta " + (show >= 3 ? PoliciaAlbanil.COST + 5 * (show - 3) : PoliciaAlbanil.COST) + " XP", bx0 + 5, by1 - 11, 0xFFE8B830, false);
         } else if (show == sel) {
             g.drawString(font, "Elegida (tecla J)", bx0 + 5, by1 - 11, 0xFF60E060, false);
         } else {
@@ -172,10 +189,13 @@ public class PoliciaAlbanilScreen extends Screen {
         my = (my - height / 2.0) / zoom + height / 2.0;
         if (btn == 0) {
             PoliciaAlbanil.AlbSync s = PoliciaAlbanil.CL;
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < 6; i++) {
                 int nx = nodeX(i), y = nodeY(i);
                 if (mx >= nx && mx <= nx + 24 && my >= y && my <= y + 24) {
-                    PoliciaClient.send(has(s, i) ? 10 + i : 20 + i);
+                    if (i >= 3) {
+                        if (i - 2 == s.hl + 1) PoliciaClient.send(40);
+                        else if (has(s, i)) PoliciaClient.send(13);
+                    } else PoliciaClient.send(has(s, i) ? 10 + i : 20 + i);
                     return true;
                 }
             }
@@ -203,8 +223,16 @@ public class PoliciaAlbanilScreen extends Screen {
         boolean o1 = s.lv >= 1;
         ls.add((s.sel == 1 && o1 ? "> " : "  ") + "2. " + n1 + (o1 ? "" : "  [" + PoliciaAlbanil.COST + " XP]"));
         cs.add(o1 ? (s.sel == 1 ? 0xFFFFFFFF : 0xFFB0C4DE) : 0xFF707070);
+        boolean o2 = s.hl >= 1;
+        ls.add((s.sel == 2 && o2 ? "> " : "  ") + "3. AYUDANTE" + (o2 ? " " + s.hl : "  [" + PoliciaAlbanil.COST + " XP]"));
+        cs.add(o2 ? (s.sel == 2 ? 0xFFFFFFFF : 0xFFB0C4DE) : 0xFF707070);
         String st;
-        if (s.sel == 0 || !o1) {
+        if (s.sel == 2 && o2) {
+            String ord = PoliciaAyudante.ORDERS[Math.max(0, Math.min(2, s.mode))];
+            if (s.ht > 0) st = "Ayudantes: " + (s.ht + 19) / 20 + " s - orden: " + ord + " (H)";
+            else if (s.hc > 0) st = "Ayudantes en enfriamiento: " + (s.hc + 19) / 20 + " s";
+            else st = "Ayudantes listos (J) - orden: " + ord + " (H)";
+        } else if (s.sel == 0 || !o1) {
             if (s.pickT > 0) st = "Pico activo: " + (s.pickT + 19) / 20 + " s";
             else if (s.c0 > 0) st = "Pico en enfriamiento: " + (s.c0 + 19) / 20 + " s";
             else st = "Pico listo (J)";
