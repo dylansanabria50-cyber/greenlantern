@@ -19,7 +19,7 @@ public class PoliciaTreeScreen extends Screen {
     static final String[] NAMES = {"Escudo balistico", "REFUERZO", "Tanque", "Helicoptero", "Tanque movil"};
     static final String[] DESC = {
             "Despliega un escudo antidisturbios durante 12 s. Bloquea los golpes de frente.",
-            "Llama a dos policias de refuerzo que luchan a tu lado. (Proximamente)",
+            "Policias de refuerzo que te protegen y atacan a tus enemigos.",
             "Invoca un tanque bajo tus pies. Apunta y dispara con clic derecho una sola vez; luego se retira. Enfriamiento: 30 s.",
             "Invoca un helicoptero pilotable. (Proximamente)",
             "Mejora del Tanque: lo reemplaza. Conduce con WASD, 3 disparos con clic derecho; baja con Mayus y vuelve a subir con clic derecho. Enfriamiento: 30 s."};
@@ -181,6 +181,7 @@ public class PoliciaTreeScreen extends Screen {
                 padlock(g, nx, y);
             }
             g.drawString(font, NAMES[i], nx + 30, y + 8, open ? 0xFFFFFFFF : 0xFFA0A0A0, true);
+            if (i == 1 && open) g.drawString(font, "Nv " + Math.max(1, s == null ? 1 : s.rl) + "/4", nx + 30, y + 17, 0xFFE8C040, false);
         }
         // informacion de la habilidad senalada (o la elegida)
         int show = hov >= 0 ? hov : (has(s, sel) ? sel : 0);
@@ -189,8 +190,14 @@ public class PoliciaTreeScreen extends Screen {
         boolean open = has(s, show);
         g.drawString(font, NAMES[show], bx0 + 5, by0 + 4, 0xFFFFFFFF, true);
         List<FormattedCharSequence> lines = font.split(FormattedText.of(DESC[show]), bx1 - bx0 - 10);
-        for (int k = 0; k < lines.size() && k < 5; k++) {
+        for (int k = 0; k < lines.size() && k < (show == 1 && open ? 2 : 5); k++) {
             g.drawString(font, lines.get(k), bx0 + 5, by0 + 15 + k * 9, open ? 0xFFC8D0DC : 0xFF808890, false);
+        }
+        if (show == 1 && open) {
+            int lv = Math.max(1, s == null ? 1 : s.rl);
+            g.drawString(font, "Nv " + lv + "/4 - " + PoliciaRefuerzo.COUNT[lv] + " NPC - espada " + PoliciaRefuerzo.SWORD[lv], bx0 + 5, by0 + 36, 0xFFE8C040, false);
+            String upg = lv >= 4 ? "Nivel maximo" : "Clic derecho: mejorar (" + PoliciaMod.XP_PER_NODE * lv + " XP)";
+            g.drawString(font, upg, bx0 + 5, by0 + 46, 0xFF9AA4B0, false);
         }
         if (!open) {
             g.drawString(font, "Bloqueada - cuesta " + cost(show), bx0 + 5, by1 - 11, 0xFFE8B830, false);
@@ -204,6 +211,14 @@ public class PoliciaTreeScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
+        if (btn == 1) { // clic derecho sobre REFUERZO: mejorar de nivel
+            PoliciaMod.Sync s1 = PoliciaClient.mine();
+            int nx1 = nodeX(1), y1 = nodeY(1);
+            if (has(s1, 1) && mx >= nx1 && mx <= nx1 + 24 && my >= y1 && my <= y1 + 24) {
+                PoliciaClient.send(30);
+                return true;
+            }
+        }
         if (btn == 0) {
             PoliciaMod.Sync s = PoliciaClient.mine();
             for (int i = 0; i < PoliciaMod.SKILLS.length; i++) {
