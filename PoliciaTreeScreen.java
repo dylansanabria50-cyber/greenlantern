@@ -15,7 +15,7 @@ import java.util.List;
 
 /** Pantalla de habilidades: personaje a la izquierda, rama de habilidades a la derecha. */
 public class PoliciaTreeScreen extends Screen {
-    static final int PW = 340, PH = 340, LEFT_W = 104;
+    static final int PW = 460, PH = 340, LEFT_W = 104;
     static final String[] NAMES = {"Escudo balistico", "REFUERZO", "Tanque", "Helicoptero", "Tanque movil", "Esposas", "Perro K9", "Sirena y torreta", "Dron de vigilancia"};
     static final String[] DESC = {
             "Despliega un escudo antidisturbios durante 12 s. Bloquea los golpes de frente.",
@@ -28,8 +28,8 @@ public class PoliciaTreeScreen extends Screen {
             "Despliega una patrulla con sirena: los mobs hostiles cercanos huyen de miedo y la torreta dispara a los que esten a tiro. Dura 20 s. Enfriamiento: 40 s.",
             "Un dron vigila sobre ti 45 s y marca con brillo, incluso tras las paredes, a las amenazas en 32 m. Enfriamiento: 60 s."};
     /** Posicion de cada habilidad en la cuadricula (columna, fila). */
-    static final int[] COL = {0, 0, 0, 0, 1, 0, 0, 0, 0};
-    static final int[] ROW = {0, 1, 2, 3, 2, 4, 5, 6, 7};
+    static final int[] CX = {174, 72, 174, 276, 174, 38, 106, 242, 310};
+    static final int[] ROW = {0, 1, 1, 1, 2, 2, 2, 2, 2};
     int px, py;
 
     public PoliciaTreeScreen() {
@@ -54,8 +54,8 @@ public class PoliciaTreeScreen extends Screen {
         return i == 0 || (s != null && ((s.un >> i) & 1) == 1);
     }
 
-    int nodeX(int i) { return px + LEFT_W + 8 + 30 + COL[i] * 80; }
-    int nodeY(int i) { return py + 30 + ROW[i] * 28; }
+    int nodeX(int i) { return px + LEFT_W + 8 + CX[i] - 12; }
+    int nodeY(int i) { return py + 40 + ROW[i] * 70; }
 
     static String cost(int i) {
         return PoliciaMod.LEVEL_COST[i] > 0 ? PoliciaMod.LEVEL_COST[i] + " niveles de experiencia" : PoliciaMod.XP_PER_NODE + " XP";
@@ -211,11 +211,12 @@ public class PoliciaTreeScreen extends Screen {
         for (int i = 1; i < n; i++) {
             int pre = PoliciaMod.PRE[i];
             int col = has(s, i) ? 0xFFE070D8 : 0xFF6A3A66;
-            if (COL[pre] == COL[i]) {
-                g.fill(nodeX(i) + 11, nodeY(pre) + 24, nodeX(i) + 13, nodeY(i), col);
-            } else {
-                g.fill(nodeX(pre) + 24, nodeY(i) + 11, nodeX(i), nodeY(i) + 13, col);
-            }
+            int x0 = nodeX(pre) + 11, x1 = nodeX(i) + 11;
+            int y0 = nodeY(pre) + 44, y1 = nodeY(i);
+            int ym = y1 - 10;
+            g.fill(x0, y0, x0 + 2, ym + 2, col);
+            g.fill(Math.min(x0, x1), ym, Math.max(x0, x1) + 2, ym + 2, col);
+            g.fill(x1, ym, x1 + 2, y1, col);
         }
         int hov = -1;
         for (int i = 0; i < n; i++) {
@@ -239,8 +240,11 @@ public class PoliciaTreeScreen extends Screen {
                 g.fill(nx, y, nx + 24, y + 24, 0x99000000);
                 padlock(g, nx, y);
             }
-            g.drawString(font, NAMES[i], nx + 30, y + 8, open ? 0xFFFFFFFF : 0xFFA0A0A0, true);
-            if (i == 1 && open) g.drawString(font, "Nv " + Math.max(1, s == null ? 1 : s.rl) + "/4", nx + 30, y + 17, 0xFFE8C040, false);
+            List<FormattedCharSequence> nl = font.split(FormattedText.of(NAMES[i]), 64);
+            for (int k = 0; k < nl.size() && k < 2; k++) {
+                g.drawCenteredString(font, nl.get(k), nx + 12, y + 27 + k * 9, open ? 0xFFFFFFFF : 0xFFA0A0A0);
+            }
+            if (i == 1 && open) g.drawCenteredString(font, "Nv " + Math.max(1, s == null ? 1 : s.rl) + "/4", nx + 12, y - 10, 0xFFE8C040);
         }
         // informacion de la habilidad senalada (o la elegida)
         int show = hov >= 0 ? hov : (has(s, sel) ? sel : 0);
