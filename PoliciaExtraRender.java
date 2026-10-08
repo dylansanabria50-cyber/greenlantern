@@ -232,41 +232,32 @@ public class PoliciaExtraRender {
         ps.popPose();
     }
 
-    /** Esposas sobre el esposado: se cierran con animacion y se abren al terminar. */
+    /** Esposas sobre el esposado: quedan quietas en el suelo, bajo sus pies. */
     public static void livingPost(RenderLivingEvent.Post<?, ?> e) {
         LivingEntity t = e.getEntity();
         MobEffectInstance ef = t.getEffect(PoliciaExtra.CUFF.get());
         if (ef == null) return;
         float pt = e.getPartialTick();
         float age = PoliciaExtra.CUFF_T - ef.getDuration() + pt;
-        float c = Mth.clamp(age / 8.0f, 0.0f, 1.0f);
-        c = Math.min(c, Mth.clamp((ef.getDuration() - pt) / 10.0f, 0.0f, 1.0f));
+        float c = Mth.clamp(age / 5.0f, 0.0f, 1.0f);
+        c = Math.min(c, Mth.clamp((ef.getDuration() - pt) / 6.0f, 0.0f, 1.0f));
         float w = t.getBbWidth();
-        float h = t.getBbHeight();
-        float snap = 1.0f + 0.3f * Math.max(0.0f, 1.0f - Math.abs(age - 8.0f) / 3.0f);
+        float s = Math.max(1.0f, w * 1.1f);
+        float ox = 0.16f * s + w * 0.2f;
+        float y = 0.03f + (1.0f - c) * 0.6f;
         PoseStack ps = e.getPoseStack();
         VertexConsumer vc = e.getMultiBufferSource().getBuffer(RenderType.entityCutoutNoCull(WHITE));
         int light = e.getPackedLight();
         ps.pushPose();
-        ps.mulPose(Axis.YP.rotationDegrees(-Mth.rotLerp(pt, t.yBodyRotO, t.yBodyRot)));
-        float y = h * 0.42f;
-        float ox = w * 0.5f + 0.1f;
-        for (int s = -1; s <= 1; s += 2) {
+        for (int sd = -1; sd <= 1; sd += 2) {
             ps.pushPose();
-            ps.translate(s * (ox + (1.0f - c) * 0.9f), y, 0.0f);
+            ps.translate(sd * ox, y, 0.0f);
             ps.mulPose(Axis.XP.rotationDegrees(90.0f));
-            ps.mulPose(Axis.ZP.rotationDegrees((1.0f - c) * 540.0f));
-            ps.scale(snap, snap, snap);
+            ps.scale(s, s, s);
             ring(ps, vc, light);
             ps.popPose();
         }
-        if (c > 0.95f) {
-            float zb = -(w * 0.5f + 0.06f);
-            for (int i = 0; i < 6; i++) {
-                float cx = -ox + 2.0f * ox * (i + 0.5f) / 6.0f;
-                box(ps, vc, cx - 0.05f, y - 0.02f, zb - 0.02f, cx + 0.05f, y + 0.02f, zb + 0.02f, 120, 124, 134, light);
-            }
-        }
+        box(ps, vc, -ox + 0.1f * s, y - 0.015f, -0.015f, ox - 0.1f * s, y + 0.015f, 0.015f, 120, 124, 134, light);
         ps.popPose();
     }
 }
