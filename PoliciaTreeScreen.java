@@ -31,6 +31,7 @@ public class PoliciaTreeScreen extends Screen {
     static final int[] CX = {174, 72, 174, 276, 174, 38, 106, 242, 310};
     static final int[] ROW = {0, 1, 1, 1, 2, 2, 2, 2, 2};
     int px, py;
+    float zoom = 1.0f;
 
     public PoliciaTreeScreen() {
         super(Component.literal("Rama de habilidades"));
@@ -189,6 +190,13 @@ public class PoliciaTreeScreen extends Screen {
     @Override
     public void render(GuiGraphics g, int mx, int my, float pt) {
         renderBackground(g);
+        int rawMx = mx, rawMy = my;
+        mx = (int) ((mx - width / 2.0f) / zoom + width / 2.0f);
+        my = (int) ((my - height / 2.0f) / zoom + height / 2.0f);
+        g.pose().pushPose();
+        g.pose().translate(width / 2.0f, height / 2.0f, 0.0f);
+        g.pose().scale(zoom, zoom, 1.0f);
+        g.pose().translate(-width / 2.0f, -height / 2.0f, 0.0f);
         PoliciaMod.Sync s = PoliciaClient.mine();
         int xp = s == null ? 0 : s.xp;
         int sel = s == null ? 0 : s.sel;
@@ -269,11 +277,15 @@ public class PoliciaTreeScreen extends Screen {
         } else {
             g.drawString(font, "Clic para elegir", bx0 + 5, by1 - 11, 0xFF9AA4B0, false);
         }
-        super.render(g, mx, my, pt);
+        g.pose().popPose();
+        super.render(g, rawMx, rawMy, pt);
     }
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
+        double rmx = mx, rmy = my;
+        mx = (mx - width / 2.0) / zoom + width / 2.0;
+        my = (my - height / 2.0) / zoom + height / 2.0;
         if (btn == 1) { // clic derecho sobre REFUERZO: mejorar de nivel
             PoliciaMod.Sync s1 = PoliciaClient.mine();
             int nx1 = nodeX(1), y1 = nodeY(1);
@@ -292,7 +304,13 @@ public class PoliciaTreeScreen extends Screen {
                 }
             }
         }
-        return super.mouseClicked(mx, my, btn);
+        return super.mouseClicked(rmx, rmy, btn);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mx, double my, double delta) {
+        zoom = Math.max(0.5f, Math.min(2.0f, zoom + (float) delta * 0.1f));
+        return true;
     }
 
     @Override
