@@ -63,6 +63,9 @@ public class PoliciaClient {
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::screenPre);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::setup);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::renderers);
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaExtraRender::layers);
+        MinecraftForge.EVENT_BUS.addListener(PoliciaExtraRender::livingPost);
+        MinecraftForge.EVENT_BUS.addListener(PoliciaExtraRender::handFirst);
     }
 
     static void setup(net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent e) {
