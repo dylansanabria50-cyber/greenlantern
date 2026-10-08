@@ -478,7 +478,7 @@ public class PoliciaMod {
     public void onClone(PlayerEvent.Clone e) {
         CompoundTag o = e.getOriginal().getPersistentData();
         CompoundTag n = e.getEntity().getPersistentData();
-        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver", "pol_rl", "pol_job", "pol_hcd_t", "alb_lv", "alb_sel", "alb_chest", "alb_c0", "alb_c1"}) {
+        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver", "pol_rl", "pol_job", "pol_hcd_t", "alb_lv", "alb_sel", "alb_chest", "alb_inner", "alb_c0", "alb_c1"}) {
             if (o.contains(k)) n.put(k, o.get(k).copy());
         }
     }
