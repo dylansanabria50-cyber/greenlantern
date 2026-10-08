@@ -16,7 +16,7 @@ import java.util.List;
 /** Pantalla de habilidades: personaje a la izquierda, rama de habilidades a la derecha. */
 public class PoliciaTreeScreen extends Screen {
     static final int PW = 340, PH = 200, LEFT_W = 104;
-    static final String[] NAMES = {"Escudo balistico", "Invocar tanque", "Jet de combate"};
+    static final String[] NAMES = {"Escudo balistico", "Tanque", "Jet de combate"};
     static final String[] DESC = {
             "Despliega un escudo antidisturbios durante 12 s. Bloquea los golpes de frente.",
             "Invoca un tanque bajo tus pies. Apunta con la mira y dispara con clic derecho una sola vez; luego se retira. Enfriamiento: 30 s.",
@@ -60,6 +60,20 @@ public class PoliciaTreeScreen extends Screen {
         g.drawString(font, text, x + 4, y + 2, 0xFFFFFFFF, true);
     }
 
+    /** Icono con forma de tanque (16x16). */
+    static void tankIcon(GuiGraphics g, int x, int y) {
+        g.fill(x + 1, y + 10, x + 15, y + 14, 0xFF26292B);   // orugas
+        g.fill(x + 2, y + 11, x + 14, y + 13, 0xFF4A4F52);
+        for (int k = 0; k < 4; k++) g.fill(x + 3 + k * 3, y + 11, x + 4 + k * 3, y + 13, 0xFF8A9096); // ruedas
+        g.fill(x + 2, y + 7, x + 14, y + 10, 0xFF5E7040);    // casco
+        g.fill(x + 2, y + 7, x + 14, y + 8, 0xFF7C9156);
+        g.fill(x + 5, y + 4, x + 11, y + 7, 0xFF6B7F48);     // torreta
+        g.fill(x + 5, y + 4, x + 11, y + 5, 0xFF8AA062);
+        g.fill(x + 7, y + 2, x + 9, y + 4, 0xFF3D4A28);      // escotilla
+        g.fill(x + 11, y + 5, x + 16, y + 6, 0xFF2E3820);    // canon
+        g.fill(x + 15, y + 4, x + 16, y + 7, 0xFF1F2616);    // boca del canon
+    }
+
     void padlock(GuiGraphics g, int x, int y) {
         g.fill(x + 8, y + 3, x + 10, y + 11, 0xFFD8D8D8);
         g.fill(x + 14, y + 3, x + 16, y + 11, 0xFFD8D8D8);
@@ -98,7 +112,7 @@ public class PoliciaTreeScreen extends Screen {
             int border = (open && i == sel) ? 0xFFFFFFFF : (hover ? 0xFFFFE9A0 : 0xFF6B4A0C);
             g.fill(nx - 1, y - 1, nx + 25, y + 25, border);
             g.fill(nx, y, nx + 24, y + 24, open ? 0xFFC8921C : 0xFF8A6612);
-            g.renderItem(icon(i), nx + 4, y + 4);
+            if (i == 1) tankIcon(g, nx + 4, y + 4); else g.renderItem(icon(i), nx + 4, y + 4);
             if (!open) {
                 g.fill(nx, y, nx + 24, y + 24, 0x99000000);
                 padlock(g, nx, y);
