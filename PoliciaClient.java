@@ -54,6 +54,8 @@ public class PoliciaClient {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::overlays);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::tick);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::camera);
+        MinecraftForge.EVENT_BUS.addListener(PoliciaClient::hideRider);
+        MinecraftForge.EVENT_BUS.addListener(PoliciaClient::hideHand);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::render);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::screenInit);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::livingPre);
@@ -95,9 +97,51 @@ public class PoliciaClient {
                 }
             }
         }
-        if (CAM_MOVE != null) {
-            try { CAM_MOVE.invoke(e.getCamera(), -18.0, 3.0, 0.0); } catch (Throwable t) { CAM_MOVE = null; }
-        }
+        if (CAM_MOVE == null) return;
+        try {
+            net.minecraft.client.Camera cam = e.getCamera();
+            net.minecraft.world.phys.Vec3 eye = mc.player.getEyePosition((float) e.getPartialTick());
+            org.joml.Vector3f lk = cam.getLookVector(), up = cam.getUpVector();
+            net.minecraft.world.phys.Vec3 tgt = eye.add(lk.x() * -18.0 + up.x() * 3.0, lk.y() * -18.0 + up.y() * 3.0, lk.z() * -18.0 + up.z() * 3.0);
+            double total = eye.distanceTo(tgt);
+            double f = 1.0;
+            for (int i = 0; i < 8; i++) {
+                net.minecraft.world.phys.Vec3 o = new net.minecraft.world.phys.Vec3((i & 1) * 0.2 - 0.1, (i >> 1 & 1) * 0.2 - 0.1, (i >> 2 & 1) * 0.2 - 0.1);
+                net.minecraft.world.phys.HitResult h = mc.level.clip(new net.minecraft.world.level.ClipContext(eye.add(o), tgt.add(o),
+                        net.minecraft.world.level.ClipContext.Block.VISUAL, net.minecraft.world.level.ClipContext.Fluid.NONE, mc.player));
+                if (h.getType() != net.minecraft.world.phys.HitResult.Type.MISS) {
+                    f = Math.min(f, Math.max(0.0, (eye.add(o).distanceTo(h.getLocation()) - 0.1) / total));
+                }
+            }
+            if (!camSetTried) {
+                camSetTried = true;
+                try {
+                    CAM_SET = net.minecraftforge.fml.util.ObfuscationReflectionHelper.findMethod(
+                            net.minecraft.client.Camera.class, "m_90584_", double.class, double.class, double.class);
+                } catch (Throwable t) {
+                    try {
+                        CAM_SET = net.minecraft.client.Camera.class.getDeclaredMethod("setPosition", double.class, double.class, double.class);
+                        CAM_SET.setAccessible(true);
+                    } catch (Throwable t2) { CAM_SET = null; }
+                }
+            }
+            if (CAM_SET != null) CAM_SET.invoke(cam, eye.x, eye.y, eye.z);
+            CAM_MOVE.invoke(cam, -18.0 * f, 3.0 * f, 0.0);
+        } catch (Throwable t) { CAM_MOVE = null; }
+    }
+
+    static java.lang.reflect.Method CAM_SET;
+    static boolean camSetTried = false;
+
+    /** El jugador que va dentro del tanque no se dibuja: solo se ve el tanque. */
+    static void hideRider(net.minecraftforge.client.event.RenderPlayerEvent.Pre e) {
+        if (e.getEntity().getVehicle() instanceof PoliciaTank.TankEntity) e.setCanceled(true);
+    }
+
+    /** Tampoco se ve la mano en primera persona. */
+    static void hideHand(net.minecraftforge.client.event.RenderHandEvent e) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null && mc.player.getVehicle() instanceof PoliciaTank.TankEntity) e.setCanceled(true);
     }
 
     static void keys(RegisterKeyMappingsEvent e) {
