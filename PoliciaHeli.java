@@ -330,22 +330,12 @@ public class PoliciaHeli {
             net.minecraft.world.phys.BlockHitResult hr = sl.clip(new net.minecraft.world.level.ClipContext(o, end,
                     net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE, this));
             Vec3 hit = hr.getType() == net.minecraft.world.phys.HitResult.Type.MISS ? end : hr.getLocation();
-            double len = hit.distanceTo(o);
-            if (tickCount % 2 == 0) {
-                for (double d = 2.0; d < len; d += 2.5) {
-                    Vec3 q = o.add(look.scale(d));
-                    sl.sendParticles(ParticleTypes.END_ROD, q.x, q.y, q.z, 1, 0.05, 0.05, 0.05, 0.0);
-                }
-            }
             if (tickCount % 4 == 0) {
                 net.minecraft.core.BlockPos bp = net.minecraft.core.BlockPos.containing(hit.subtract(look.scale(0.6)));
                 if (!bp.equals(lightPos) && sl.getBlockState(bp).isAir()) {
                     clearLight();
                     sl.setBlock(bp, net.minecraft.world.level.block.Blocks.LIGHT.defaultBlockState(), 3);
                     lightPos = bp;
-                }
-                for (LivingEntity le : sl.getEntitiesOfClass(LivingEntity.class, new AABB(hit, hit).inflate(4.0), e -> e != r && e.isAlive())) {
-                    le.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, 30, 0, false, false));
                 }
             }
         }
