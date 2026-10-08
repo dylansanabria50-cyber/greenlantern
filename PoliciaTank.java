@@ -39,12 +39,12 @@ public class PoliciaTank {
     public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, "policia");
     public static final RegistryObject<EntityType<TankEntity>> TANK = ENTITIES.register("tanque",
             () -> EntityType.Builder.<TankEntity>of(TankEntity::new, MobCategory.MISC)
-                    .sized(7.2f, 9.0f).fireImmune().noSave().clientTrackingRange(16).updateInterval(1)
+                    .sized(4.8f, 6.0f).fireImmune().noSave().clientTrackingRange(16).updateInterval(1)
                     .build("policia:tanque"));
 
     public static final float SCALE = 0.45f;
-    /** Tamano final: 3 veces el anterior (12 x 9 bloques). */
-    public static final float SX = 1.44f, SY = 1.86f;
+    /** Tamano final: el doble del original (8 x 6 bloques). */
+    public static final float SX = 0.96f, SY = 1.24f;
     public static final int COOLDOWN = 600;   // 30 s
     public static final int SHOTS = 3;
     static final int LOAD_TICKS = 12;         // carga antes del disparo
@@ -165,7 +165,7 @@ public class PoliciaTank {
         @Override
         public Packet<ClientGamePacketListener> getAddEntityPacket() { return NetworkHooks.getEntitySpawningPacket(this); }
         @Override
-        public double getPassengersRidingOffset() { return 5.95; }
+        public double getPassengersRidingOffset() { return 3.97; }
         @Override
         public boolean shouldRiderSit() { return false; }
         @Override
@@ -233,7 +233,7 @@ public class PoliciaTank {
             double best = -1.0e9;
             for (int a = -1; a <= 1; a++) {
                 for (int b = -1; b <= 1; b++) {
-                    best = Math.max(best, ground(cx + px * a * 2.5 + fx * b * 4.6, cz + pz * a * 2.5 + fz * b * 4.6, ref));
+                    best = Math.max(best, ground(cx + px * a * 1.7 + fx * b * 3.1, cz + pz * a * 1.7 + fz * b * 3.1, ref));
                 }
             }
             return best;
@@ -242,7 +242,7 @@ public class PoliciaTank {
         /** Sitio donde se baja el jugador: a la derecha del tanque, sobre el suelo. */
         Vec3 dismountSpot() {
             double rad = Math.toRadians(getYRot());
-            double x = getX() - Math.cos(rad) * 4.8, z = getZ() - Math.sin(rad) * 4.8;
+            double x = getX() - Math.cos(rad) * 3.2, z = getZ() - Math.sin(rad) * 3.2;
             double g = ground(x, z, getY() + 2.0);
             return new Vec3(x, g + 0.05, z);
         }
