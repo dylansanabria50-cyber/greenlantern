@@ -74,16 +74,16 @@ public class PoliciaMod {
     public static class Sync {
         UUID id = new UUID(0, 0);
         boolean on;
-        int shield, cooldown, xp, sel;
+        int shield, cooldown, xp, sel, un;
         Sync() { }
         static void enc(Sync m, FriendlyByteBuf b) {
             b.writeUUID(m.id); b.writeBoolean(m.on);
-            b.writeVarInt(m.shield); b.writeVarInt(m.cooldown); b.writeVarInt(m.xp); b.writeVarInt(m.sel);
+            b.writeVarInt(m.shield); b.writeVarInt(m.cooldown); b.writeVarInt(m.xp); b.writeVarInt(m.sel); b.writeVarInt(m.un);
         }
         static Sync dec(FriendlyByteBuf b) {
             Sync m = new Sync();
             m.id = b.readUUID(); m.on = b.readBoolean();
-            m.shield = b.readVarInt(); m.cooldown = b.readVarInt(); m.xp = b.readVarInt(); m.sel = b.readVarInt();
+            m.shield = b.readVarInt(); m.cooldown = b.readVarInt(); m.xp = b.readVarInt(); m.sel = b.readVarInt(); m.un = b.readVarInt();
             return m;
         }
         static void handle(Sync m, Supplier<NetworkEvent.Context> c) {
@@ -98,6 +98,8 @@ public class PoliciaMod {
         return !d.contains("pol_on") || d.getBoolean("pol_on");
     }
     static int xp(Player p) { return p.getPersistentData().getInt("pol_xp"); }
+    static int un(Player p) { return p.getPersistentData().getInt("pol_un") | 1; }
+    static boolean has(Player p, int i) { return ((un(p) >> i) & 1) == 1; }
     static int sel(Player p) { return p.getPersistentData().getInt("pol_sel"); }
     static int shield(Player p) { return p.getPersistentData().getInt("pol_shield"); }
     static int cooldown(Player p) { return p.getPersistentData().getInt("pol_cd"); }
@@ -118,7 +120,7 @@ public class PoliciaMod {
     static Sync snapshot(Player p) {
         Sync m = new Sync();
         m.id = p.getUUID(); m.on = on(p);
-        m.shield = shield(p); m.cooldown = cooldown(p); m.xp = xp(p); m.sel = sel(p);
+        m.shield = shield(p); m.cooldown = cooldown(p); m.xp = xp(p); m.sel = sel(p); m.un = un(p);
         return m;
     }
 
@@ -137,26 +139,41 @@ public class PoliciaMod {
             sync(p);
             return;
         }
-        if (!on(p)) { msg(p, "Activa el modo policia (H) primero"); return; }
-        if (id >= 10) { // elegir habilidad concreta desde la pantalla
+        if (id >= 20) { // desbloquear habilidad (clic en el icono): cuesta XP
+            int s = id - 20;
+            if (s <= 0 || s >= SKILLS.length || has(p, s)) return;
+            if (!has(p, s - 1)) { msg(p, "Desbloquea primero: " + SKILLS[s - 1]); return; }
+            if (xp(p) < XP_PER_NODE) { msg(p, "Necesitas " + XP_PER_NODE + " XP para desbloquear " + SKILLS[s]); return; }
+            d.putInt("pol_xp", xp(p) - XP_PER_NODE);
+            d.putInt("pol_un", un(p) | (1 << s));
+            msg(p, "Habilidad desbloqueada: " + SKILLS[s]);
+            p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.2f);
+            sync(p);
+            return;
+        }
+        if (id >= 10) { // elegir habilidad desbloqueada
             int s = id - 10;
-            if (s >= 0 && s < unlocked(p)) {
+            if (s >= 0 && s < SKILLS.length && has(p, s)) {
                 d.putInt("pol_sel", s);
                 msg(p, "Habilidad: " + SKILLS[s]);
                 sync(p);
             }
             return;
         }
+        if (!on(p)) { msg(p, "Activa el modo policia (H) primero"); return; }
         if (id == 2) { // cambiar habilidad seleccionada
-            int n = unlocked(p);
-            int s = (sel(p) + 1) % n;
+            int s = sel(p);
+            for (int k = 1; k <= SKILLS.length; k++) {
+                int c = (sel(p) + k) % SKILLS.length;
+                if (has(p, c)) { s = c; break; }
+            }
             d.putInt("pol_sel", s);
             msg(p, "Habilidad: " + SKILLS[s]);
             sync(p);
             return;
         }
         if (id == 1) { // usar habilidad seleccionada
-            int s = Math.min(sel(p), unlocked(p) - 1);
+            int s = has(p, sel(p)) ? sel(p) : 0;
             if (s == 0) {
                 if (shield(p) > 0) { msg(p, "El escudo ya esta activo"); return; }
                 if (cooldown(p) > 0) { msg(p, "Escudo en enfriamiento: " + (cooldown(p) + 19) / 20 + " s"); return; }
@@ -283,13 +300,7 @@ public class PoliciaMod {
     @SubscribeEvent
     public void onXp(PlayerXpEvent.XpChange e) {
         if (!(e.getEntity() instanceof ServerPlayer p) || e.getAmount() <= 0) return;
-        int before = unlocked(p);
         p.getPersistentData().putInt("pol_xp", xp(p) + e.getAmount());
-        int after = unlocked(p);
-        if (after > before) {
-            msg(p, "Habilidad desbloqueada: " + SKILLS[after - 1]);
-            p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.2f);
-        }
         sync(p);
     }
 
@@ -297,7 +308,7 @@ public class PoliciaMod {
     public void onClone(PlayerEvent.Clone e) {
         CompoundTag o = e.getOriginal().getPersistentData();
         CompoundTag n = e.getEntity().getPersistentData();
-        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel"}) {
+        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un"}) {
             if (o.contains(k)) n.put(k, o.get(k).copy());
         }
     }
