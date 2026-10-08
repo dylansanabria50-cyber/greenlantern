@@ -85,6 +85,8 @@ public class PoliciaTank {
         public TankEntity(EntityType<? extends TankEntity> type, Level level) {
             super(type, level);
             this.noCulling = true;
+            this.noPhysics = true;
+            this.setNoGravity(true);
         }
 
         @Override
@@ -109,6 +111,15 @@ public class PoliciaTank {
         public boolean hurt(DamageSource s, float a) { return false; }
         @Override
         public boolean isInvulnerableTo(DamageSource s) { return true; }
+
+        @Override
+        public Vec3 getDismountLocationForPassenger(net.minecraft.world.entity.LivingEntity p) { return new Vec3(getX(), getY() + 0.1, getZ()); }
+        @Override
+        protected void removePassenger(Entity e) {
+            super.removePassenger(e);
+            e.fallDistance = 0.0f;
+            if (e instanceof ServerPlayer sp) sp.getPersistentData().putInt("pol_nofall", 100);
+        }
 
         int fireState() { return entityData.get(FIRE); }
         void setFireState(int v) { entityData.set(FIRE, v); }
@@ -142,9 +153,7 @@ public class PoliciaTank {
                 pitch += Mth.clamp(tp - pitch, -3.0f, 3.0f);
             }
             if (level().isClientSide) return;
-            Vec3 mv = getDeltaMovement().add(0, -0.08, 0);
-            move(MoverType.SELF, mv);
-            setDeltaMovement(onGround() ? Vec3.ZERO : mv.multiply(0.0, 0.98, 0.0));
+            setDeltaMovement(Vec3.ZERO);
             ServerLevel sl = (ServerLevel) level();
             if (f >= 0) {
                 f++;
@@ -182,6 +191,7 @@ public class PoliciaTank {
                     PoliciaMod.sync(o);
                 }
             }
+            ejectPassengers();
             discard();
         }
     }
