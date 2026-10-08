@@ -5,6 +5,12 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.event.entity.item.ItemTossEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
@@ -103,6 +109,7 @@ public class PoliciaMod {
         NET.registerMessage(0, Act.class, Act::enc, Act::dec, Act::handle);
         NET.registerMessage(1, Sync.class, Sync::enc, Sync::dec, Sync::handle);
         MinecraftForge.EVENT_BUS.register(this);
+        PoliciaShield.ITEMS.register(FMLJavaModLoadingContext.get().getModEventBus());
         if (FMLEnvironment.dist.isClient()) {
             PoliciaClient.init();
         }
@@ -125,12 +132,12 @@ public class PoliciaMod {
         CompoundTag d = p.getPersistentData();
         if (id == 0) { // alternar forma policia (skin)
             d.putBoolean("pol_on", !on(p));
-            if (!on(p)) d.putInt("pol_shield", 0);
+            if (!on(p)) { d.putInt("pol_shield", 0); endShield(p); }
             msg(p, on(p) ? "Modo policia activado" : "Modo policia desactivado");
             sync(p);
             return;
         }
-        if (!on(p)) { msg(p, "Activa el modo policia (V) primero"); return; }
+        if (!on(p)) { msg(p, "Activa el modo policia (H) primero"); return; }
         if (id == 2) { // cambiar habilidad seleccionada
             int n = unlocked(p);
             int s = (sel(p) + 1) % n;
@@ -145,6 +152,7 @@ public class PoliciaMod {
                 if (shield(p) > 0) { msg(p, "El escudo ya esta activo"); return; }
                 if (cooldown(p) > 0) { msg(p, "Escudo en enfriamiento: " + (cooldown(p) + 19) / 20 + " s"); return; }
                 d.putInt("pol_shield", SHIELD_TICKS);
+                startShield(p);
                 p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.ANVIL_PLACE, SoundSource.PLAYERS, 0.6f, 1.6f);
                 msg(p, "Escudo balistico desplegado");
                 sync(p);
@@ -152,6 +160,72 @@ public class PoliciaMod {
                 msg(p, SKILLS[s]);
             }
         }
+    }
+
+    // ---------- escudo (item real en la mano izquierda) ----------
+    static boolean isMine(ItemStack s) { return s.getItem() instanceof PoliciaShield; }
+
+    static void purge(ServerPlayer p) {
+        Inventory inv = p.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            if (isMine(inv.getItem(i))) inv.setItem(i, ItemStack.EMPTY);
+        }
+    }
+
+    static void startShield(ServerPlayer p) {
+        CompoundTag d = p.getPersistentData();
+        ItemStack off = p.getOffhandItem();
+        if (!isMine(off)) {
+            if (!d.getBoolean("pol_saved")) {
+                if (!off.isEmpty()) d.put("pol_off", off.save(new CompoundTag())); else d.remove("pol_off");
+                d.putBoolean("pol_saved", true);
+            } else if (!off.isEmpty()) {
+                p.getInventory().placeItemBackInInventory(off.copy());
+            }
+            p.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(PoliciaShield.SHIELD.get()));
+        }
+        if (!p.isUsingItem() || !isMine(p.getUseItem())) p.startUsingItem(InteractionHand.OFF_HAND);
+    }
+
+    static void keepShield(ServerPlayer p) {
+        if (!isMine(p.getOffhandItem())) purge(p);
+        startShield(p);
+    }
+
+    static void endShield(ServerPlayer p) {
+        CompoundTag d = p.getPersistentData();
+        if (p.isUsingItem() && isMine(p.getUseItem())) p.stopUsingItem();
+        purge(p);
+        if (d.getBoolean("pol_saved")) {
+            ItemStack orig = d.contains("pol_off") ? ItemStack.of(d.getCompound("pol_off")) : ItemStack.EMPTY;
+            d.remove("pol_off");
+            d.putBoolean("pol_saved", false);
+            if (!orig.isEmpty()) {
+                if (p.getOffhandItem().isEmpty()) p.setItemInHand(InteractionHand.OFF_HAND, orig);
+                else p.getInventory().placeItemBackInInventory(orig);
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void death(LivingDeathEvent e) {
+        if (e.getEntity() instanceof ServerPlayer p && (shield(p) > 0 || p.getPersistentData().getBoolean("pol_saved"))) {
+            p.getPersistentData().putInt("pol_shield", 0);
+            endShield(p);
+        }
+    }
+
+    @SubscribeEvent
+    public void logout(PlayerEvent.PlayerLoggedOutEvent e) {
+        if (e.getEntity() instanceof ServerPlayer p) {
+            p.getPersistentData().putInt("pol_shield", 0);
+            endShield(p);
+        }
+    }
+
+    @SubscribeEvent
+    public void toss(ItemTossEvent e) {
+        if (isMine(e.getEntity().getItem())) e.setCanceled(true);
     }
 
     // ---------- eventos ----------
@@ -163,7 +237,9 @@ public class PoliciaMod {
         int sh = d.getInt("pol_shield");
         if (sh > 0) {
             d.putInt("pol_shield", --sh);
+            if (sh > 0) keepShield(p);
             if (sh == 0) {
+                endShield(p);
                 d.putInt("pol_cd", SHIELD_COOLDOWN);
                 p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.SHIELD_BREAK, SoundSource.PLAYERS, 0.5f, 1.4f);
                 msg(p, "El escudo se retiro");
