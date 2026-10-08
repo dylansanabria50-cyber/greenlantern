@@ -96,7 +96,7 @@ public class PoliciaTank {
         @Override
         public Packet<ClientGamePacketListener> getAddEntityPacket() { return NetworkHooks.getEntitySpawningPacket(this); }
         @Override
-        public double getPassengersRidingOffset() { return 9.9; }
+        public double getPassengersRidingOffset() { return 7.75; }
         @Override
         public boolean shouldRiderSit() { return false; }
         @Override
