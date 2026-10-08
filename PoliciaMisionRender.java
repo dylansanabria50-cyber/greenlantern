@@ -41,6 +41,7 @@ public class PoliciaMisionRender extends EntityRenderer<PoliciaMision.Pj> {
             case 8: return new int[]{235, 120, 20};
             case 9: return new int[]{130, 90, 60};
             case 10: return new int[]{30, 45, 95};
+            case 11: return new int[]{50, 20, 70};
             default: return new int[]{100, 100, 100};
         }
     }
@@ -57,6 +58,7 @@ public class PoliciaMisionRender extends EntityRenderer<PoliciaMision.Pj> {
             case 8: return new int[]{235, 120, 20};
             case 9: return new int[]{100, 70, 45};
             case 10: return new int[]{22, 34, 75};
+            case 11: return new int[]{20, 10, 30};
             default: return new int[]{60, 60, 60};
         }
     }
@@ -83,6 +85,7 @@ public class PoliciaMisionRender extends EntityRenderer<PoliciaMision.Pj> {
 
     void human(PoseStack ps, VertexConsumer vc, PoliciaMision.Pj e, int k, float pt, int light) {
         if (k == 4) ps.scale(1.2f, 1.2f, 1.2f);
+        else if (k == 11) ps.scale(1.3f, 1.3f, 1.3f);
         float pos = e.walkAnimation.position(pt);
         float spd = Math.min(1.0f, e.walkAnimation.speed(pt) * 1.6f);
         float sw = Mth.cos(pos * 0.6662f) * 55.0f * spd;
@@ -116,6 +119,7 @@ public class PoliciaMisionRender extends EntityRenderer<PoliciaMision.Pj> {
             if (s > 0) {
                 if (k == 1 || k == 3) b(ps, vc, -0.06f, -0.95f, -0.06f, 0.06f, -0.45f, 0.06f, BROWN, light);
                 if (k == 4) b(ps, vc, -0.07f, -1.0f, -0.07f, 0.07f, -0.45f, 0.07f, GREY, light);
+                if (k == 11) b(ps, vc, -0.05f, -1.3f, -0.05f, 0.05f, -0.45f, 0.05f, new int[]{120, 40, 170}, light);
                 if (k == 7) {
                     b(ps, vc, -0.14f, -0.85f, -0.14f, 0.14f, -0.57f, 0.14f, BLACK, light);
                     b(ps, vc, -0.03f, -0.57f, -0.03f, 0.03f, -0.47f, 0.03f, new int[]{220, 40, 30}, light);
@@ -171,11 +175,25 @@ public class PoliciaMisionRender extends EntityRenderer<PoliciaMision.Pj> {
                 b(ps, vc, -0.27f, 0.42f, 0.2f, 0.27f, 0.47f, 0.5f, new int[]{20, 30, 70}, light);
                 b(ps, vc, -0.2f, 0.26f, 0.25f, 0.2f, 0.34f, 0.27f, BLACK, light);
                 break;
+            case 11:
+                b(ps, vc, -0.26f, 0.5f, -0.26f, 0.26f, 0.58f, 0.26f, GOLD, light);
+                b(ps, vc, -0.22f, 0.58f, -0.22f, -0.14f, 0.74f, -0.14f, GOLD, light);
+                b(ps, vc, 0.14f, 0.58f, -0.22f, 0.22f, 0.74f, -0.14f, GOLD, light);
+                b(ps, vc, -0.22f, 0.58f, 0.14f, -0.14f, 0.74f, 0.22f, GOLD, light);
+                b(ps, vc, 0.14f, 0.58f, 0.14f, 0.22f, 0.74f, 0.22f, GOLD, light);
+                b(ps, vc, -0.14f, 0.27f, 0.25f, -0.05f, 0.33f, 0.27f, new int[]{255, 60, 220}, light);
+                b(ps, vc, 0.05f, 0.27f, 0.25f, 0.14f, 0.33f, 0.27f, new int[]{255, 60, 220}, light);
+                break;
             default:
                 break;
         }
         ps.popPose();
         // extras de cuerpo
+        if (k == 11) {
+            b(ps, vc, -0.3f, 0.2f, -0.2f, 0.3f, 1.5f, -0.13f, new int[]{90, 30, 130}, light);
+            b(ps, vc, -0.45f, 1.4f, -0.15f, -0.25f, 1.52f, 0.15f, GOLD, light);
+            b(ps, vc, 0.25f, 1.4f, -0.15f, 0.45f, 1.52f, 0.15f, GOLD, light);
+        }
         switch (k) {
             case 0:
                 b(ps, vc, -0.2f, 0.8f, -0.32f, 0.2f, 1.35f, -0.13f, new int[]{150, 110, 40}, light);
