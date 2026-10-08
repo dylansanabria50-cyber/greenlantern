@@ -188,7 +188,7 @@ public class PoliciaTractor {
     static void lamp(ServerPlayer p) {
         if (!(p.getVehicle() instanceof TractorEntity t)) return;
         boolean on = !t.lampOn();
-        t.entityData.set(TractorEntity.LAMP, on);
+        t.setLamp(on);
         if (!on) t.clearLight();
         p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.LEVER_CLICK, SoundSource.PLAYERS, 0.8f, on ? 1.4f : 1.0f);
         PoliciaMod.msg(p, on ? "Luces del tractor encendidas" : "Luces del tractor apagadas");
@@ -274,6 +274,7 @@ public class PoliciaTractor {
         }
 
         public boolean lampOn() { return entityData.get(LAMP); }
+        void setLamp(boolean on) { entityData.set(LAMP, on); }
 
         // ---------- terreno ----------
         double ground(double x, double z, double refY) {
