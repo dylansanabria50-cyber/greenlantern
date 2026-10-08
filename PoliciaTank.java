@@ -96,9 +96,7 @@ public class PoliciaTank {
         if (!mine.isEmpty()) {
             TankEntity t = mine.get(0);
             if (t.isRemoved() || t.getFirstPassenger() != null) return;
-            p.startRiding(t, true);
-            p.level().playSound(null, t.getX(), t.getY(), t.getZ(), SoundEvents.IRON_DOOR_OPEN, SoundSource.PLAYERS, 1.0f, 0.6f);
-            PoliciaMod.msg(p, "Subiste al tanque (" + t.shotsLeft() + " disparos)");
+            PoliciaMod.msg(p, "Haz clic derecho sobre el tanque para montarte");
             return;
         }
         CompoundTag d = p.getPersistentData();
@@ -173,7 +171,23 @@ public class PoliciaTank {
         @Override
         protected boolean canAddPassenger(Entity e) { return this.getPassengers().isEmpty(); }
         @Override
-        public boolean isPickable() { return false; }
+        public boolean isPickable() { return isMobile() && getFirstPassenger() == null && !isRemoved(); }
+        @Override
+        public net.minecraft.world.InteractionResult interact(net.minecraft.world.entity.player.Player pl, net.minecraft.world.InteractionHand hand) {
+            if (!isMobile() || getFirstPassenger() != null || pl.isPassenger()) return net.minecraft.world.InteractionResult.PASS;
+            if (owner != null && !owner.equals(pl.getUUID())) return net.minecraft.world.InteractionResult.PASS;
+            if (!level().isClientSide && pl instanceof ServerPlayer sp) {
+                sp.startRiding(this, true);
+                level().playSound(null, getX(), getY(), getZ(), SoundEvents.IRON_DOOR_OPEN, SoundSource.PLAYERS, 1.0f, 0.6f);
+                PoliciaMod.msg(sp, "Subiste al tanque (" + shotsLeft() + " disparos)");
+            }
+            return net.minecraft.world.InteractionResult.sidedSuccess(level().isClientSide);
+        }
+        /** Los mobs y otras entidades no empujan al tanque. */
+        @Override
+        public void push(Entity e) { }
+        @Override
+        public void push(double x, double y, double z) { }
         @Override
         public boolean isPushable() { return false; }
         @Override
@@ -228,7 +242,7 @@ public class PoliciaTank {
         /** Sitio donde se baja el jugador: a la derecha del tanque, sobre el suelo. */
         Vec3 dismountSpot() {
             double rad = Math.toRadians(getYRot());
-            double x = getX() - Math.cos(rad) * 5.2, z = getZ() - Math.sin(rad) * 5.2;
+            double x = getX() - Math.cos(rad) * 4.8, z = getZ() - Math.sin(rad) * 4.8;
             double g = ground(x, z, getY() + 2.0);
             return new Vec3(x, g + 0.05, z);
         }
@@ -263,6 +277,42 @@ public class PoliciaTank {
             double py = getY() + PB[1] * SY;
             Vec3 dir = new Vec3(-Math.sin(yaw) * Math.cos(pit), -Math.sin(pit), Math.cos(yaw) * Math.cos(pit));
             return new Vec3(px, py, pz).add(dir.scale(5.4 * SX));
+        }
+
+        int clankT;
+        float lastYaw;
+
+        /** Sonido metalico de las orugas al avanzar o girar. */
+        void clank(Entity r) {
+            boolean turning = Math.abs(Mth.wrapDegrees(getYRot() - lastYaw)) > 0.3f;
+            lastYaw = getYRot();
+            if (r == null || (Math.abs(speed) < 0.03 && !turning)) { clankT = 0; return; }
+            clankT++;
+            if (clankT % 4 == 0) {
+                float pit = 0.45f + level().random.nextFloat() * 0.2f;
+                level().playSound(null, getX(), getY(), getZ(), (clankT & 4) == 0 ? SoundEvents.IRON_GOLEM_STEP : SoundEvents.CHAIN_STEP,
+                        SoundSource.PLAYERS, 2.0f, pit);
+            }
+            if (clankT % 12 == 0) {
+                level().playSound(null, getX(), getY(), getZ(), SoundEvents.ANVIL_HIT, SoundSource.PLAYERS, 0.35f, 0.5f);
+            }
+        }
+
+        /** El casco es solido: saca a los jugadores que quedan dentro de su huella. */
+        void pushOut(Entity r) {
+            double rad = Math.toRadians(getYRot()), c = Math.cos(rad), s = Math.sin(rad);
+            for (net.minecraft.world.entity.player.Player pl : level().getEntitiesOfClass(net.minecraft.world.entity.player.Player.class,
+                    getBoundingBox().inflate(6.0, 0.0, 6.0), e -> e != r && !e.isSpectator())) {
+                double dx = pl.getX() - getX(), dz = pl.getZ() - getZ();
+                double lat = dx * c + dz * s, fw = -dx * s + dz * c;
+                if (Math.abs(lat) >= 3.4 || Math.abs(fw) >= 6.3 || pl.getY() > getY() + 4.4) continue;
+                double nl = lat, nf = fw;
+                double ol = 3.5 - Math.abs(lat), of = 6.4 - Math.abs(fw);
+                if (ol <= of) nl = (lat < 0 ? -1 : 1) * 3.5; else nf = (fw < 0 ? -1 : 1) * 6.4;
+                double nx = getX() + nl * c - nf * s, nz = getZ() + nl * s + nf * c;
+                if (pl instanceof ServerPlayer sp) sp.connection.teleport(nx, pl.getY(), nz, pl.getYRot(), pl.getXRot());
+                else pl.setPos(nx, pl.getY(), nz);
+            }
         }
 
         /** Conduccion: W/S avanzan, A/D giran el casco. */
@@ -329,6 +379,7 @@ public class PoliciaTank {
             boolean mobile = isMobile();
             if (mobile && r != null) drive(r);
             else if (mobile) speed = 0.0;
+            if (mobile) { clank(r); pushOut(r); }
             if (tickCount % 20 == 0 && owner != null) {
                 ServerPlayer o = sl.getServer().getPlayerList().getPlayer(owner);
                 if (o == null || !o.isAlive()) { ejectPassengers(); discard(); return; }
