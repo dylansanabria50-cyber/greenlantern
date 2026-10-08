@@ -79,8 +79,8 @@ public class PoliciaMod {
     public static class Act {
         final int id;
         Act(int id) { this.id = id; }
-        static void enc(Act m, FriendlyByteBuf b) { b.writeByte(m.id); }
-        static Act dec(FriendlyByteBuf b) { return new Act(b.readByte()); }
+        static void enc(Act m, FriendlyByteBuf b) { b.writeVarInt(m.id); }
+        static Act dec(FriendlyByteBuf b) { return new Act(b.readVarInt()); }
         static void handle(Act m, Supplier<NetworkEvent.Context> c) {
             c.get().enqueueWork(() -> {
                 ServerPlayer p = c.get().getSender();
@@ -194,7 +194,7 @@ public class PoliciaMod {
             sync(p);
             return;
         }
-        if (id == 4) { PoliciaHeli.toggleLight(p); return; }
+        if (id == 4) { if ("albanil".equals(job(p))) PoliciaAlbanil.toggleLamp(p); else PoliciaHeli.toggleLight(p); return; }
         if (id == 5 || id == 6) { PoliciaHeli.vert(p, id == 5 ? 1 : -1); return; }
         if ("albanil".equals(job(p))) { PoliciaAlbanil.act(p, id); return; }
         if (id == 30) { // mejorar REFUERZO (cuesta XP)
@@ -501,7 +501,7 @@ public class PoliciaMod {
     public void onClone(PlayerEvent.Clone e) {
         CompoundTag o = e.getOriginal().getPersistentData();
         CompoundTag n = e.getEntity().getPersistentData();
-        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver", "pol_rl", "pol_job", "pol_hcd_t", "alb_lv","alb_hl","alb_ench","alb_mode", "alb_sel", "alb_chest", "alb_inner", "alb_c0", "alb_c1"}) {
+        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver", "pol_rl", "pol_job", "pol_hcd_t", "alb_lv","alb_hl","alb_ench","alb_mode","alb_bank","alb_lu", "alb_sel", "alb_chest", "alb_inner", "alb_c0", "alb_c1"}) {
             if (o.contains(k)) n.put(k, o.get(k).copy());
         }
     }
