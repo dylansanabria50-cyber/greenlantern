@@ -90,6 +90,7 @@ public class PoliciaClient {
         e.registerEntityRenderer(PoliciaRefuerzo.AGENT.get(), PoliciaRefuerzoRender::new);
         e.registerEntityRenderer(PoliciaAyudante.AYU.get(), PoliciaAyudanteRender::new);
         e.registerEntityRenderer(PoliciaTractor.TRACTOR.get(), PoliciaTractorRender::new);
+        e.registerEntityRenderer(PoliciaBubble.BUBBLE.get(), PoliciaBubbleRender::new);
         e.registerEntityRenderer(PoliciaMision.PJ.get(), PoliciaMisionRender::new);
         e.registerEntityRenderer(PoliciaMision.COM.get(), PoliciaMisionRender::new);
         e.registerEntityRenderer(PoliciaMision.VAN.get(), PoliciaMisionRender::new);
@@ -614,7 +615,8 @@ public class PoliciaClient {
             boolean open = i == 0 || ((s.un >> i) & 1) == 1;
             String nm = (i == 2 && up) ? PoliciaMod.SKILLS[4] : PoliciaMod.SKILLS[i];
             String line = (i == s.sel && open ? "> " : "  ") + num + ". " + nm;
-            if (!open) line += "  [" + (PoliciaMod.LEVEL_COST[i] > 0 ? PoliciaMod.LEVEL_COST[i] + " niveles" : PoliciaMod.XP_PER_NODE + " XP") + "]";
+            if (!open && i == 9) line += "  [mision especial]";
+            else if (!open) line += "  [" + (PoliciaMod.LEVEL_COST[i] > 0 ? PoliciaMod.LEVEL_COST[i] + " niveles" : PoliciaMod.XP_PER_NODE + " XP") + "]";
             ls.add(line);
             cs.add(open ? (i == s.sel ? 0xFFFFFFFF : 0xFFB0C4DE) : 0xFF707070);
         }
@@ -626,7 +628,7 @@ public class PoliciaClient {
         else if (s.sel == 2) st = s.tcd > 0 ? "Tanque en enfriamiento: " + (s.tcd + 19) / 20 + " s" : (up ? "Tanque movil listo (J)" : "Tanque listo (J)");
         else if (s.sel == 1) st = s.rcd > 0 ? "Refuerzo en enfriamiento: " + (s.rcd + 19) / 20 + " s" : "Refuerzo nv " + Math.max(1, s.rl) + " listo (J)";
         else if (s.sel >= 5) {
-            int cc = s.sel == 5 ? s.c5 : (s.sel == 6 ? s.c6 : (s.sel == 7 ? s.c7 : s.c8));
+            int cc = s.sel == 5 ? s.c5 : (s.sel == 6 ? s.c6 : (s.sel == 7 ? s.c7 : (s.sel == 9 ? s.c9 : s.c8)));
             st = PoliciaMod.SKILLS[s.sel] + (cc > 0 ? " en enfriamiento: " + (cc + 19) / 20 + " s" : " listo (J)");
         }
         else if (s.sel == 3) st = mc.player.getVehicle() instanceof PoliciaHeli.HeliEntity hh ? (hh.isLight() ? "MODO LINTERNA: la luz sigue tu mirada. W/S/A/D mover, ESPACIO subir, CTRL bajar (tecla de linterna para apagar)" : "HELICOPTERO: W/S avanzar, A/D desplazar, ESPACIO subir, CTRL bajar, Shift salir, tecla de linterna: luz") : "Helicoptero listo (J)";
