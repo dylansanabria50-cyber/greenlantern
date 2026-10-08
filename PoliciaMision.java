@@ -102,14 +102,14 @@ public class PoliciaMision {
                     .sized(2.0f, 1.8f).noSave().clientTrackingRange(10).build("policia:furgoneta"));
 
     static final String[] NAMES = {"Ladron", "Pandillero", "Pandillero arquero", "Lider de pandilla", "Jefe de banda",
-            "Francotirador", "Contrabandista", "Saboteador", "Evadido", "Aldeano", "Comisario"};
-    static final double[] HP = {16, 22, 18, 40, 120, 16, 30, 14, 20, 20, 40};
-    static final double[] SPD = {0.23, 0.26, 0.24, 0.27, 0.27, 0.0, 0.25, 0.25, 0.25, 0.22, 0.0};
-    static final double[] DMG = {2, 4, 2, 6, 9, 2, 3, 1, 3, 1, 1};
-    static final int[] XP = {0, 8, 6, 10, 12, 10, 10, 10, 40};
-    static final int[] TIME = {0, 6000, 4800, 9600, 9600, 12000, 12000, 3000, 14400};
+            "Francotirador", "Contrabandista", "Saboteador", "Evadido", "Aldeano", "Comisario", "El Cerebro"};
+    static final double[] HP = {16, 22, 18, 40, 120, 16, 30, 14, 20, 20, 40, 220};
+    static final double[] SPD = {0.23, 0.26, 0.24, 0.27, 0.27, 0.0, 0.25, 0.25, 0.25, 0.22, 0.0, 0.3};
+    static final double[] DMG = {2, 4, 2, 6, 9, 2, 3, 1, 3, 1, 1, 11};
+    static final int[] XP = {0, 8, 6, 10, 12, 10, 10, 10, 40, 70};
+    static final int[] TIME = {0, 6000, 4800, 9600, 9600, 12000, 12000, 3000, 14400, 24000};
     static final String[] TITLE = {"", "Atrapar al fugitivo", "Patrulla de 3 puntos", "Rescate de aldeano", "Limpiar el campamento",
-            "Recuperar evidencia", "Escolta de aldeano", "Desactivar bombas", "Cazar al jefe de banda"};
+            "Recuperar evidencia", "Escolta de aldeano", "Desactivar bombas", "Cazar al jefe de banda", "El cerebro de la organizacion"};
     static final String[] DESC = {"", "Un delincuente huye con lo robado. Esposelo con la habilidad Esposas.",
             "Recorra los 3 puntos marcados antes de que se acabe el tiempo.",
             "Un aldeano fue secuestrado. Liberelo (clic derecho) y llevelo al comisario.",
@@ -117,15 +117,17 @@ public class PoliciaMision {
             "Traiga el papel de evidencia del cofre vigilado hasta el comisario.",
             "Lleve al aldeano a salvo hasta el punto marcado. Habra una emboscada.",
             "Un saboteador dejo 3 bombas. Desactivelas (romperlas) antes de que expire el tiempo.",
-            "El jefe de la banda se esconde con su guardia. Cacelo."};
+            "El jefe de la banda se esconde con su guardia. Cacelo.",
+            "Siga las pistas hasta la guarida del cerebro de la organizacion y derrotelo. Se teletransporta e invoca refuerzos."};
     static final Item[] ICON = {Items.PAPER, Items.LEAD, Items.COMPASS, Items.NAME_TAG, Items.CAMPFIRE, Items.CHEST,
-            Items.SADDLE, Items.TNT, Items.SKELETON_SKULL};
+            Items.SADDLE, Items.TNT, Items.SKELETON_SKULL, Items.NETHER_STAR};
     static final String[] DIRS = {"este", "sureste", "sur", "suroeste", "oeste", "noroeste", "norte", "noreste"};
 
     static final Map<UUID, M> ACTIVE = new HashMap<>();
 
     static void init() {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaMision::attrs);
+        PoliciaBubble.init();
         MinecraftForge.EVENT_BUS.register(new Ev());
     }
 
@@ -176,7 +178,7 @@ public class PoliciaMision {
 
         public void setKind(int k) {
             this.entityData.set(KIND, k);
-            if (k < 0 || k > 10) return;
+            if (k < 0 || k > 11) return;
             this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(HP[k]);
             this.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(SPD[k]);
             this.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(DMG[k]);
@@ -188,15 +190,53 @@ public class PoliciaMision {
             }
             this.setHealth((float) HP[k]);
             this.setCustomName(Component.literal(NAMES[k]));
-            this.setCustomNameVisible(k == 3 || k == 4 || k == 10);
+            this.setCustomNameVisible(k == 3 || k == 4 || k == 10 || k == 11);
+            if (k == 11) {
+                this.getAttribute(Attributes.ARMOR).setBaseValue(10.0);
+                this.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(0.8);
+                this.bar.setName(Component.literal("El Cerebro"));
+                this.bar.setColor(BossEvent.BossBarColor.PURPLE);
+            }
             if (k == 4) this.bar.setName(Component.literal("Jefe de banda"));
         }
 
-        boolean hostile() { int k = kind(); return k >= 1 && k <= 5; }
+        boolean hostile() { int k = kind(); return (k >= 1 && k <= 5) || k == 11; }
 
         boolean flees() { int k = kind(); return k == 0 || k == 6 || k == 7 || k == 8; }
 
-        boolean melee() { int k = kind(); return k == 1 || k == 3 || k == 4; }
+        boolean melee() { int k = kind(); return k == 1 || k == 3 || k == 4 || k == 11; }
+
+        int tpc = 0, stage = 0;
+
+        /** Jefe final: se teletransporta cerca de su objetivo e invoca refuerzos al perder vida. */
+        void cerebro() {
+            if (!(this.level() instanceof ServerLevel sl)) return;
+            LivingEntity t = this.getTarget();
+            if (t == null) return;
+            if (++tpc >= 100) {
+                tpc = 0;
+                if (this.distanceToSqr(t) > 25.0 && this.random.nextInt(2) == 0) {
+                    sl.sendParticles(ParticleTypes.PORTAL, getX(), getY() + 1, getZ(), 30, 0.3, 0.6, 0.3, 0.3);
+                    double ang = this.random.nextDouble() * Math.PI * 2.0;
+                    if (this.randomTeleport(t.getX() + Math.cos(ang) * 3.0, t.getY(), t.getZ() + Math.sin(ang) * 3.0, true)) {
+                        sl.sendParticles(ParticleTypes.PORTAL, getX(), getY() + 1, getZ(), 30, 0.3, 0.6, 0.3, 0.3);
+                        this.playSound(SoundEvents.ENDERMAN_TELEPORT, 1.0f, 1.0f);
+                    }
+                }
+            }
+            float f = getHealth() / getMaxHealth();
+            if ((stage == 0 && f < 0.66f) || (stage == 1 && f < 0.33f)) {
+                stage++;
+                M mm = mission == null ? null : ACTIVE.get(mission);
+                for (int i = 0; i < 2; i++) {
+                    Pj g1 = spawn(sl, mm, 1, around(sl, blockPosition(), 4));
+                    g1.life = 3000;
+                }
+                Pj g2 = spawn(sl, mm, 2, around(sl, blockPosition(), 4));
+                g2.life = 3000;
+                this.playSound(SoundEvents.EVOKER_PREPARE_SUMMON, 1.0f, 1.0f);
+            }
+        }
 
         Player ownerPlayer() { return owner == null ? null : this.level().getPlayerByUUID(owner); }
 
@@ -310,13 +350,14 @@ public class PoliciaMision {
                 this.discard();
                 return;
             }
-            if (kind() == 4) bar.setProgress(Mth.clamp(getHealth() / getMaxHealth(), 0.0f, 1.0f));
+            if (kind() == 4 || kind() == 11) bar.setProgress(Mth.clamp(getHealth() / getMaxHealth(), 0.0f, 1.0f));
+            if (kind() == 11) cerebro();
         }
 
         @Override
         public void startSeenByPlayer(ServerPlayer p) {
             super.startSeenByPlayer(p);
-            if (kind() == 4) bar.addPlayer(p);
+            if (kind() == 4 || kind() == 11) bar.addPlayer(p);
         }
 
         @Override
@@ -550,6 +591,26 @@ public class PoliciaMision {
         }
     }
 
+    static boolean setup9(ServerLevel sl, ServerPlayer sp, M m) {
+        BlockPos pp = sp.blockPosition();
+        BlockPos c1 = site(sl, pp, 25, 38);
+        BlockPos c2 = site(sl, pp, 40, 55);
+        BlockPos s = site(sl, pp, 55, 70);
+        if (c1 == null || c2 == null || s == null) return false;
+        m.pts.add(c1);
+        m.pts.add(c2);
+        camp(sl, m, s, 3, true, false);
+        spawn(sl, m, 3, around(sl, s, 4)).restrictTo(s, 9);
+        spawn(sl, m, 2, around(sl, s, 4)).restrictTo(s, 9);
+        BlockPos tg = at(sl, s.getX() - 8, s.getZ() - 3);
+        if (tg != null) spawn(sl, m, 5, tower(sl, m, tg));
+        Pj b = spawn(sl, m, 11, s);
+        b.restrictTo(s, 10);
+        m.target = b.getUUID();
+        m.dest = s;
+        return true;
+    }
+
     static void start(ServerPlayer sp, int type, BlockPos origin) {
         if (ACTIVE.containsKey(sp.getUUID())) {
             PoliciaMod.msg(sp, "Ya tiene una mision en curso");
@@ -564,7 +625,7 @@ public class PoliciaMision {
         m.start = sl.getGameTime();
         m.end = m.start + TIME[type];
         ACTIVE.put(m.pl, m);
-        if (!setup(sl, sp, m)) {
+        if (!(type == 9 ? setup9(sl, sp, m) : setup(sl, sp, m))) {
             cleanup(sl, m);
             PoliciaMod.msg(sp, "No encuentro un lugar para la mision, intente en otra zona");
             return;
@@ -612,6 +673,13 @@ public class PoliciaMision {
         if (m.type == 4 || m.type == 3) {
             give(sp, new ItemStack(Items.GOLDEN_APPLE));
             extra = ", 1 manzana dorada";
+        }
+        if (m.type == 9) {
+            sp.getPersistentData().putBoolean("pol_cerebro", true);
+            sp.getPersistentData().putInt("pol_un", PoliciaMod.un(sp) | (1 << 9));
+            give(sp, new ItemStack(Items.DIAMOND, 5));
+            give(sp, new ItemStack(Items.NETHERITE_INGOT));
+            extra = ", 5 diamantes, un lingote de netherita y la habilidad ESCUDO DE BURBUJA";
         }
         if (m.type == 8) {
             sp.getPersistentData().putInt("pol_bdone", sp.getPersistentData().getInt("pol_bdone") + 1);
@@ -661,6 +729,31 @@ public class PoliciaMision {
         for (int y = 0; y < 14; y += 2) sl.sendParticles(ParticleTypes.END_ROD, p.getX() + 0.5, p.getY() + y, p.getZ() + 0.5, 1, 0.1, 0.0, 0.1, 0.0);
     }
 
+    static void tick9(ServerPlayer sp, ServerLevel sl, M m, Vec3 pos, long t, long now) {
+        if (m.killed) {
+            finish(sp, sl, m, 1.0);
+            return;
+        }
+        if (m.phase < 2) {
+            BlockPos p = m.pts.get(m.phase);
+            if (t % 5 == 0) col(sl, p);
+            double dx = p.getX() + 0.5 - pos.x, dz = p.getZ() + 0.5 - pos.z;
+            if (dx * dx + dz * dz < 25.0 && Math.abs(p.getY() - pos.y) < 10.0) {
+                m.phase++;
+                sl.playSound(null, sp.blockPosition(), SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
+                spawn(sl, m, 1, around(sl, p, 6));
+                spawn(sl, m, 1, around(sl, p, 6));
+                spawn(sl, m, 3, around(sl, p, 6));
+                if (m.phase == 1) sp.sendSystemMessage(Component.literal("[Comisario] Documento falso hallado. Hay otra pista mas adentro."));
+                else sp.sendSystemMessage(Component.literal("[Comisario] Ya sabemos donde se esconde el cerebro. Vaya a la guarida, con cuidado."));
+            } else if (t % 40 == 0) {
+                PoliciaMod.msg(sp, "Pista " + (m.phase + 1) + "/2: " + dir(pos, p) + " - " + (m.end - now) / 20 + " s");
+            }
+        } else if (t % 40 == 0) {
+            PoliciaMod.msg(sp, "Guarida del cerebro: " + dir(pos, m.dest) + " - " + (m.end - now) / 20 + " s");
+        }
+    }
+
     static void tickM(MinecraftServer srv, M m) {
         ServerLevel sl = srv.getLevel(m.dim);
         if (sl == null) {
@@ -681,6 +774,10 @@ public class PoliciaMision {
         }
         Vec3 pos = sp.position();
         boolean hint = t % 40 == 0;
+        if (m.type == 9) {
+            tick9(sp, sl, m, pos, t, now);
+            return;
+        }
         switch (m.type) {
             case 1: {
                 Entity e = sl.getEntity(m.target);
@@ -847,13 +944,14 @@ public class PoliciaMision {
     static class Board extends ChestMenu {
         final int[] ts;
         final BlockPos origin;
-        final boolean bossOk;
+        final boolean bossOk, cerOk;
 
-        Board(int id, Inventory inv, SimpleContainer c, int[] ts, BlockPos origin, boolean bossOk) {
+        Board(int id, Inventory inv, SimpleContainer c, int[] ts, BlockPos origin, boolean bossOk, boolean cerOk) {
             super(MenuType.GENERIC_9x1, id, inv, c, 1);
             this.ts = ts;
             this.origin = origin;
             this.bossOk = bossOk;
+            this.cerOk = cerOk;
         }
 
         @Override
@@ -863,6 +961,9 @@ public class PoliciaMision {
                 int i = slot == 1 ? 0 : (slot == 3 ? 1 : 2);
                 sp.closeContainer();
                 start(sp, ts[i], origin);
+            } else if (slot == 4 && cerOk) {
+                sp.closeContainer();
+                start(sp, 9, origin);
             } else if (slot == 7 && bossOk) {
                 sp.closeContainer();
                 start(sp, 8, origin);
@@ -890,6 +991,7 @@ public class PoliciaMision {
         int done = sp.getPersistentData().getInt("pol_mdone");
         int bd = sp.getPersistentData().getInt("pol_bdone");
         boolean bossOk = done >= 3 * (bd + 1);
+        boolean cerOk = bd >= 1 && !sp.getPersistentData().getBoolean("pol_cerebro");
         SimpleContainer c = new SimpleContainer(9);
         c.setItem(1, missionItem(ts[0]));
         c.setItem(3, missionItem(ts[1]));
@@ -897,10 +999,17 @@ public class PoliciaMision {
         if (bossOk) c.setItem(7, missionItem(8));
         else c.setItem(7, named(Items.BARRIER, "Cazar al jefe de banda (bloqueado)",
                 "Cumpla " + (3 * (bd + 1) - done) + " misiones mas para desbloquearla."));
+        if (cerOk) {
+            c.setItem(4, missionItem(9));
+        } else if (sp.getPersistentData().getBoolean("pol_cerebro")) {
+            c.setItem(4, named(Items.BEACON, "El cerebro de la organizacion (completada)", "Ya tiene el Escudo de burbuja."));
+        } else {
+            c.setItem(4, named(Items.BARRIER, "Mision especial (bloqueada)", "Cace primero a un jefe de banda."));
+        }
         c.setItem(0, named(Items.BOOK, "Misiones cumplidas: " + done, "Jefes cazados: " + bd, "El tablero se renueva cada dia."));
         c.setItem(8, named(Items.RED_DYE, "Cancelar mision actual", "Si tiene una mision en curso, la abandona."));
         BlockPos o = com.blockPosition();
-        sp.openMenu(new SimpleMenuProvider((id, inv, pl) -> new Board(id, inv, c, ts, o, bossOk), Component.literal("Tablero del comisario")));
+        sp.openMenu(new SimpleMenuProvider((id, inv, pl) -> new Board(id, inv, c, ts, o, bossOk, cerOk), Component.literal("Tablero del comisario")));
     }
 
     // ---------------------------------------------------------------- comisarios y eventos
