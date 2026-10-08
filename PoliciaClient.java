@@ -113,6 +113,8 @@ public class PoliciaClient {
                 maxRight = w.getX() + w.getWidth();
             }
         }
+        PoliciaMod.Sync st = mine();
+        tb.visible = st != null && st.on;
         tb.setX(maxRight + 2);
         tb.setY(top + 61);
     }
@@ -165,29 +167,139 @@ public class PoliciaClient {
         }
     }
 
+    // ---------- transformacion con nanotecnologia (la skin se forma / deshace pixel a pixel) ----------
+    static final int MORPH_TICKS = 40;
+    static final Map<UUID, Boolean> LAST_ON = new HashMap<>();
+    static final Map<UUID, Morph> MORPH = new HashMap<>();
+
+    static class Morph {
+        long start;
+        boolean forming;
+        net.minecraft.client.renderer.texture.DynamicTexture dyn;
+        ResourceLocation rl;
+        com.mojang.blaze3d.platform.NativeImage orig, pol;
+    }
+
+    static com.mojang.blaze3d.platform.NativeImage readTexture(Minecraft mc, ResourceLocation rl) {
+        com.mojang.blaze3d.platform.NativeImage img = new com.mojang.blaze3d.platform.NativeImage(64, 64, true);
+        RenderSystem.bindTexture(mc.getTextureManager().getTexture(rl).getId());
+        img.downloadTexture(0, false);
+        return img;
+    }
+
+    static Morph startMorph(Minecraft mc, UUID id, boolean forming, ResourceLocation origRl) throws Exception {
+        Morph m = new Morph();
+        m.forming = forming;
+        m.start = mc.level.getGameTime();
+        m.orig = readTexture(mc, origRl);
+        try (java.io.InputStream in = mc.getResourceManager().getResourceOrThrow(TEX_SKIN).open()) {
+            m.pol = com.mojang.blaze3d.platform.NativeImage.read(in);
+        }
+        m.dyn = new net.minecraft.client.renderer.texture.DynamicTexture(new com.mojang.blaze3d.platform.NativeImage(64, 64, true));
+        m.rl = new ResourceLocation("policia", "morph/" + id.toString().toLowerCase());
+        mc.getTextureManager().register(m.rl, m.dyn);
+        MORPH.put(id, m);
+        return m;
+    }
+
+    static float noise(int x, int y) {
+        int h = x * 374761393 + y * 668265263;
+        h = (h ^ (h >>> 13)) * 1274126177;
+        h ^= h >>> 16;
+        return (h & 1023) / 1023.0f;
+    }
+
+    static void stepMorph(Morph m, long now) {
+        float p = Math.min(1.0f, (now - m.start) / (float) MORPH_TICKS);
+        com.mojang.blaze3d.platform.NativeImage out = m.dyn.getPixels();
+        if (out == null) return;
+        com.mojang.blaze3d.platform.NativeImage from = m.forming ? m.orig : m.pol;
+        com.mojang.blaze3d.platform.NativeImage to = m.forming ? m.pol : m.orig;
+        float t = p * 1.25f - 0.1f;
+        for (int y = 0; y < 64; y++) {
+            for (int x = 0; x < 64; x++) {
+                float k = 0.55f * noise(x, y) + 0.45f * (1.0f - y / 64.0f);
+                int a = from.getPixelRGBA(x, y);
+                int b = to.getPixelRGBA(x, y);
+                int px;
+                if (k < t - 0.12f) {
+                    px = b;
+                } else if (k < t) {
+                    int al = Math.max(a >>> 24, b >>> 24);
+                    px = al == 0 ? 0 : ((al << 24) | (255 << 16) | (230 << 8) | 80);
+                } else {
+                    px = a;
+                }
+                out.setPixelRGBA(x, y, px);
+            }
+        }
+        m.dyn.upload();
+    }
+
     @SuppressWarnings("unchecked")
     static void applySkin(Minecraft mc) {
         findFields();
-        if (!reflectOk || mc.getConnection() == null) return;
+        if (!reflectOk || mc.getConnection() == null || mc.level == null) return;
         for (Map.Entry<UUID, PoliciaMod.Sync> en : STATE.entrySet()) {
-            PlayerInfo info = mc.getConnection().getPlayerInfo(en.getKey());
+            UUID id = en.getKey();
+            PlayerInfo info = mc.getConnection().getPlayerInfo(id);
             if (info == null) continue;
             try {
                 Map<MinecraftProfileTexture.Type, ResourceLocation> tex = (Map<MinecraftProfileTexture.Type, ResourceLocation>) F_TEX.get(info);
                 ResourceLocation cur = tex.get(MinecraftProfileTexture.Type.SKIN);
                 boolean want = en.getValue().on;
+                Boolean last = LAST_ON.put(id, want);
+                Morph m = MORPH.get(id);
+                if (m == null && last != null && last != want && cur != null) {
+                    ResourceLocation orig = cur;
+                    if (want) {
+                        if (!TEX_SKIN.equals(cur)) {
+                            ORIG_SKIN.put(id, cur);
+                            if (F_MODEL != null) ORIG_MODEL.put(id, (String) F_MODEL.get(info));
+                        }
+                    } else {
+                        orig = ORIG_SKIN.get(id);
+                    }
+                    if (orig != null) {
+                        try { m = startMorph(mc, id, want, orig); } catch (Throwable t) { m = null; }
+                    }
+                }
+                if (m != null) {
+                    long el = mc.level.getGameTime() - m.start;
+                    if (el < MORPH_TICKS) {
+                        stepMorph(m, mc.level.getGameTime());
+                        tex.put(MinecraftProfileTexture.Type.SKIN, m.rl);
+                        boolean secondHalf = el * 2 >= MORPH_TICKS;
+                        String origModel = ORIG_MODEL.get(id) == null ? "default" : ORIG_MODEL.get(id);
+                        if (F_MODEL != null) F_MODEL.set(info, secondHalf == m.forming ? "slim" : origModel);
+                        continue;
+                    }
+                    MORPH.remove(id);
+                    mc.getTextureManager().release(m.rl);
+                    m.orig.close();
+                    m.pol.close();
+                    if (m.forming) {
+                        tex.put(MinecraftProfileTexture.Type.SKIN, TEX_SKIN);
+                        if (F_MODEL != null) F_MODEL.set(info, "slim");
+                    } else {
+                        ResourceLocation o = ORIG_SKIN.remove(id);
+                        if (o != null) tex.put(MinecraftProfileTexture.Type.SKIN, o);
+                        if (F_MODEL != null) F_MODEL.set(info, ORIG_MODEL.remove(id));
+                    }
+                    continue;
+                }
                 if (want) {
                     if (cur == null) continue; // la skin real todavia no cargo
                     if (!TEX_SKIN.equals(cur)) {
-                        ORIG_SKIN.put(en.getKey(), cur);
-                        if (F_MODEL != null) ORIG_MODEL.put(en.getKey(), (String) F_MODEL.get(info));
+                        ORIG_SKIN.put(id, cur);
+                        if (F_MODEL != null) ORIG_MODEL.put(id, (String) F_MODEL.get(info));
                     }
                     tex.put(MinecraftProfileTexture.Type.SKIN, TEX_SKIN);
                     if (F_MODEL != null) F_MODEL.set(info, "slim");
                 } else if (TEX_SKIN.equals(cur)) {
-                    ResourceLocation o = ORIG_SKIN.remove(en.getKey());
+                    ResourceLocation o = ORIG_SKIN.remove(id);
                     if (o != null) tex.put(MinecraftProfileTexture.Type.SKIN, o);
-                    if (F_MODEL != null) F_MODEL.set(info, ORIG_MODEL.remove(en.getKey()));
+                    if (F_MODEL != null) F_MODEL.set(info, ORIG_MODEL.remove(id));
                 }
             } catch (Throwable t) {
                 reflectOk = false;
@@ -198,7 +310,7 @@ public class PoliciaClient {
     static void tick(TickEvent.ClientTickEvent e) {
         if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) { STATE.clear(); ORIG_SKIN.clear(); ORIG_MODEL.clear(); return; }
+        if (mc.player == null) { STATE.clear(); ORIG_SKIN.clear(); ORIG_MODEL.clear(); LAST_ON.clear(); MORPH.clear(); return; }
         applySkin(mc);
         boolean free = mc.screen == null;
         while (K_FORM.consumeClick()) { if (free) send(0); }
