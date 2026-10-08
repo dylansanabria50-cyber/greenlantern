@@ -93,18 +93,18 @@ public class PoliciaMod {
     public static class Sync {
         UUID id = new UUID(0, 0);
         boolean on;
-        int shield, cooldown, xp, sel, un, tcd, rl, rcd, c5, c6, c7, c8;
+        int shield, cooldown, xp, sel, un, tcd, rl, rcd, c5, c6, c7, c8, jb;
         Sync() { }
         static void enc(Sync m, FriendlyByteBuf b) {
             b.writeUUID(m.id); b.writeBoolean(m.on);
             b.writeVarInt(m.shield); b.writeVarInt(m.cooldown); b.writeVarInt(m.xp); b.writeVarInt(m.sel); b.writeVarInt(m.un); b.writeVarInt(m.tcd); b.writeVarInt(m.rl); b.writeVarInt(m.rcd);
-            b.writeVarInt(m.c5); b.writeVarInt(m.c6); b.writeVarInt(m.c7); b.writeVarInt(m.c8);
+            b.writeVarInt(m.c5); b.writeVarInt(m.c6); b.writeVarInt(m.c7); b.writeVarInt(m.c8); b.writeVarInt(m.jb);
         }
         static Sync dec(FriendlyByteBuf b) {
             Sync m = new Sync();
             m.id = b.readUUID(); m.on = b.readBoolean();
             m.shield = b.readVarInt(); m.cooldown = b.readVarInt(); m.xp = b.readVarInt(); m.sel = b.readVarInt(); m.un = b.readVarInt(); m.tcd = b.readVarInt(); m.rl = b.readVarInt(); m.rcd = b.readVarInt();
-            m.c5 = b.readVarInt(); m.c6 = b.readVarInt(); m.c7 = b.readVarInt(); m.c8 = b.readVarInt();
+            m.c5 = b.readVarInt(); m.c6 = b.readVarInt(); m.c7 = b.readVarInt(); m.c8 = b.readVarInt(); m.jb = b.readVarInt();
             return m;
         }
         static void handle(Sync m, Supplier<NetworkEvent.Context> c) {
@@ -154,6 +154,8 @@ public class PoliciaMod {
         PoliciaExtra.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
         PoliciaHeli.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
         PoliciaPlaca.init();
+        PoliciaAlbanil.init();
+        MinecraftForge.EVENT_BUS.register(new PoliciaAlbanil());
         PoliciaExtra.EFFECTS.register(FMLJavaModLoadingContext.get().getModEventBus());
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaExtra::attrs);
         MinecraftForge.EVENT_BUS.register(new PoliciaExtra());
@@ -168,28 +170,31 @@ public class PoliciaMod {
         m.id = p.getUUID(); m.on = on(p);
         m.shield = shield(p); m.cooldown = cooldown(p); m.xp = xp(p); m.sel = sel(p); m.un = un(p); m.tcd = p.getPersistentData().getInt("pol_tcd"); m.rl = rlevel(p); m.rcd = p.getPersistentData().getInt("pol_rcd");
         m.c5 = PoliciaExtra.cd(p, 5); m.c6 = PoliciaExtra.cd(p, 6); m.c7 = PoliciaExtra.cd(p, 7); m.c8 = PoliciaExtra.cd(p, 8);
+        m.jb = "albanil".equals(job(p)) ? 2 : ("policia".equals(job(p)) ? 1 : 0);
         return m;
     }
 
     /** Se lo manda al propio jugador y a quienes lo ven. */
     static void sync(ServerPlayer p) {
         NET.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> p), snapshot(p));
+        if ("albanil".equals(job(p))) PoliciaAlbanil.send(p);
     }
 
     // ---------- acciones ----------
     static void act(ServerPlayer p, int id) {
         CompoundTag d = p.getPersistentData();
         if (id == 0) { // alternar forma policia (skin)
-            if (!on(p) && !"policia".equals(job(p))) { msg(p, "Necesitas el oficio de policia: craftea una Placa de policia y usala"); return; }
+            if (!on(p) && job(p).isEmpty()) { msg(p, "Necesitas un oficio: craftea una Placa de policia o un Balde de albanil y usalo"); return; }
             d.putBoolean("pol_on", !on(p));
-            if (!on(p)) { d.putInt("pol_shield", 0); endShield(p); }
+            if (!on(p)) { d.putInt("pol_shield", 0); endShield(p); if ("albanil".equals(job(p))) PoliciaAlbanil.reset(p); }
             d.putInt("pol_tf", 40);
             d.putInt("pol_tfd", on(p) ? 1 : -1);
             transformFx(p);
-            msg(p, on(p) ? "Modo policia activado" : "Modo policia desactivado");
+            msg(p, on(p) ? "Modo " + job(p) + " activado" : "Modo " + job(p) + " desactivado");
             sync(p);
             return;
         }
+        if ("albanil".equals(job(p))) { PoliciaAlbanil.act(p, id); return; }
         if (id == 30) { // mejorar REFUERZO (cuesta XP)
             int lv = rlevel(p);
             if (lv <= 0) { msg(p, "Desbloquea primero REFUERZO"); return; }
@@ -321,6 +326,7 @@ public class PoliciaMod {
     // ---------- con el escudo activo: nada de dano, ni golpear, ni interactuar ----------
     @SubscribeEvent
     public void noDamage(LivingAttackEvent e) {
+        if (true) return; // el bloqueo lo hace el escudo real (clic derecho, como el vanilla)
         if (!(e.getEntity() instanceof ServerPlayer p) || shield(p) <= 0 || !on(p)) return;
         if (e.getSource().is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY)) return;
         e.setCanceled(true);
@@ -329,17 +335,17 @@ public class PoliciaMod {
 
     @SubscribeEvent
     public void noAttack(AttackEntityEvent e) {
-        if (e.getEntity() instanceof ServerPlayer p && (shield(p) > 0 || p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity)) e.setCanceled(true);
+        if (e.getEntity() instanceof ServerPlayer p && (p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity)) e.setCanceled(true);
     }
 
     @SubscribeEvent
     public void noInteract(PlayerInteractEvent e) {
-        if (e.getEntity() instanceof ServerPlayer p && (shield(p) > 0 || p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity) && e.isCancelable()) e.setCanceled(true);
+        if (e.getEntity() instanceof ServerPlayer p && (p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity) && e.isCancelable()) e.setCanceled(true);
     }
 
     @SubscribeEvent
     public void noBreak(BlockEvent.BreakEvent e) {
-        if (e.getPlayer() instanceof ServerPlayer p && (shield(p) > 0 || p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity)) e.setCanceled(true);
+        if (e.getPlayer() instanceof ServerPlayer p && (p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity)) e.setCanceled(true);
     }
 
     static boolean isMine(ItemStack s) { return s.getItem() instanceof PoliciaShield; }
@@ -363,11 +369,6 @@ public class PoliciaMod {
             }
             p.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(PoliciaShield.SHIELD.get()));
         }
-        AttributeInstance mv = p.getAttribute(Attributes.MOVEMENT_SPEED);
-        if (mv != null && mv.getModifier(SLOW_ID) == null) {
-            mv.addTransientModifier(new AttributeModifier(SLOW_ID, "policia_shield_slow", -0.30, AttributeModifier.Operation.MULTIPLY_TOTAL));
-        }
-        if (!p.isUsingItem() || !isMine(p.getUseItem())) p.startUsingItem(InteractionHand.OFF_HAND);
     }
 
     static void keepShield(ServerPlayer p) {
@@ -477,7 +478,7 @@ public class PoliciaMod {
     public void onClone(PlayerEvent.Clone e) {
         CompoundTag o = e.getOriginal().getPersistentData();
         CompoundTag n = e.getEntity().getPersistentData();
-        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver", "pol_rl", "pol_job", "pol_hcd_t"}) {
+        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver", "pol_rl", "pol_job", "pol_hcd_t", "alb_lv", "alb_sel", "alb_chest", "alb_c0", "alb_c1"}) {
             if (o.contains(k)) n.put(k, o.get(k).copy());
         }
     }
@@ -485,7 +486,7 @@ public class PoliciaMod {
     @SubscribeEvent
     public void login(PlayerEvent.PlayerLoggedInEvent e) {
         if (e.getEntity() instanceof ServerPlayer p) {
-            if (on(p) && !"policia".equals(job(p))) p.getPersistentData().putBoolean("pol_on", false);
+            if (on(p) && job(p).isEmpty()) p.getPersistentData().putBoolean("pol_on", false);
             sync(p);
         }
     }
