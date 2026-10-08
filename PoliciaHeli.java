@@ -68,7 +68,12 @@ public class PoliciaHeli {
         h.getEntityData().set(HeliEntity.LIGHT, on);
         if (!on) h.clearLight();
         p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.LEVER_CLICK, SoundSource.PLAYERS, 1.0f, on ? 1.4f : 0.8f);
-        PoliciaMod.msg(p, on ? "Modo linterna: helicoptero fijo, mira para apuntar la luz" : "Modo linterna desactivado");
+        PoliciaMod.msg(p, on ? "Modo linterna: la luz sigue tu mirada y puedes seguir volando" : "Modo linterna desactivado");
+    }
+
+    /** ESPACIO sube y CTRL baja (el cliente lo envia mientras la tecla esta pulsada). */
+    public static void vert(ServerPlayer p, int d) {
+        if (p.getVehicle() instanceof HeliEntity h) { h.vert = d; h.vertT = h.tickCount; }
     }
 
     static void summon(ServerPlayer p) {
@@ -81,13 +86,14 @@ public class PoliciaHeli {
         p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.IRON_DOOR_OPEN, SoundSource.PLAYERS, 1.0f, 0.7f);
         p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PISTON_EXTEND, SoundSource.PLAYERS, 1.0f, 0.6f);
         p.serverLevel().sendParticles(ParticleTypes.CLOUD, p.getX(), p.getY() + 0.1, p.getZ(), 16, 1.5, 0.1, 1.5, 0.03);
-        PoliciaMod.msg(p, "Helicoptero listo: W/S avanzar, A/D desplazarte, mira arriba o abajo para subir o bajar, Shift para bajar");
+        PoliciaMod.msg(p, "Helicoptero listo: W/S avanzar, A/D desplazarte, ESPACIO subir, CTRL bajar, Shift para salir");
     }
 
     public static class HeliEntity extends Entity {
         static final EntityDataAccessor<Integer> SHRINK = SynchedEntityData.defineId(HeliEntity.class, EntityDataSerializers.INT);
         static final EntityDataAccessor<Boolean> LIGHT = SynchedEntityData.defineId(HeliEntity.class, EntityDataSerializers.BOOLEAN);
         net.minecraft.core.BlockPos lightPos;
+        int vert, vertT;
         public float rotor, prevRotor, tilt, prevTilt, roll, prevRoll;
         UUID owner;
         double vx, vy, vz;
@@ -223,7 +229,7 @@ public class PoliciaHeli {
             float yawNew = getYRot();
             boolean auto = landing || r == null;
             if (!auto && r instanceof LivingEntity le) {
-                boolean lamp = entityData.get(LIGHT);
+                boolean lamp = false;
                 float fw = le.zza, st = le.xxa;
                 if (Math.abs(fw) < 0.05f || lamp) fw = 0f;
                 if (Math.abs(st) < 0.05f || lamp) st = 0f;
@@ -233,11 +239,7 @@ public class PoliciaHeli {
                 double fx = -Math.sin(rad), fz = Math.cos(rad), sx = Math.cos(rad), sz = Math.sin(rad);
                 tx = (fx * fw + sx * st) * 0.55;
                 tz = (fz * fw + sz * st) * 0.55;
-                float pit = r.getXRot();
-                if (fw != 0f) ty = -Math.sin(Math.toRadians(pit)) * fw * 0.45;
-                else if (st == 0f && !lamp) {
-                    if (pit < -60f) ty = 0.3; else if (pit > 60f) ty = -0.3;
-                }
+                if (tickCount - vertT <= 2) ty = vert * 0.4;
             } else {
                 double dist = getY() - ground(getX(), getZ(), getY());
                 ty = -Mth.clamp(dist * 0.12, 0.05, 0.3);
