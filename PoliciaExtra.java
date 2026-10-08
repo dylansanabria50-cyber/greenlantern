@@ -79,7 +79,7 @@ public class PoliciaExtra {
     }
 
     /** Enfriamiento (ticks) de cada habilidad, por indice de la rama. */
-    static final int[] CD = {0, 0, 0, 0, 0, 600, 1200, 800, 1200};
+    static final int[] CD = {0, 0, 0, 0, 0, 600, 1200, 800, 1200, 1000};
     static final int CUFF_T = 300;        // 15 s esposado
     static final int K9_LIFE = 900;       // 45 s
     static final int SIREN_LIFE = 400;    // 20 s
@@ -95,13 +95,13 @@ public class PoliciaExtra {
     // ---------- enfriamientos ----------
     static String key(int s) { return "pol_x" + s; }
 
-    static int cd(Player p, int s) { return s >= 5 && s <= 8 ? p.getPersistentData().getInt(key(s)) : 0; }
+    static int cd(Player p, int s) { return s >= 5 && s <= 9 ? p.getPersistentData().getInt(key(s)) : 0; }
 
     /** Descuenta los enfriamientos; devuelve true si alguna habilidad quedo lista. */
     static boolean tickCd(ServerPlayer p) {
         boolean ch = false;
         CompoundTag d = p.getPersistentData();
-        for (int s = 5; s <= 8; s++) {
+        for (int s = 5; s <= 9; s++) {
             int v = d.getInt(key(s));
             if (v > 0) {
                 d.putInt(key(s), v - 1);
@@ -119,6 +119,7 @@ public class PoliciaExtra {
             case 5: ok = cuff(p); break;
             case 6: ok = k9(p); break;
             case 7: ok = siren(p); break;
+            case 9: ok = PoliciaBubble.use(p); break;
             default: ok = drone(p); break;
         }
         if (ok) {
