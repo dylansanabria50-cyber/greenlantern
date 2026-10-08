@@ -297,6 +297,7 @@ public class PoliciaAyudante {
             float h = st.getDestroySpeed(level(), bp);
             if (h < 0.0f || h > 20.0f) return false;
             if (PoliciaAlbanil.LIVE.contains(bp.asLong())) return false;
+            if (PoliciaPlaced.has(level(), bp)) return false;
             if (!st.is(BlockTags.MINEABLE_WITH_PICKAXE) && !st.is(BlockTags.MINEABLE_WITH_SHOVEL)) return false;
             if (tier < 3 && st.is(BlockTags.NEEDS_DIAMOND_TOOL)) return false;
             if (tier < 2 && st.is(BlockTags.NEEDS_IRON_TOOL)) return false;
