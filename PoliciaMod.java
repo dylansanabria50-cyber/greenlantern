@@ -458,6 +458,27 @@ public class PoliciaMod {
     }
 
     /** Sin retroceso para el jugador que va dentro del tanque. */
+    /** El tanque, el helicoptero y quien va dentro son a prueba de flechas: rebotan. */
+    @SubscribeEvent
+    public void arrowBounce(net.minecraftforge.event.entity.ProjectileImpactEvent e) {
+        if (!(e.getRayTraceResult() instanceof net.minecraft.world.phys.EntityHitResult eh)) return;
+        net.minecraft.world.entity.Entity tg = eh.getEntity();
+        boolean veh = tg instanceof PoliciaTank.TankEntity || tg instanceof PoliciaHeli.HeliEntity
+                || tg.getVehicle() instanceof PoliciaTank.TankEntity || tg.getVehicle() instanceof PoliciaHeli.HeliEntity;
+        if (!veh || !(e.getProjectile() instanceof net.minecraft.world.entity.projectile.AbstractArrow a)) return;
+        e.setCanceled(true);
+        CompoundTag ad = a.getPersistentData();
+        if (a.tickCount - ad.getInt("pol_bt") < 8 && ad.contains("pol_bt")) return;
+        ad.putInt("pol_bt", Math.max(1, a.tickCount));
+        Vec3 mv = a.getDeltaMovement();
+        Vec3 back = mv.scale(-0.3);
+        a.setDeltaMovement(back);
+        a.setPos(a.getX() + back.x * 2.0, a.getY() + back.y * 2.0, a.getZ() + back.z * 2.0);
+        a.setYRot(a.getYRot() + 180.0f);
+        a.hurtMarked = true;
+        a.level().playSound(null, a.getX(), a.getY(), a.getZ(), SoundEvents.NETHERITE_BLOCK_HIT, SoundSource.PLAYERS, 0.8f, 1.6f);
+    }
+
     @SubscribeEvent
     public void noKnock(net.minecraftforge.event.entity.living.LivingKnockBackEvent e) {
         if (e.getEntity() instanceof ServerPlayer p && (p.getVehicle() instanceof PoliciaTank.TankEntity || p.getVehicle() instanceof PoliciaHeli.HeliEntity)) e.setCanceled(true);
