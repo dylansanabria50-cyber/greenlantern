@@ -4,6 +4,18 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.Tag;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.Container;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -50,13 +62,13 @@ public class PoliciaAlbanil {
 
     /** Estado del propio jugador, visto por su cliente. */
     public static class AlbSync {
-        int lv, sel, pickT, structT, c0, c1;
+        int lv, sel, pickT, structT, c0, c1, walls;
         static void enc(AlbSync m, FriendlyByteBuf b) {
-            b.writeVarInt(m.lv); b.writeVarInt(m.sel); b.writeVarInt(m.pickT); b.writeVarInt(m.structT); b.writeVarInt(m.c0); b.writeVarInt(m.c1);
+            b.writeVarInt(m.lv); b.writeVarInt(m.sel); b.writeVarInt(m.pickT); b.writeVarInt(m.structT); b.writeVarInt(m.c0); b.writeVarInt(m.c1); b.writeVarInt(m.walls);
         }
         static AlbSync dec(FriendlyByteBuf b) {
             AlbSync m = new AlbSync();
-            m.lv = b.readVarInt(); m.sel = b.readVarInt(); m.pickT = b.readVarInt(); m.structT = b.readVarInt(); m.c0 = b.readVarInt(); m.c1 = b.readVarInt();
+            m.lv = b.readVarInt(); m.sel = b.readVarInt(); m.pickT = b.readVarInt(); m.structT = b.readVarInt(); m.c0 = b.readVarInt(); m.c1 = b.readVarInt(); m.walls = b.readVarInt();
             return m;
         }
         static void handle(AlbSync m, Supplier<NetworkEvent.Context> c) {
@@ -82,6 +94,7 @@ public class PoliciaAlbanil {
         m.structT = d.getInt("alb_st");
         m.c0 = d.getInt("alb_c0");
         m.c1 = d.getInt("alb_c1");
+        m.walls = d.getInt("alb_walls");
         PoliciaMod.NET.send(PacketDistributor.PLAYER.with(() -> p), m);
     }
 
@@ -133,14 +146,20 @@ public class PoliciaAlbanil {
             p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.ANVIL_PLACE, SoundSource.PLAYERS, 0.6f, 1.4f);
             PoliciaMod.msg(p, "Pico de albanil: fuerza y prisa minera");
         } else {
-            if (d.getInt("alb_st") > 0) { PoliciaMod.msg(p, "La construccion sigue en pie"); return; }
-            if (d.getInt("alb_c1") > 0) { PoliciaMod.msg(p, "Construccion en enfriamiento: " + (d.getInt("alb_c1") + 19) / 20 + " s"); return; }
             boolean house = lv(p) >= 2;
-            if (house) buildHouse(p); else buildWall(p);
-            d.putInt("alb_st", house ? HOUSE_T : WALL_T);
-            d.putInt("alb_house", house ? 1 : 0);
+            if (d.getInt("alb_st") > 0) {
+                if (house || d.getInt("alb_house") == 1) { PoliciaMod.msg(p, "El refugio sigue en pie"); return; }
+                if (d.getInt("alb_walls") >= 3) { PoliciaMod.msg(p, "Ya levantaste los 3 muros"); return; }
+            } else {
+                if (d.getInt("alb_c1") > 0) { PoliciaMod.msg(p, "Construccion en enfriamiento: " + (d.getInt("alb_c1") + 19) / 20 + " s"); return; }
+                d.putInt("alb_walls", 0);
+                d.putInt("alb_st", house ? HOUSE_T : WALL_T);
+                d.putInt("alb_house", house ? 1 : 0);
+            }
+            if (house) buildHouse(p);
+            else { buildWall(p); d.putInt("alb_walls", d.getInt("alb_walls") + 1); }
             p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.ANVIL_USE, SoundSource.PLAYERS, 0.7f, 1.2f);
-            PoliciaMod.msg(p, house ? "REFUGIO levantado" : "MURO levantado");
+            PoliciaMod.msg(p, house ? "REFUGIO levantado" : "MURO " + d.getInt("alb_walls") + "/3");
         }
         PoliciaMod.sync(p);
     }
@@ -208,7 +227,7 @@ public class PoliciaAlbanil {
     // ---------- construcciones ----------
     static final Set<Long> LIVE = new HashSet<>();
     static final Set<Block> MINE = Set.of(Blocks.STONE_BRICKS, Blocks.OAK_PLANKS, Blocks.OAK_LOG, Blocks.SPRUCE_PLANKS,
-            Blocks.GLASS, Blocks.GLOWSTONE, Blocks.RED_BED, Blocks.CHEST);
+            Blocks.GLASS, Blocks.GLOWSTONE, Blocks.RED_BED, Blocks.CHEST, Blocks.OAK_DOOR, Blocks.SPRUCE_SLAB);
 
     static boolean free(ServerLevel lv, BlockPos bp) {
         BlockState st = lv.getBlockState(bp);
@@ -239,21 +258,40 @@ public class PoliciaAlbanil {
         Direction f = p.getDirection(), r = f.getClockWise();
         BlockPos o = p.blockPosition();
         List<Long> out = new ArrayList<>();
+        for (long l : p.getPersistentData().getLongArray("alb_w")) out.add(l);
         for (int u = -1; u <= 1; u++) for (int h = 0; h < 3; h++) {
             put(lv, out, at(o, f, r, 2, u, h), Blocks.STONE_BRICKS.defaultBlockState(), 3);
         }
         store(p, out);
     }
 
+    /** La casa se apoya sobre la superficie (no entra en el terreno): piso de madera, puerta de madera, cama y cofre. */
     static void buildHouse(ServerPlayer p) {
         ServerLevel lv = p.serverLevel();
+        CompoundTag d = p.getPersistentData();
         Direction f = p.getDirection(), r = f.getClockWise();
-        BlockPos o = p.blockPosition();
+        BlockPos pp = p.blockPosition();
+        int top = pp.getY();
+        for (int fw = 1; fw <= 6; fw++) for (int u = -2; u <= 2; u++) {
+            BlockPos c = pp.relative(f, fw).relative(r, u);
+            top = Math.max(top, lv.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, c.getX(), c.getZ()));
+        }
+        if (top - pp.getY() > 6) top = pp.getY();
+        BlockPos o = new BlockPos(pp.getX(), top + 1, pp.getZ());
         List<Long> out = new ArrayList<>();
         BlockState plank = Blocks.OAK_PLANKS.defaultBlockState();
         BlockState log = Blocks.OAK_LOG.defaultBlockState();
+        BlockState floor = Blocks.SPRUCE_PLANKS.defaultBlockState();
         for (int fw = 2; fw <= 6; fw++) for (int u = -2; u <= 2; u++) {
-            put(lv, out, at(o, f, r, fw, u, -1), Blocks.SPRUCE_PLANKS.defaultBlockState(), 3);
+            boolean fl = free(lv, at(o, f, r, fw, u, -1));
+            put(lv, out, at(o, f, r, fw, u, -1), floor, 3);
+            if (fl) {
+                for (int k = 2; k <= 9; k++) {
+                    BlockPos s = at(o, f, r, fw, u, -k);
+                    if (!free(lv, s)) break;
+                    put(lv, out, s, floor, 3);
+                }
+            }
             boolean edge = fw == 2 || fw == 6 || u == -2 || u == 2;
             boolean corner = (fw == 2 || fw == 6) && (u == -2 || u == 2);
             if (edge) {
@@ -266,6 +304,10 @@ public class PoliciaAlbanil {
             }
             put(lv, out, at(o, f, r, fw, u, 3), (fw == 4 && u == 0) ? Blocks.GLOWSTONE.defaultBlockState() : plank, 3);
         }
+        BlockState door = Blocks.OAK_DOOR.defaultBlockState().setValue(DoorBlock.FACING, f);
+        put(lv, out, at(o, f, r, 2, 0, 0), door.setValue(DoorBlock.HALF, DoubleBlockHalf.LOWER), 18);
+        put(lv, out, at(o, f, r, 2, 0, 1), door.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER), 18);
+        put(lv, out, at(o, f, r, 1, 0, -1), Blocks.SPRUCE_SLAB.defaultBlockState(), 3); // escalon de entrada
         BlockPos foot = at(o, f, r, 4, -1, 0), head = foot.relative(f);
         if (free(lv, foot) && free(lv, head)) {
             BlockState bed = Blocks.RED_BED.defaultBlockState().setValue(BedBlock.FACING, f);
@@ -275,21 +317,105 @@ public class PoliciaAlbanil {
         BlockPos chest = at(o, f, r, 5, 1, 0);
         if (free(lv, chest)) {
             put(lv, out, chest, Blocks.CHEST.defaultBlockState().setValue(ChestBlock.FACING, f.getOpposite()), 3);
-            CompoundTag d = p.getPersistentData();
             if (d.contains("alb_chest") && lv.getBlockEntity(chest) instanceof ChestBlockEntity cbe) {
                 cbe.load(d.getCompound("alb_chest").copy());
                 cbe.setChanged();
             }
         }
+        d.putLong("alb_o", o.asLong());
+        d.putInt("alb_f", f.get2DDataValue());
         store(p, out);
+        restoreInner(p, lv, o, f, r);
+    }
+
+    static AABB inner(BlockPos o, Direction f, Direction r) {
+        BlockPos a = at(o, f, r, 3, -1, 0), b = at(o, f, r, 5, 1, 2);
+        return new AABB(Math.min(a.getX(), b.getX()), Math.min(a.getY(), b.getY()), Math.min(a.getZ(), b.getZ()),
+                Math.max(a.getX(), b.getX()) + 1, Math.max(a.getY(), b.getY()) + 1, Math.max(a.getZ(), b.getZ()) + 1);
+    }
+
+    /** Guarda lo que el jugador dejo dentro del refugio (bloques y objetos) para devolverlo en el mismo lugar. */
+    static void captureInner(ServerPlayer p, ServerLevel lv, Set<Long> ours) {
+        CompoundTag d = p.getPersistentData();
+        BlockPos o = BlockPos.of(d.getLong("alb_o"));
+        Direction f = Direction.from2DDataValue(d.getInt("alb_f")), r = f.getClockWise();
+        ListTag blocks = new ListTag(), items = new ListTag();
+        List<BlockPos> clear = new ArrayList<>();
+        for (int fw = 3; fw <= 5; fw++) for (int u = -1; u <= 1; u++) for (int h = 0; h <= 2; h++) {
+            BlockPos bp = at(o, f, r, fw, u, h);
+            if (ours.contains(bp.asLong())) continue;
+            BlockState st = lv.getBlockState(bp);
+            if (st.isAir() || !st.getFluidState().isEmpty() || st.getDestroySpeed(lv, bp) < 0) continue;
+            CompoundTag e = new CompoundTag();
+            e.putInt("fw", fw); e.putInt("u", u); e.putInt("h", h);
+            e.put("st", NbtUtils.writeBlockState(st));
+            BlockEntity be = lv.getBlockEntity(bp);
+            if (be != null) {
+                e.put("be", be.saveWithoutMetadata());
+                if (be instanceof Container c) c.clearContent();
+            }
+            blocks.add(e);
+            clear.add(bp);
+        }
+        for (BlockPos bp : clear) lv.setBlock(bp, Blocks.AIR.defaultBlockState(), 18);
+        for (ItemEntity ie : lv.getEntitiesOfClass(ItemEntity.class, inner(o, f, r))) {
+            CompoundTag e = new CompoundTag();
+            e.put("item", ie.getItem().save(new CompoundTag()));
+            e.putDouble("dx", ie.getX() - (o.getX() + 0.5));
+            e.putDouble("dy", ie.getY() - o.getY());
+            e.putDouble("dz", ie.getZ() - (o.getZ() + 0.5));
+            items.add(e);
+            ie.discard();
+        }
+        CompoundTag in = new CompoundTag();
+        in.put("blocks", blocks);
+        in.put("items", items);
+        in.putInt("dir", f.get2DDataValue());
+        d.put("alb_inner", in);
+        d.remove("alb_o");
+    }
+
+    static void restoreInner(ServerPlayer p, ServerLevel lv, BlockPos o, Direction f, Direction r) {
+        CompoundTag in = p.getPersistentData().getCompound("alb_inner");
+        if (in.isEmpty()) return;
+        int steps = ((f.get2DDataValue() - in.getInt("dir")) % 4 + 4) % 4;
+        Rotation rot = Rotation.values()[steps];
+        for (Tag t : in.getList("blocks", 10)) {
+            CompoundTag e = (CompoundTag) t;
+            BlockPos bp = at(o, f, r, e.getInt("fw"), e.getInt("u"), e.getInt("h"));
+            if (!free(lv, bp)) continue;
+            BlockState st = NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(), e.getCompound("st")).rotate(rot);
+            lv.setBlock(bp, st, 18);
+            if (e.contains("be")) {
+                BlockEntity be = lv.getBlockEntity(bp);
+                if (be != null) { be.load(e.getCompound("be")); be.setChanged(); }
+            }
+        }
+        for (Tag t : in.getList("items", 10)) {
+            CompoundTag e = (CompoundTag) t;
+            ItemStack st = ItemStack.of(e.getCompound("item"));
+            if (st.isEmpty()) continue;
+            double dx = e.getDouble("dx"), dz = e.getDouble("dz");
+            for (int k = 0; k < steps; k++) { double nx = -dz, nz = dx; dx = nx; dz = nz; }
+            ItemEntity ie = new ItemEntity(lv, o.getX() + 0.5 + dx, o.getY() + e.getDouble("dy"), o.getZ() + 0.5 + dz, st);
+            ie.setDeltaMovement(0, 0, 0);
+            lv.addFreshEntity(ie);
+        }
+        p.getPersistentData().remove("alb_inner");
     }
 
     static void removeStruct(ServerPlayer p) {
         CompoundTag d = p.getPersistentData();
         long[] arr = d.getLongArray("alb_w");
-        if (arr.length == 0) return;
+        d.putInt("alb_walls", 0);
+        if (arr.length == 0) { d.remove("alb_o"); return; }
         ServerLevel lv = p.server.getLevel(ResourceKey.create(Registries.DIMENSION, new ResourceLocation(d.getString("alb_wd"))));
         if (lv == null) lv = p.serverLevel();
+        if (d.contains("alb_o")) {
+            Set<Long> ours = new HashSet<>();
+            for (long l : arr) ours.add(l);
+            captureInner(p, lv, ours);
+        }
         for (long l : arr) {
             BlockPos bp = BlockPos.of(l);
             LIVE.remove(l);
