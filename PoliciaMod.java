@@ -149,6 +149,7 @@ public class PoliciaMod {
         PoliciaTank.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
         PoliciaRefuerzo.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
         PoliciaExtra.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
+        PoliciaExtra.EFFECTS.register(FMLJavaModLoadingContext.get().getModEventBus());
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaExtra::attrs);
         MinecraftForge.EVENT_BUS.register(new PoliciaExtra());
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaRefuerzo::attrs);
