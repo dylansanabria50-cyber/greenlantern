@@ -392,6 +392,57 @@ public class PoliciaClient {
     }
 
     // ---------- HUD ----------
+    /** Mira verde del tanque en primera persona: cruz, marco, escala de distancia y datos. */
+    static void scope(GuiGraphics g, Minecraft mc, PoliciaTank.TankEntity t, int sw, int sh) {
+        final int G = 0xFF3CE06E, GD = 0x883CE06E, RED = 0xFFFF3030;
+        int cx = sw / 2, cy = sh / 2;
+        float pt = mc.getFrameTime();
+        double dist = mc.player.pick(96.0, pt, false).getLocation().distanceTo(mc.player.getEyePosition(pt));
+        // cruz con hueco central y marcas
+        g.fill(cx - 52, cy, cx - 5, cy + 1, G);
+        g.fill(cx + 5, cy, cx + 52, cy + 1, G);
+        g.fill(cx, cy - 44, cx + 1, cy - 5, G);
+        g.fill(cx, cy + 5, cx + 1, cy + 44, G);
+        for (int k = 1; k <= 4; k++) {
+            g.fill(cx + k * 12, cy - 3, cx + k * 12 + 1, cy + 4, G);
+            g.fill(cx - k * 12, cy - 3, cx - k * 12 + 1, cy + 4, G);
+            g.fill(cx - 3, cy + k * 10, cx + 4, cy + k * 10 + 1, G);
+            g.fill(cx - 3, cy - k * 10, cx + 4, cy - k * 10 + 1, G);
+        }
+        g.fill(cx - 2, cy - 2, cx + 2, cy + 2, RED);
+        // marco
+        g.fill(cx - 84, cy - 50, cx + 84, cy - 49, GD);
+        g.fill(cx - 84, cy + 49, cx + 84, cy + 50, GD);
+        g.fill(cx - 84, cy - 50, cx - 83, cy + 50, GD);
+        g.fill(cx + 83, cy - 50, cx + 84, cy + 50, GD);
+        // escala de distancia a la derecha (arco)
+        double r0 = (sh * 0.38) / Math.sin(Math.toRadians(14.0));
+        int xm = sw - 70;
+        for (int d = -140; d <= 140; d++) {
+            double rad = Math.toRadians(d / 10.0);
+            int x = xm - (int) (r0 * (1.0 - Math.cos(rad)));
+            int y = cy + (int) (r0 * Math.sin(rad));
+            g.fill(x, y, x + 2, y + 1, G);
+        }
+        for (int i = 0; i < 4; i++) {
+            double rad = Math.toRadians(-14.0 + 28.0 * i / 3.0);
+            int x = xm - (int) (r0 * (1.0 - Math.cos(rad)));
+            int y = cy + (int) (r0 * Math.sin(rad));
+            g.fill(x, y, x + 9, y + 1, G);
+            g.drawString(mc.font, String.valueOf(200 + 200 * i), x + 13, y - 4, G, true);
+        }
+        double fr = Math.max(0.0, Math.min(1.0, (dist - 16.0) / 80.0));
+        double rm = Math.toRadians(-14.0 + 28.0 * fr);
+        int mx = xm - (int) (r0 * (1.0 - Math.cos(rm)));
+        int my = cy + (int) (r0 * Math.sin(rm));
+        g.fill(mx - 12, my - 2, mx - 3, my + 3, RED);
+        // datos
+        g.drawString(mc.font, "DIST " + (int) dist + " m", cx - 84, cy - 62, G, true);
+        String est = t.fireState() >= 0 ? "CARGANDO" : "LISTO";
+        String obus = t.isMobile() ? "OBUS " + t.shotsLeft() + "/" + PoliciaTank.SHOTS : "OBUS 1/1";
+        g.drawString(mc.font, obus + "  " + est, cx - 84, cy + 56, G, true);
+    }
+
     static void hud(ForgeGui gui, GuiGraphics g, float pt, int sw, int sh) {
         Minecraft mc = Minecraft.getInstance();
         PoliciaMod.Sync s = mine();
@@ -403,17 +454,21 @@ public class PoliciaClient {
             g.blit(new net.minecraft.resources.ResourceLocation("policia", "textures/entity/escudo_hud.png"), 0, 0, sw, sh, 0f, 0f, 192, 108, 192, 108);
             RenderSystem.disableBlend();
         }
-        int unlocked = Math.min(PoliciaMod.SKILLS.length, 1 + s.xp / PoliciaMod.XP_PER_NODE);
+        if (mc.player.getVehicle() instanceof PoliciaTank.TankEntity tk && mc.options.getCameraType().isFirstPerson()) scope(g, mc, tk, sw, sh);
         int x = 8, y = 8;
         g.drawString(mc.font, "ARBOL DE HABILIDADES - XP " + s.xp, x, y, 0xFFE8C040, true);
         for (int i = 0; i < PoliciaMod.SKILLS.length; i++) {
             boolean open = i == 0 || ((s.un >> i) & 1) == 1;
             String line = (i == s.sel && open ? "> " : "  ") + (i + 1) + ". " + PoliciaMod.SKILLS[i];
-            if (!open) line += "  [" + PoliciaMod.XP_PER_NODE + " XP]";
+            if (!open) line += "  [" + (PoliciaMod.LEVEL_COST[i] > 0 ? PoliciaMod.LEVEL_COST[i] + " niveles" : PoliciaMod.XP_PER_NODE + " XP") + "]";
             g.drawString(mc.font, line, x, y + 12 + i * 10, open ? (i == s.sel ? 0xFFFFFFFF : 0xFFB0C4DE) : 0xFF707070, true);
         }
         String st;
-        if (mc.player.getVehicle() instanceof PoliciaTank.TankEntity) st = "TANQUE: clic derecho para disparar";
+        if (mc.player.getVehicle() instanceof PoliciaTank.TankEntity tk0) {
+            st = tk0.isMobile() ? "TANQUE: WASD mover, clic derecho disparar (" + tk0.shotsLeft() + "), Shift bajar"
+                    : "TANQUE: clic derecho para disparar";
+        }
+        else if (s.sel == 3) st = s.tcd > 0 ? "Tanque en enfriamiento: " + (s.tcd + 19) / 20 + " s" : "Tanque movil listo (J)";
         else if (s.sel == 1) st = s.tcd > 0 ? "Tanque en enfriamiento: " + (s.tcd + 19) / 20 + " s" : "Tanque listo (J)";
         else if (s.shield > 0) st = "Escudo activo: " + (s.shield + 19) / 20 + " s";
         else if (s.cooldown > 0) st = "Escudo en enfriamiento: " + (s.cooldown + 19) / 20 + " s";
