@@ -23,7 +23,7 @@ public class PoliciaAlbanilScreen extends Screen {
             "Nivel 2: 3 ayudantes con picos de hierro. Mientras estan activos ves todos los minerales (menos diamante y netherita) a 4 bloques.",
             "Nivel 3: 4 ayudantes con picos de diamante. Mientras estan activos ves todos los minerales a 4 bloques.",
             "LINTERNA: una luz que sigue tu mirada hasta 48 bloques durante 60 s (tecla J con la habilidad elegida, o tecla G). Enfriamiento: 20 s.",
-            "TRACTOR: pala cargadora amarilla con cabina, inventario propio (54 casillas) y luces. J la invoca, te bajas o vuelves a subir; Mayus+J la retira. W/S avanzar, A/D girar, ESPACIO sube la pala, CTRL la baja, G luces, U inventario. Rompe lo natural que tiene delante (guarda lo que rompe), pero nunca construcciones de jugadores. Enfriamiento: 20 s."};
+            "TRACTOR: pala cargadora amarilla con cabina, inventario propio (54 casillas) y luces. J la invoca, te bajas o vuelves a subir; Mayus+J la retira. W/S avanzar, A/D girar, ESPACIO sube la pala, CTRL la baja, G luces, U inventario. Rompe lo natural que tiene delante (guarda lo que rompe), pero nunca construcciones de jugadores. Dura 45 s. Enfriamiento: 35 s."};
     static final int[] CX = {45, 45, 45, 130, 130, 130, 215, 300};
     static final int[] ROW = {0, 1, 2, 0, 1, 2, 0, 0};
     int px, py;
@@ -265,7 +265,7 @@ public class PoliciaAlbanilScreen extends Screen {
         cs.add(o4 ? (s.sel == 4 ? 0xFFFFFFFF : 0xFFB0C4DE) : 0xFF707070);
         String st;
         if (s.sel == 4 && o4) {
-            if (s.ta > 0) st = "Tractor activo (J: bajar o subir, Mayus+J: retirar)";
+            if (s.ta > 0) st = "Tractor: " + (s.ta + 19) / 20 + " s (J: bajar o subir, Mayus+J: retirar)";
             else if (s.tc > 0) st = "Tractor en enfriamiento: " + (s.tc + 19) / 20 + " s";
             else st = "Tractor listo (J)";
         } else if (s.sel == 3 && o3) {
