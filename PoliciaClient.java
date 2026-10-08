@@ -188,19 +188,16 @@ public class PoliciaClient {
     static void render(RenderPlayerEvent.Post e) {
         Player p = e.getEntity();
         PoliciaMod.Sync s = STATE.get(p.getUUID());
-        if (true || s == null || !s.on || s.shield <= 0) return;
+        if (s == null || !s.on || s.shield <= 0) return;
         PoseStack ps = e.getPoseStack();
         MultiBufferSource buf = e.getMultiBufferSource();
         int light = e.getPackedLight();
         float yaw = p.yBodyRot;
         ps.pushPose();
         ps.mulPose(Axis.YP.rotationDegrees(-yaw));
-        float h = p.isCrouching() ? 0.95f : 1.05f;
-        ps.translate(0.0, h, 0.36);
-        ps.mulPose(Axis.XP.rotationDegrees(-6f));
-        float w = 0.30f, ht = 0.48f; // medio ancho y medio alto
-        drawFace(ps, buf.getBuffer(RenderType.entityCutoutNoCull(TEX_FRONT)), w, ht, 0.02f, light, false);
-        drawFace(ps, buf.getBuffer(RenderType.entityCutoutNoCull(TEX_BACK)), w, ht, -0.02f, light, true);
+        ps.translate(0.0, p.isCrouching() ? 0.85 : 0.95, 0.30);
+        ps.scale(1.25f, -1.25f, -1.25f);
+        PoliciaShield.Render.drawWorld(ps, buf, light);
         ps.popPose();
     }
 
@@ -226,10 +223,10 @@ public class PoliciaClient {
         PoliciaMod.Sync s = mine();
         if (mc.player == null || mc.options.hideGui || s == null || !s.on) return;
         // escudo visto desde atras, en primera persona
-        if (false && s.shield > 0 && mc.options.getCameraType().isFirstPerson()) {
+        if (s.shield > 0 && mc.options.getCameraType().isFirstPerson()) {
             int bw = 120, bh = 180;
             RenderSystem.enableBlend();
-            g.blit(TEX_BACK, sw / 2 - bw / 2, sh - bh + 20, bw, bh, 0f, 0f, 32, 48, 32, 48);
+            g.blit(new net.minecraft.resources.ResourceLocation("policia", "textures/entity/escudo_hud.png"), 0, 0, sw, sh, 0f, 0f, 192, 108, 192, 108);
             RenderSystem.disableBlend();
         }
         int unlocked = Math.min(PoliciaMod.SKILLS.length, 1 + s.xp / PoliciaMod.XP_PER_NODE);
