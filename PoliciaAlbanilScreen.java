@@ -14,7 +14,7 @@ import java.util.List;
 /** Rama de habilidades del albanil. */
 public class PoliciaAlbanilScreen extends Screen {
     static final int PW = 460, PH = 340, LEFT_W = 104;
-    static final String[] NAMES = {"Pico de albanil", "MURO", "REFUGIO", "AYUDANTE I", "AYUDANTE II", "AYUDANTE III", "LINTERNA"};
+    static final String[] NAMES = {"Pico de albanil", "MURO", "REFUGIO", "AYUDANTE I", "AYUDANTE II", "AYUDANTE III", "LINTERNA", "TRACTOR"};
     static final String[] DESC = {
             "Te da un pico de diamante durante 7 s, con Fuerza I, Prisa minera I y Fortuna II. No se puede soltar ni guardar en cofres; puedes encantarlo y conserva los encantamientos. Enfriamiento: 8 s.",
             "Levanta un muro de 3 de alto por 3 de largo frente a ti. Puedes hacer hasta 3 muros (pulsa J de nuevo para cada uno). Desaparecen a los 15 s. Enfriamiento: 5 s.",
@@ -22,9 +22,10 @@ public class PoliciaAlbanilScreen extends Screen {
             "PEDIR AYUDANTE: 1 ayudante con pico de piedra que sigue y defiende. H: orden (seguir, picar delante, buscar minerales). X: elegir area (rueda: largo, Mayus+rueda: ancho). Avisan de minerales (Y/N). U: su inventario. 60 s, enf. 30 s. Ves menas de carbon a 4 bloques.",
             "Nivel 2: 3 ayudantes con picos de hierro. Mientras estan activos ves todos los minerales (menos diamante y netherita) a 4 bloques.",
             "Nivel 3: 4 ayudantes con picos de diamante. Mientras estan activos ves todos los minerales a 4 bloques.",
-            "LINTERNA: una luz que sigue tu mirada hasta 48 bloques durante 60 s (tecla J con la habilidad elegida, o tecla G). Enfriamiento: 20 s."};
-    static final int[] CX = {60, 60, 60, 170, 170, 170, 280};
-    static final int[] ROW = {0, 1, 2, 0, 1, 2, 0};
+            "LINTERNA: una luz que sigue tu mirada hasta 48 bloques durante 60 s (tecla J con la habilidad elegida, o tecla G). Enfriamiento: 20 s.",
+            "TRACTOR: pala cargadora amarilla con cabina, inventario propio (54 casillas) y luces. J la invoca, te bajas o vuelves a subir; Mayus+J la retira. W/S avanzar, A/D girar, ESPACIO sube la pala, CTRL la baja, G luces, U inventario. Rompe lo natural que tiene delante (guarda lo que rompe), pero nunca construcciones de jugadores. Enfriamiento: 20 s."};
+    static final int[] CX = {45, 45, 45, 130, 130, 130, 215, 300};
+    static final int[] ROW = {0, 1, 2, 0, 1, 2, 0, 0};
     int px, py;
     float zoom = 1.0f;
 
@@ -42,6 +43,7 @@ public class PoliciaAlbanilScreen extends Screen {
 
     static boolean has(PoliciaAlbanil.AlbSync s, int i) {
         int lv = s == null ? 0 : s.lv;
+        if (i == 7) return s != null && s.tu >= 1;
         if (i == 6) return s != null && s.lu >= 1;
         if (i >= 3) return s != null && s.hl >= i - 2;
         return i == 0 || lv >= i;
@@ -108,6 +110,20 @@ public class PoliciaAlbanilScreen extends Screen {
         g.fill(x + 12, y + 7, x + 16, y + 9, 0xA0FFFFFF);
     }
 
+    /** Icono del tractor (16x16). */
+    static void tractorIcon(GuiGraphics g, int x, int y) {
+        g.fill(x + 5, y + 6, x + 13, y + 11, 0xFFF0B60E);
+        g.fill(x + 8, y + 2, x + 13, y + 7, 0xFFC89610);
+        g.fill(x + 9, y + 3, x + 12, y + 5, 0xFF9AD0F0);
+        g.fill(x + 3, y + 8, x + 6, y + 9, 0xFFF0B60E);
+        g.fill(x, y + 9, x + 4, y + 13, 0xFFF0B60E);
+        g.fill(x, y + 12, x + 4, y + 13, 0xFF8A8F99);
+        g.fill(x + 5, y + 10, x + 9, y + 15, 0xFF202020);
+        g.fill(x + 10, y + 10, x + 14, y + 15, 0xFF202020);
+        g.fill(x + 6, y + 11, x + 8, y + 14, 0xFF8A8F99);
+        g.fill(x + 11, y + 11, x + 13, y + 14, 0xFF8A8F99);
+    }
+
     void padlock(GuiGraphics g, int x, int y) {
         g.fill(x + 8, y + 3, x + 10, y + 11, 0xFFD8D8D8);
         g.fill(x + 14, y + 3, x + 16, y + 11, 0xFFD8D8D8);
@@ -136,7 +152,7 @@ public class PoliciaAlbanilScreen extends Screen {
         PoliciaMod.Sync ms = PoliciaClient.mine();
         PoliciaAlbanil.AlbSync s = PoliciaAlbanil.CL;
         int xp = ms == null ? 0 : ms.xp;
-        int sel = s.sel == 1 ? (s.lv >= 2 ? 2 : 1) : (s.sel == 2 ? 2 + Math.max(1, s.hl) : (s.sel == 3 ? 6 : 0));
+        int sel = s.sel == 1 ? (s.lv >= 2 ? 2 : 1) : (s.sel == 2 ? 2 + Math.max(1, s.hl) : (s.sel == 3 ? 6 : (s.sel == 4 ? 7 : 0)));
         PoliciaTreeScreen.panel(g, px, py, px + LEFT_W, py + PH);
         tag(g, "Albanil", px + 6, py - 6);
         if (minecraft != null && minecraft.player != null) {
@@ -155,7 +171,7 @@ public class PoliciaAlbanilScreen extends Screen {
             g.fill(x0, y0, x0 + 2, y1, col);
         }
         int hov = -1;
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < 8; i++) {
             int nx = nodeX(i), y = nodeY(i);
             boolean open = has(s, i);
             boolean hover = mx >= nx && mx <= nx + 24 && my >= y && my <= y + 24;
@@ -167,6 +183,7 @@ public class PoliciaAlbanilScreen extends Screen {
             else if (i == 1) wallIcon(g, nx + 4, y + 4);
             else if (i == 2) houseIcon(g, nx + 4, y + 4);
             else if (i == 6) lampIcon(g, nx + 4, y + 4);
+            else if (i == 7) tractorIcon(g, nx + 4, y + 4);
             else helperIcon(g, nx + 4, y + 4);
             if (!open) {
                 g.fill(nx, y, nx + 24, y + 24, 0x99000000);
@@ -184,7 +201,7 @@ public class PoliciaAlbanilScreen extends Screen {
             g.drawString(font, lines.get(k), bx0 + 5, by0 + 15 + k * 9, open ? 0xFFC8D0DC : 0xFF808890, false);
         }
         if (!open) {
-            g.drawString(font, "Bloqueada - cuesta " + (show >= 3 && show < 6 ? PoliciaAlbanil.COST + 5 * (show - 3) : PoliciaAlbanil.COST) + " XP", bx0 + 5, by1 - 11, 0xFFE8B830, false);
+            g.drawString(font, "Bloqueada - cuesta " + (show == 7 ? PoliciaTractor.COST : (show >= 3 && show < 6 ? PoliciaAlbanil.COST + 5 * (show - 3) : PoliciaAlbanil.COST)) + " XP", bx0 + 5, by1 - 11, 0xFFE8B830, false);
         } else if (show == sel) {
             g.drawString(font, "Elegida (tecla J)", bx0 + 5, by1 - 11, 0xFF60E060, false);
         } else {
@@ -201,10 +218,11 @@ public class PoliciaAlbanilScreen extends Screen {
         my = (my - height / 2.0) / zoom + height / 2.0;
         if (btn == 0) {
             PoliciaAlbanil.AlbSync s = PoliciaAlbanil.CL;
-            for (int i = 0; i < 7; i++) {
+            for (int i = 0; i < 8; i++) {
                 int nx = nodeX(i), y = nodeY(i);
                 if (mx >= nx && mx <= nx + 24 && my >= y && my <= y + 24) {
-                    if (i == 6) PoliciaClient.send(has(s, i) ? 14 : 41);
+                    if (i == 7) PoliciaClient.send(has(s, i) ? 15 : 42);
+                    else if (i == 6) PoliciaClient.send(has(s, i) ? 14 : 41);
                     else if (i >= 3) {
                         if (i - 2 == s.hl + 1) PoliciaClient.send(40);
                         else if (has(s, i)) PoliciaClient.send(13);
@@ -242,8 +260,15 @@ public class PoliciaAlbanilScreen extends Screen {
         boolean o3 = s.lu >= 1;
         ls.add((s.sel == 3 && o3 ? "> " : "  ") + "4. LINTERNA" + (o3 ? "" : "  [" + PoliciaAlbanil.COST + " XP]"));
         cs.add(o3 ? (s.sel == 3 ? 0xFFFFFFFF : 0xFFB0C4DE) : 0xFF707070);
+        boolean o4 = s.tu >= 1;
+        ls.add((s.sel == 4 && o4 ? "> " : "  ") + "5. TRACTOR" + (o4 ? "" : "  [" + PoliciaTractor.COST + " XP]"));
+        cs.add(o4 ? (s.sel == 4 ? 0xFFFFFFFF : 0xFFB0C4DE) : 0xFF707070);
         String st;
-        if (s.sel == 3 && o3) {
+        if (s.sel == 4 && o4) {
+            if (s.ta > 0) st = "Tractor activo (J: bajar o subir, Mayus+J: retirar)";
+            else if (s.tc > 0) st = "Tractor en enfriamiento: " + (s.tc + 19) / 20 + " s";
+            else st = "Tractor listo (J)";
+        } else if (s.sel == 3 && o3) {
             if (s.lt > 0) st = "Linterna: " + (s.lt + 19) / 20 + " s (J o G: apagar)";
             else if (s.lc > 0) st = "Linterna en enfriamiento: " + (s.lc + 19) / 20 + " s";
             else st = "Linterna lista (J o G)";
