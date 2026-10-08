@@ -73,6 +73,7 @@ public class PoliciaClient {
 
     static void renderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers e) {
         e.registerEntityRenderer(PoliciaTank.TANK.get(), PoliciaTankRender::new);
+        e.registerEntityRenderer(PoliciaRefuerzo.AGENT.get(), PoliciaRefuerzoRender::new);
     }
 
     static java.lang.reflect.Method CAM_MOVE;
@@ -518,7 +519,7 @@ public class PoliciaClient {
                     : "TANQUE: clic derecho para disparar";
         }
         else if (s.sel == 2) st = s.tcd > 0 ? "Tanque en enfriamiento: " + (s.tcd + 19) / 20 + " s" : (up ? "Tanque movil listo (J)" : "Tanque listo (J)");
-        else if (s.sel == 1) st = "REFUERZO: proximamente";
+        else if (s.sel == 1) st = s.rcd > 0 ? "Refuerzo en enfriamiento: " + (s.rcd + 19) / 20 + " s" : "Refuerzo nv " + Math.max(1, s.rl) + " listo (J)";
         else if (s.sel == 3) st = "Helicoptero: proximamente";
         else if (s.shield > 0) st = "Escudo activo: " + (s.shield + 19) / 20 + " s";
         else if (s.cooldown > 0) st = "Escudo en enfriamiento: " + (s.cooldown + 19) / 20 + " s";
