@@ -89,6 +89,7 @@ public class PoliciaClient {
         e.registerEntityRenderer(PoliciaTank.TANK.get(), PoliciaTankRender::new);
         e.registerEntityRenderer(PoliciaRefuerzo.AGENT.get(), PoliciaRefuerzoRender::new);
         e.registerEntityRenderer(PoliciaAyudante.AYU.get(), PoliciaAyudanteRender::new);
+        e.registerEntityRenderer(PoliciaTractor.TRACTOR.get(), PoliciaTractorRender::new);
         PoliciaExtraRender.register(e);
         e.registerEntityRenderer(PoliciaHeli.HELI.get(), PoliciaHeliRender::new);
     }
@@ -100,7 +101,7 @@ public class PoliciaClient {
     static void camera(net.minecraftforge.client.event.ViewportEvent.ComputeCameraAngles e) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.getCameraType().isFirstPerson()) return;
-        if (!(mc.player.getVehicle() instanceof PoliciaTank.TankEntity || mc.player.getVehicle() instanceof PoliciaHeli.HeliEntity)) return;
+        if (!(mc.player.getVehicle() instanceof PoliciaTank.TankEntity || mc.player.getVehicle() instanceof PoliciaHeli.HeliEntity || mc.player.getVehicle() instanceof PoliciaTractor.TractorEntity)) return;
         if (!camTried) {
             camTried = true;
             try {
@@ -159,7 +160,7 @@ public class PoliciaClient {
     /** Tampoco se ve la mano en primera persona. */
     static void hideHand(net.minecraftforge.client.event.RenderHandEvent e) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null && (mc.player.getVehicle() instanceof PoliciaTank.TankEntity || mc.player.getVehicle() instanceof PoliciaHeli.HeliEntity)) e.setCanceled(true);
+        if (mc.player != null && (mc.player.getVehicle() instanceof PoliciaTank.TankEntity || mc.player.getVehicle() instanceof PoliciaHeli.HeliEntity || mc.player.getVehicle() instanceof PoliciaTractor.TractorEntity)) e.setCanceled(true);
     }
 
     static void keys(RegisterKeyMappingsEvent e) {
@@ -228,7 +229,7 @@ public class PoliciaClient {
     /** Con el escudo activo no se puede golpear ni interactuar. */
     static void noClicks(net.minecraftforge.client.event.InputEvent.InteractionKeyMappingTriggered e) {
         Minecraft mc0 = Minecraft.getInstance();
-        if (mc0.player != null && mc0.player.getVehicle() instanceof PoliciaHeli.HeliEntity) {
+        if (mc0.player != null && (mc0.player.getVehicle() instanceof PoliciaHeli.HeliEntity || mc0.player.getVehicle() instanceof PoliciaTractor.TractorEntity)) {
             e.setCanceled(true);
             e.setSwingHand(false);
             return;
@@ -442,7 +443,7 @@ public class PoliciaClient {
             PoliciaXray.zoning = false;
             if (free && alb()) send(1000 + PoliciaXray.zl * 10 + PoliciaXray.zw);
         }
-        if (free && mc.player.getVehicle() instanceof PoliciaHeli.HeliEntity) {
+        if (free && (mc.player.getVehicle() instanceof PoliciaHeli.HeliEntity || mc.player.getVehicle() instanceof PoliciaTractor.TractorEntity)) {
             if (mc.options.keyJump.isDown()) send(5);
             else if (mc.options.keySprint.isDown()) send(6);
         }
