@@ -23,7 +23,7 @@ public class PoliciaTreeScreen extends Screen {
             "Invoca un tanque bajo tus pies. Apunta y dispara con clic derecho una sola vez; luego se retira. Enfriamiento: 30 s.",
             "Invoca un helicoptero pilotable. (Proximamente)",
             "Mejora del Tanque: lo reemplaza. Conduce con WASD, 3 disparos con clic derecho; baja con Mayus y vuelve a subir con clic derecho. Enfriamiento: 30 s.",
-            "Apunta a un objetivo (hasta 12 m) y lo esposas: queda inmovilizado 7 s. Enfriamiento: 15 s.",
+            "Apunta a un objetivo (hasta 12 m) y lo esposas 15 s: no puede atacar ni interactuar y tu puedes arrastrarlo. Enfriamiento: 30 s.",
             "Invoca un perro policia que te protege, ataca amenazas y marca con brillo a los enemigos cercanos. Dura 45 s. Enfriamiento: 60 s.",
             "Despliega una patrulla con sirena: los mobs hostiles cercanos huyen de miedo y la torreta dispara a los que esten a tiro. Dura 20 s. Enfriamiento: 40 s.",
             "Un dron vigila sobre ti 45 s y marca con brillo, incluso tras las paredes, a las amenazas en 32 m. Enfriamiento: 60 s."};
