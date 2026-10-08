@@ -31,6 +31,9 @@ public class PoliciaHeliRender extends EntityRenderer<PoliciaHeli.HeliEntity> {
 
     @Override
     public void render(PoliciaHeli.HeliEntity e, float yaw, float pt, PoseStack ps, MultiBufferSource buf, int light) {
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        // en primera persona el piloto ve la cabina dibujada en pantalla, no el casco por dentro
+        if (mc.player != null && mc.player.getVehicle() == e && mc.options.getCameraType().isFirstPerson()) return;
         VertexConsumer vc = buf.getBuffer(RenderType.entityCutoutNoCull(PoliciaExtraRender.WHITE));
         float hy = Mth.rotLerp(pt, e.yRotO, e.getYRot());
         float rot = Mth.lerp(pt, e.prevRotor, e.rotor);
