@@ -234,21 +234,12 @@ public class PoliciaMod {
         boolean form = d.getInt("pol_tfd") > 0;
         float prog = (40 - tf) / 40.0f;
         var lv = p.serverLevel();
-        for (int k = 0; k < 14; k++) {
-            double ang = p.getRandom().nextDouble() * Math.PI * 2;
-            double yy = p.getY() + p.getRandom().nextDouble() * 1.9;
-            double r = form ? 1.6 - 1.2 * prog : 0.4 + 1.3 * prog;
-            lv.sendParticles(k % 3 == 0 ? NANO2 : NANO, p.getX() + Math.cos(ang) * r, yy, p.getZ() + Math.sin(ang) * r, 1, 0, 0, 0, 0);
-        }
-        if (tf % 4 == 0) lv.sendParticles(ParticleTypes.ELECTRIC_SPARK, p.getX(), p.getY() + 0.9, p.getZ(), 6, 0.35, 0.8, 0.35, 0.05);
         if (tf % 8 == 0) {
             p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS, 0.7f, 0.8f + prog);
         }
         if (tf == 0) {
             p.level().playSound(null, p.getX(), p.getY(), p.getZ(),
                     form ? SoundEvents.BEACON_ACTIVATE : SoundEvents.AMETHYST_BLOCK_RESONATE, SoundSource.PLAYERS, 0.8f, form ? 1.8f : 1.2f);
-            lv.sendParticles(ParticleTypes.FLASH, p.getX(), p.getY() + 1.1, p.getZ(), 1, 0, 0, 0, 0);
-            lv.sendParticles(ParticleTypes.END_ROD, p.getX(), p.getY() + 1.0, p.getZ(), 20, 0.4, 0.8, 0.4, 0.1);
         }
     }
 
