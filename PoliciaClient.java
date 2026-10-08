@@ -55,6 +55,8 @@ public class PoliciaClient {
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::tick);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::render);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::screenInit);
+        MinecraftForge.EVENT_BUS.addListener(PoliciaClient::livingPre);
+        MinecraftForge.EVENT_BUS.addListener(PoliciaClient::noClicks);
         MinecraftForge.EVENT_BUS.addListener(PoliciaClient::screenPre);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaClient::setup);
     }
@@ -113,6 +115,26 @@ public class PoliciaClient {
         }
         tb.setX(maxRight + 2);
         tb.setY(top + 61);
+    }
+
+    /** Con el escudo activo: ambos brazos sujetan el escudo al frente (pose de bloqueo). */
+    static void livingPre(net.minecraftforge.client.event.RenderLivingEvent.Pre<?, ?> e) {
+        if (!(e.getEntity() instanceof Player p)) return;
+        PoliciaMod.Sync s = STATE.get(p.getUUID());
+        if (s == null || !s.on || s.shield <= 0) return;
+        if (e.getRenderer().getModel() instanceof net.minecraft.client.model.PlayerModel<?> pm) {
+            pm.rightArmPose = net.minecraft.client.model.HumanoidModel.ArmPose.BLOCK;
+            pm.leftArmPose = net.minecraft.client.model.HumanoidModel.ArmPose.BLOCK;
+        }
+    }
+
+    /** Con el escudo activo no se puede golpear ni interactuar. */
+    static void noClicks(net.minecraftforge.client.event.InputEvent.InteractionKeyMappingTriggered e) {
+        PoliciaMod.Sync s = mine();
+        if (s != null && s.on && s.shield > 0) {
+            e.setCanceled(true);
+            e.setSwingHand(false);
+        }
     }
 
     static void send(int id) {
