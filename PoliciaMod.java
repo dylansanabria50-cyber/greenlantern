@@ -60,11 +60,15 @@ public class PoliciaMod {
             "REFUERZO",
             "Tanque",
             "Helicoptero",
-            "Tanque movil"};
+            "Tanque movil",
+            "Esposas",
+            "Perro K9",
+            "Sirena y torreta",
+            "Dron de vigilancia"};
     /** Habilidad previa necesaria para desbloquear cada una. */
-    public static final int[] PRE = {-1, 0, 1, 2, 2};
+    public static final int[] PRE = {-1, 0, 1, 2, 2, 3, 5, 6, 7};
     /** Niveles de experiencia que cuesta desbloquear (0 = se paga con XP_PER_NODE). */
-    public static final int[] LEVEL_COST = {0, 0, 0, 0, 20};
+    public static final int[] LEVEL_COST = {0, 0, 0, 0, 20, 0, 0, 0, 0};
     public static final int XP_PER_NODE = 10;
     public static final int SHIELD_TICKS = 240;   // 12 s
     public static final int SHIELD_COOLDOWN = 80; // 15 s
@@ -89,16 +93,18 @@ public class PoliciaMod {
     public static class Sync {
         UUID id = new UUID(0, 0);
         boolean on;
-        int shield, cooldown, xp, sel, un, tcd, rl, rcd;
+        int shield, cooldown, xp, sel, un, tcd, rl, rcd, c5, c6, c7, c8;
         Sync() { }
         static void enc(Sync m, FriendlyByteBuf b) {
             b.writeUUID(m.id); b.writeBoolean(m.on);
             b.writeVarInt(m.shield); b.writeVarInt(m.cooldown); b.writeVarInt(m.xp); b.writeVarInt(m.sel); b.writeVarInt(m.un); b.writeVarInt(m.tcd); b.writeVarInt(m.rl); b.writeVarInt(m.rcd);
+            b.writeVarInt(m.c5); b.writeVarInt(m.c6); b.writeVarInt(m.c7); b.writeVarInt(m.c8);
         }
         static Sync dec(FriendlyByteBuf b) {
             Sync m = new Sync();
             m.id = b.readUUID(); m.on = b.readBoolean();
             m.shield = b.readVarInt(); m.cooldown = b.readVarInt(); m.xp = b.readVarInt(); m.sel = b.readVarInt(); m.un = b.readVarInt(); m.tcd = b.readVarInt(); m.rl = b.readVarInt(); m.rcd = b.readVarInt();
+            m.c5 = b.readVarInt(); m.c6 = b.readVarInt(); m.c7 = b.readVarInt(); m.c8 = b.readVarInt();
             return m;
         }
         static void handle(Sync m, Supplier<NetworkEvent.Context> c) {
@@ -142,6 +148,9 @@ public class PoliciaMod {
         PoliciaShield.ITEMS.register(FMLJavaModLoadingContext.get().getModEventBus());
         PoliciaTank.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
         PoliciaRefuerzo.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
+        PoliciaExtra.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaExtra::attrs);
+        MinecraftForge.EVENT_BUS.register(new PoliciaExtra());
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaRefuerzo::attrs);
         if (FMLEnvironment.dist.isClient()) {
             PoliciaClient.init();
@@ -152,6 +161,7 @@ public class PoliciaMod {
         Sync m = new Sync();
         m.id = p.getUUID(); m.on = on(p);
         m.shield = shield(p); m.cooldown = cooldown(p); m.xp = xp(p); m.sel = sel(p); m.un = un(p); m.tcd = p.getPersistentData().getInt("pol_tcd"); m.rl = rlevel(p); m.rcd = p.getPersistentData().getInt("pol_rcd");
+        m.c5 = PoliciaExtra.cd(p, 5); m.c6 = PoliciaExtra.cd(p, 6); m.c7 = PoliciaExtra.cd(p, 7); m.c8 = PoliciaExtra.cd(p, 8);
         return m;
     }
 
@@ -246,6 +256,8 @@ public class PoliciaMod {
                 if (d.getInt("pol_tcd") > 0) { msg(p, "Tanque en enfriamiento: " + (d.getInt("pol_tcd") + 19) / 20 + " s"); return; }
                 PoliciaTank.summon(p);
                 sync(p);
+            } else if (s >= 5) {
+                PoliciaExtra.use(p, s);
             } else if (s == 1) {
                 PoliciaRefuerzo.use(p);
             } else {
@@ -406,6 +418,7 @@ public class PoliciaMod {
             d.putInt("pol_tcd", tc - 1);
             if (tc - 1 == 0) { msg(p, "Tanque listo"); change = true; }
         }
+        change |= PoliciaExtra.tickCd(p);
         int rc = d.getInt("pol_rcd");
         if (rc > 0) {
             d.putInt("pol_rcd", rc - 1);
