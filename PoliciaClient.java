@@ -421,6 +421,10 @@ public class PoliciaClient {
         while (K_USE.consumeClick()) { if (free) send(1); }
         while (K_NEXT.consumeClick()) { if (free) send(2); }
         while (K_LIGHT.consumeClick()) { if (free) send(4); }
+        if (free && mc.player.getVehicle() instanceof PoliciaHeli.HeliEntity) {
+            if (mc.options.keyJump.isDown()) send(5);
+            else if (mc.options.keySprint.isDown()) send(6);
+        }
     }
 
     // ---------- escudo en el cuerpo ----------
@@ -511,12 +515,12 @@ public class PoliciaClient {
     /** Cabina del helicoptero vista en primera persona: techo, pilares, tablero con instrumentos y palanca. */
     static void cockpit(GuiGraphics g, Minecraft mc, PoliciaHeli.HeliEntity h, int sw, int sh) {
         final int D = 0xFF15181D, L = 0xFF3A414C, P = 0xFF0C0E12;
-        int top = (int) (sh * 0.07f), dash = (int) (sh * 0.76f);
+        int top = (int) (sh * 0.035f), dash = (int) (sh * 0.86f);
         g.fill(0, 0, sw, top, D);
         g.fill(0, top, sw, top + 2, L);
         for (int y = top; y < dash; y += 2) {
             float k = (y - top) / (float) (dash - top);
-            int w = (int) (sw * (0.03f + 0.10f * k));
+            int w = (int) (sw * (0.012f + 0.04f * k));
             g.fill(0, y, w, y + 2, D);
             g.fill(w, y, w + 2, y + 2, L);
             g.fill(sw - w, y, sw, y + 2, D);
@@ -528,7 +532,7 @@ public class PoliciaClient {
         int t = mc.player.tickCount;
         int cx = sw / 2;
         // consola central con pantalla
-        int cw = Math.max(90, sw / 6), ch = (int) (sh * 0.14f);
+        int cw = Math.max(90, sw / 6), ch = (int) (sh * 0.085f);
         int cy0 = dash + 12;
         g.fill(cx - cw / 2 - 2, cy0 - 2, cx + cw / 2 + 2, cy0 + ch + 2, L);
         g.fill(cx - cw / 2, cy0, cx + cw / 2, cy0 + ch, 0xFF06241A);
@@ -537,10 +541,10 @@ public class PoliciaClient {
         // relojes con aguja
         for (int i = -1; i <= 1; i += 2) {
             int gx = cx + i * (cw / 2 + 46), gy = cy0 + ch / 2;
-            g.fill(gx - 22, gy - 22, gx + 22, gy + 22, L);
-            g.fill(gx - 20, gy - 20, gx + 20, gy + 20, P);
+            g.fill(gx - 16, gy - 16, gx + 16, gy + 16, L);
+            g.fill(gx - 14, gy - 14, gx + 14, gy + 14, P);
             double a = Math.sin(t * 0.04 + i) * 1.8 - 1.57;
-            for (int k = 0; k < 16; k++) {
+            for (int k = 0; k < 11; k++) {
                 int px = gx + (int) (Math.cos(a) * k), py = gy + (int) (Math.sin(a) * k);
                 g.fill(px, py, px + 2, py + 2, 0xFFFF5040);
             }
@@ -549,14 +553,14 @@ public class PoliciaClient {
         // luces de aviso
         boolean alt = (t / 6) % 2 == 0;
         for (int k = 0; k < 6; k++) {
-            int lx = cx - 60 + k * 24, ly = dash + ch + 22;
+            int lx = cx - 60 + k * 24, ly = dash + ch + 18;
             int col = (k % 2 == 0) ? (alt ? 0xFFFF3030 : 0xFF501010) : (alt ? 0xFF102050 : 0xFF3060FF);
             g.fill(lx, ly, lx + 8, ly + 5, col);
         }
         // palanca de control
-        g.fill(cx - 3, sh - 44, cx + 4, sh, 0xFF22262D);
-        g.fill(cx - 7, sh - 52, cx + 8, sh - 40, 0xFF2E333B);
-        g.fill(cx - 7, sh - 52, cx + 8, sh - 49, L);
+        g.fill(cx - 3, sh - 24, cx + 4, sh, 0xFF22262D);
+        g.fill(cx - 7, sh - 32, cx + 8, sh - 20, 0xFF2E333B);
+        g.fill(cx - 7, sh - 32, cx + 8, sh - 29, L);
     }
 
     static void hud(ForgeGui gui, GuiGraphics g, float pt, int sw, int sh) {
@@ -600,7 +604,7 @@ public class PoliciaClient {
             int cc = s.sel == 5 ? s.c5 : (s.sel == 6 ? s.c6 : (s.sel == 7 ? s.c7 : s.c8));
             st = PoliciaMod.SKILLS[s.sel] + (cc > 0 ? " en enfriamiento: " + (cc + 19) / 20 + " s" : " listo (J)");
         }
-        else if (s.sel == 3) st = mc.player.getVehicle() instanceof PoliciaHeli.HeliEntity hh ? (hh.isLight() ? "MODO LINTERNA: helicoptero fijo, mira para apuntar la luz (tecla de linterna para salir)" : "HELICOPTERO: W/S avanzar, A/D desplazar, mira arriba/abajo para subir/bajar, Shift bajar, tecla de linterna: modo linterna") : "Helicoptero listo (J)";
+        else if (s.sel == 3) st = mc.player.getVehicle() instanceof PoliciaHeli.HeliEntity hh ? (hh.isLight() ? "MODO LINTERNA: la luz sigue tu mirada. W/S/A/D mover, ESPACIO subir, CTRL bajar (tecla de linterna para apagar)" : "HELICOPTERO: W/S avanzar, A/D desplazar, ESPACIO subir, CTRL bajar, Shift salir, tecla de linterna: luz") : "Helicoptero listo (J)";
         else if (s.shield > 0) st = "Escudo activo: " + (s.shield + 19) / 20 + " s";
         else if (s.cooldown > 0) st = "Escudo en enfriamiento: " + (s.cooldown + 19) / 20 + " s";
         else st = "Escudo listo (J)";
