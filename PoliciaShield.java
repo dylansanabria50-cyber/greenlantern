@@ -57,8 +57,24 @@ public class PoliciaShield extends ShieldItem {
             super(mc.getBlockEntityRenderDispatcher(), mc.getEntityModels());
         }
 
+        /** Dibuja el escudo (mismo modelo vanilla) ya transformado por quien llama. */
+        static void drawWorld(PoseStack ps, MultiBufferSource buf, int light) {
+            Render r = get();
+            if (r.model == null) {
+                r.model = new ShieldModel(Minecraft.getInstance().getEntityModels().bakeLayer(ModelLayers.SHIELD));
+            }
+            VertexConsumer vc = buf.getBuffer(RenderType.entityCutoutNoCull(TEX));
+            r.model.handle().render(ps, vc, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
+            r.model.plate().render(ps, vc, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
+        }
+
         @Override
         public void renderByItem(ItemStack stack, ItemDisplayContext ctx, PoseStack ps, MultiBufferSource buf, int light, int overlay) {
+            // en la mano no se dibuja: el escudo grande se pinta delante del cuerpo (tercera persona) o como pantalla (primera persona)
+            if (ctx == ItemDisplayContext.FIRST_PERSON_LEFT_HAND || ctx == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND
+                    || ctx == ItemDisplayContext.THIRD_PERSON_LEFT_HAND || ctx == ItemDisplayContext.THIRD_PERSON_RIGHT_HAND) {
+                return;
+            }
             if (model == null) {
                 model = new ShieldModel(Minecraft.getInstance().getEntityModels().bakeLayer(ModelLayers.SHIELD));
             }
