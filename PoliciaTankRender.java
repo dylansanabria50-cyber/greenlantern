@@ -82,7 +82,7 @@ public class PoliciaTankRender extends EntityRenderer<PoliciaTank.TankEntity> {
         float age = e.tickCount + pt;
         float k = Mth.clamp(age / 8.0f, 0.0f, 1.0f);
         if (fire >= PoliciaTank.END_TICKS - 8) k = Math.min(k, Mth.clamp((PoliciaTank.END_TICKS - fire - pt) / 8.0f, 0.0f, 1.0f));
-        float s = PoliciaTank.SCALE * (0.2f + 0.8f * k);
+        float gr = 0.2f + 0.8f * k;
         // retroceso del canon tras el disparo
         float recoil = 0f;
         if (fire >= PoliciaTank.LOAD_TICKS) {
@@ -92,7 +92,7 @@ public class PoliciaTankRender extends EntityRenderer<PoliciaTank.TankEntity> {
         VertexConsumer vc = buf.getBuffer(RenderType.entityCutoutNoCull(TEX));
         ps.pushPose();
         ps.mulPose(Axis.YP.rotationDegrees(180.0f - hy));
-        ps.scale(s, s, s);
+        ps.scale(PoliciaTank.SX * gr, PoliciaTank.SY * gr, PoliciaTank.SX * gr);
         draw(PARTS[0], ps, vc, light);
         // torreta: gira sobre su eje
         ps.pushPose();
