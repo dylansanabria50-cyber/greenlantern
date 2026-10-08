@@ -118,7 +118,7 @@ public class PoliciaRefuerzo {
 
         static AttributeSupplier.Builder attrs() {
             return Mob.createMobAttributes()
-                    .add(Attributes.MAX_HEALTH, 40.0)
+                    .add(Attributes.MAX_HEALTH, 20.0)
                     .add(Attributes.MOVEMENT_SPEED, 0.32)
                     .add(Attributes.ATTACK_DAMAGE, 1.0)
                     .add(Attributes.FOLLOW_RANGE, 32.0)
