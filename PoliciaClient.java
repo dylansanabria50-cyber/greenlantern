@@ -33,7 +33,7 @@ import java.util.UUID;
 /** Teclas, skin de policia, escudo visible y HUD del arbol de habilidades. */
 public class PoliciaClient {
     static final String CAT = "Policia";
-    static final KeyMapping K_FORM = new KeyMapping("Policia: Modo policia (skin)", GLFW.GLFW_KEY_H, CAT);
+    static final KeyMapping K_FORM = new KeyMapping("Policia: Activar modo policia", GLFW.GLFW_KEY_B, CAT);
     static final KeyMapping K_USE = new KeyMapping("Policia: Usar habilidad", GLFW.GLFW_KEY_J, CAT);
     static final KeyMapping K_NEXT = new KeyMapping("Policia: Cambiar habilidad", GLFW.GLFW_KEY_K, CAT);
 
