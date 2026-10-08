@@ -62,13 +62,13 @@ public class PoliciaAlbanil {
 
     /** Estado del propio jugador, visto por su cliente. */
     public static class AlbSync {
-        int lv, sel, pickT, structT, c0, c1, walls, hl, ht, hc, mode;
+        int lv, sel, pickT, structT, c0, c1, walls, hl, ht, hc, mode, lu, lt, lc, zl, zw;
         static void enc(AlbSync m, FriendlyByteBuf b) {
-            b.writeVarInt(m.lv); b.writeVarInt(m.sel); b.writeVarInt(m.pickT); b.writeVarInt(m.structT); b.writeVarInt(m.c0); b.writeVarInt(m.c1); b.writeVarInt(m.walls); b.writeVarInt(m.hl); b.writeVarInt(m.ht); b.writeVarInt(m.hc); b.writeVarInt(m.mode);
+            b.writeVarInt(m.lv); b.writeVarInt(m.sel); b.writeVarInt(m.pickT); b.writeVarInt(m.structT); b.writeVarInt(m.c0); b.writeVarInt(m.c1); b.writeVarInt(m.walls); b.writeVarInt(m.hl); b.writeVarInt(m.ht); b.writeVarInt(m.hc); b.writeVarInt(m.mode); b.writeVarInt(m.lu); b.writeVarInt(m.lt); b.writeVarInt(m.lc); b.writeVarInt(m.zl); b.writeVarInt(m.zw);
         }
         static AlbSync dec(FriendlyByteBuf b) {
             AlbSync m = new AlbSync();
-            m.lv = b.readVarInt(); m.sel = b.readVarInt(); m.pickT = b.readVarInt(); m.structT = b.readVarInt(); m.c0 = b.readVarInt(); m.c1 = b.readVarInt(); m.walls = b.readVarInt(); m.hl = b.readVarInt(); m.ht = b.readVarInt(); m.hc = b.readVarInt(); m.mode = b.readVarInt();
+            m.lv = b.readVarInt(); m.sel = b.readVarInt(); m.pickT = b.readVarInt(); m.structT = b.readVarInt(); m.c0 = b.readVarInt(); m.c1 = b.readVarInt(); m.walls = b.readVarInt(); m.hl = b.readVarInt(); m.ht = b.readVarInt(); m.hc = b.readVarInt(); m.mode = b.readVarInt(); m.lu = b.readVarInt(); m.lt = b.readVarInt(); m.lc = b.readVarInt(); m.zl = b.readVarInt(); m.zw = b.readVarInt();
             return m;
         }
         static void handle(AlbSync m, Supplier<NetworkEvent.Context> c) {
@@ -100,11 +100,17 @@ public class PoliciaAlbanil {
         m.ht = d.getInt("alb_ht");
         m.hc = d.getInt("alb_hcd");
         m.mode = d.getInt("alb_mode");
+        m.lu = d.getInt("alb_lu");
+        m.lt = d.getInt("alb_lamp");
+        m.lc = d.getInt("alb_lcd");
+        m.zl = d.getInt("alb_zon") == 1 ? d.getInt("alb_zl") : 0;
+        m.zw = d.getInt("alb_zw");
         PoliciaMod.NET.send(PacketDistributor.PLAYER.with(() -> p), m);
     }
 
     static String nm(ServerPlayer p, int s) {
         if (s == 2) return "AYUDANTE";
+        if (s == 3) return "LINTERNA";
         return s == 0 ? NAMES[0] : (lv(p) >= 2 ? NAMES[2] : NAMES[1]);
     }
 
@@ -113,6 +119,18 @@ public class PoliciaAlbanil {
     // ---------- acciones ----------
     static void act(ServerPlayer p, int id) {
         CompoundTag d = p.getPersistentData();
+        if (id >= 1000) { setZone(p, (id - 1000) / 10, (id - 1000) % 10); return; }
+        if (id == 50) { PoliciaAyudante.openBank(p); return; }
+        if (id == 41) { // desbloquear LINTERNA
+            if (d.getInt("alb_lu") >= 1) { PoliciaMod.msg(p, "LINTERNA ya esta desbloqueada"); return; }
+            if (PoliciaMod.xp(p) < COST) { PoliciaMod.msg(p, "Necesitas " + COST + " XP (tienes " + PoliciaMod.xp(p) + ")"); return; }
+            d.putInt("pol_xp", PoliciaMod.xp(p) - COST);
+            d.putInt("alb_lu", 1);
+            PoliciaMod.msg(p, "Habilidad desbloqueada: LINTERNA");
+            p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.5f);
+            PoliciaMod.sync(p);
+            return;
+        }
         if (id == 40) { // mejorar AYUDANTE
             int hl = d.getInt("alb_hl");
             if (hl >= 3) { PoliciaMod.msg(p, "AYUDANTE ya esta al nivel maximo"); return; }
@@ -139,6 +157,14 @@ public class PoliciaAlbanil {
             PoliciaMod.sync(p);
             return;
         }
+        if (id == 14) { // elegir LINTERNA
+            if (d.getInt("alb_lu") >= 1) {
+                d.putInt("alb_sel", 3);
+                PoliciaMod.msg(p, "Habilidad: LINTERNA");
+                PoliciaMod.sync(p);
+            }
+            return;
+        }
         if (id == 13) { // elegir AYUDANTE
             if (d.getInt("alb_hl") >= 1) {
                 d.putInt("alb_sel", 2);
@@ -161,15 +187,16 @@ public class PoliciaAlbanil {
         if (id == 2) {
             int cur = d.getInt("alb_sel");
             int s = cur;
-            for (int k = 1; k <= 3; k++) {
-                int c = (cur + k) % 3;
-                if (c == 0 || (c == 1 && lv(p) >= 1) || (c == 2 && d.getInt("alb_hl") >= 1)) { s = c; break; }
+            for (int k = 1; k <= 4; k++) {
+                int c = (cur + k) % 4;
+                if (c == 0 || (c == 1 && lv(p) >= 1) || (c == 2 && d.getInt("alb_hl") >= 1) || (c == 3 && d.getInt("alb_lu") >= 1)) { s = c; break; }
             }
             d.putInt("alb_sel", s);
             PoliciaMod.msg(p, "Habilidad: " + nm(p, s));
             PoliciaMod.sync(p);
             return;
         }
+        if (id == 8 || id == 9) { PoliciaAyudante.answer(p, id == 8); return; }
         if (id == 7) { // orden a los ayudantes
             if (d.getInt("alb_hl") < 1) { PoliciaMod.msg(p, "Aun no tienes ayudantes: desbloquea AYUDANTE"); return; }
             int m = (d.getInt("alb_mode") + 1) % 3;
@@ -182,6 +209,7 @@ public class PoliciaAlbanil {
         int s = d.getInt("alb_sel");
         if (s == 1 && lv(p) < 1) s = 0;
         if (s == 2) { PoliciaAyudante.use(p); return; }
+        if (s == 3) { toggleLamp(p); return; }
         if (s == 0) {
             if (d.getInt("alb_pick") > 0) { PoliciaMod.msg(p, "El pico ya esta activo"); return; }
             if (d.getInt("alb_c0") > 0) { PoliciaMod.msg(p, "Pico en enfriamiento: " + (d.getInt("alb_c0") + 19) / 20 + " s"); return; }
@@ -206,6 +234,71 @@ public class PoliciaAlbanil {
             PoliciaMod.msg(p, house ? "REFUGIO levantado" : "MURO " + d.getInt("alb_walls") + "/3");
         }
         PoliciaMod.sync(p);
+    }
+
+    // ---------- area de picado de los ayudantes ----------
+    static void setZone(ServerPlayer p, int len, int wid) {
+        CompoundTag d = p.getPersistentData();
+        if (!isAlb(p) || d.getInt("alb_hl") < 1) return;
+        len = Math.max(1, Math.min(24, len));
+        wid = Math.max(1, Math.min(9, wid));
+        d.putLong("alb_zo", p.blockPosition().asLong());
+        d.putInt("alb_zd", p.getDirection().get2DDataValue());
+        d.putInt("alb_zl", len);
+        d.putInt("alb_zw", wid);
+        d.putInt("alb_zon", 1);
+        d.putInt("alb_mode", 1);
+        PoliciaMod.msg(p, "Area fijada: " + len + " de largo x " + wid + " de ancho x 3 de alto. Orden: " + PoliciaAyudante.ORDERS[1]);
+        PoliciaMod.sync(p);
+    }
+
+    // ---------- linterna ----------
+    static final int LAMP_T = 1200, LAMP_CD = 400;   // 60 s y 20 s
+
+    static void toggleLamp(ServerPlayer p) {
+        CompoundTag d = p.getPersistentData();
+        if (!isAlb(p)) return;
+        if (d.getInt("alb_lu") < 1) { PoliciaMod.msg(p, "Desbloquea primero: LINTERNA"); return; }
+        if (!PoliciaMod.on(p)) { PoliciaMod.msg(p, "Activa el modo albanil (B) primero"); return; }
+        if (d.getInt("alb_lamp") > 0) {
+            d.putInt("alb_lamp", 0);
+            lampClear(p);
+            d.putInt("alb_lcd", LAMP_CD);
+            PoliciaMod.msg(p, "Linterna apagada");
+        } else {
+            if (d.getInt("alb_lcd") > 0) { PoliciaMod.msg(p, "Linterna en enfriamiento: " + (d.getInt("alb_lcd") + 19) / 20 + " s"); return; }
+            d.putInt("alb_lamp", LAMP_T);
+            lampTick(p);
+            p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.LEVER_CLICK, SoundSource.PLAYERS, 0.8f, 1.4f);
+            PoliciaMod.msg(p, "Linterna: la luz sigue tu mirada");
+        }
+        PoliciaMod.sync(p);
+    }
+
+    static void lampTick(ServerPlayer p) {
+        CompoundTag d = p.getPersistentData();
+        ServerLevel lv = p.serverLevel();
+        net.minecraft.world.phys.Vec3 eye = p.getEyePosition();
+        net.minecraft.world.phys.Vec3 end = eye.add(p.getLookAngle().scale(48.0));
+        net.minecraft.world.phys.BlockHitResult hit = lv.clip(new net.minecraft.world.level.ClipContext(eye, end,
+                net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE, p));
+        BlockPos pos = hit.getType() == net.minecraft.world.phys.HitResult.Type.MISS ? BlockPos.containing(end)
+                : hit.getBlockPos().relative(hit.getDirection());
+        BlockPos old = d.contains("alb_lp") ? BlockPos.of(d.getLong("alb_lp")) : null;
+        if (old != null && old.equals(pos)) return;
+        if (!lv.getBlockState(pos).isAir()) return;
+        if (old != null && lv.getBlockState(old).is(Blocks.LIGHT)) lv.setBlock(old, Blocks.AIR.defaultBlockState(), 3);
+        lv.setBlock(pos, Blocks.LIGHT.defaultBlockState(), 3);
+        d.putLong("alb_lp", pos.asLong());
+    }
+
+    static void lampClear(ServerPlayer p) {
+        CompoundTag d = p.getPersistentData();
+        if (!d.contains("alb_lp")) return;
+        BlockPos old = BlockPos.of(d.getLong("alb_lp"));
+        d.remove("alb_lp");
+        ServerLevel lv = p.serverLevel();
+        if (lv.getBlockState(old).is(Blocks.LIGHT)) lv.setBlock(old, Blocks.AIR.defaultBlockState(), 3);
     }
 
     // ---------- pico ----------
@@ -508,6 +601,8 @@ public class PoliciaAlbanil {
         if (d.getInt("alb_pick") > 0 || d.getBoolean("alb_saved")) { d.putInt("alb_pick", 0); endPick(p); }
         if (d.getInt("alb_st") > 0 || d.getLongArray("alb_w").length > 0) { d.putInt("alb_st", 0); removeStruct(p); }
         if (d.getInt("alb_ht") > 0) { d.putInt("alb_ht", 0); PoliciaAyudante.clear(p); }
+        if (d.getInt("alb_lamp") > 0) d.putInt("alb_lamp", 0);
+        lampClear(p);
     }
 
     // ---------- eventos ----------
@@ -546,14 +641,30 @@ public class PoliciaAlbanil {
             d.putInt("alb_c1", c);
             if (c == 0) { PoliciaMod.msg(p, "Construccion lista"); ch = true; }
         }
+        int lt = d.getInt("alb_lamp");
+        if (lt > 0) {
+            d.putInt("alb_lamp", --lt);
+            if (lt % 4 == 0) lampTick(p);
+            if (lt == 0) {
+                lampClear(p);
+                d.putInt("alb_lcd", LAMP_CD);
+                PoliciaMod.msg(p, "La linterna se apago");
+                ch = true;
+            }
+        } else if (d.getInt("alb_lcd") > 0) {
+            int c = d.getInt("alb_lcd") - 1;
+            d.putInt("alb_lcd", c);
+            if (c == 0) { PoliciaMod.msg(p, "Linterna lista"); ch = true; }
+        }
         int ht = d.getInt("alb_ht");
         if (ht > 0) {
             d.putInt("alb_ht", --ht);
+            if (ht == 200 && PoliciaAyudante.hasItems(p)) PoliciaMod.msg(p, "Tus ayudantes se retiran en 10 s. Pulsa U para recoger lo que llevan");
             if (ht == 0 || (p.tickCount % 20 == 0 && PoliciaAyudante.mine(p).isEmpty())) {
                 d.putInt("alb_ht", 0);
                 PoliciaAyudante.clear(p);
                 d.putInt("alb_hcd", PoliciaAyudante.CD);
-                PoliciaMod.msg(p, "Los ayudantes se retiraron");
+                PoliciaMod.msg(p, PoliciaAyudante.hasItems(p) ? "Los ayudantes se retiraron y guardan lo que picaron. Pulsa U para recogerlo" : "Los ayudantes se retiraron");
                 ch = true;
             }
         } else if (d.getInt("alb_hcd") > 0) {
@@ -587,7 +698,7 @@ public class PoliciaAlbanil {
 
     @SubscribeEvent
     public void logout(PlayerEvent.PlayerLoggedOutEvent e) {
-        if (e.getEntity() instanceof ServerPlayer p) reset(p);
+        if (e.getEntity() instanceof ServerPlayer p) { reset(p); PoliciaAyudante.BANKS.remove(p.getUUID()); }
     }
 
     @SubscribeEvent
