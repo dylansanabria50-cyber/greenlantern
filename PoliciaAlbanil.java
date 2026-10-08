@@ -83,6 +83,7 @@ public class PoliciaAlbanil {
         PoliciaMod.NET.registerMessage(2, AlbSync.class, AlbSync::enc, AlbSync::dec, AlbSync::handle);
         PoliciaAyudante.init();
         PoliciaTractor.init();
+        PoliciaMision.init();
     }
 
     static boolean isAlb(net.minecraft.world.entity.player.Player p) { return JOB.equals(PoliciaMod.job(p)); }
