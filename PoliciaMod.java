@@ -195,6 +195,7 @@ public class PoliciaMod {
             return;
         }
         if (id == 4) { PoliciaHeli.toggleLight(p); return; }
+        if (id == 5 || id == 6) { PoliciaHeli.vert(p, id == 5 ? 1 : -1); return; }
         if ("albanil".equals(job(p))) { PoliciaAlbanil.act(p, id); return; }
         if (id == 30) { // mejorar REFUERZO (cuesta XP)
             int lv = rlevel(p);
