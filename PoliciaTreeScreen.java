@@ -15,16 +15,17 @@ import java.util.List;
 
 /** Pantalla de habilidades: personaje a la izquierda, rama de habilidades a la derecha. */
 public class PoliciaTreeScreen extends Screen {
-    static final int PW = 340, PH = 200, LEFT_W = 104;
-    static final String[] NAMES = {"Escudo balistico", "Tanque", "Jet de combate", "Tanque movil"};
+    static final int PW = 340, PH = 250, LEFT_W = 104;
+    static final String[] NAMES = {"Escudo balistico", "REFUERZO", "Tanque", "Helicoptero", "Tanque movil"};
     static final String[] DESC = {
             "Despliega un escudo antidisturbios durante 12 s. Bloquea los golpes de frente.",
-            "Invoca un tanque bajo tus pies. Apunta con la mira y dispara con clic derecho una sola vez; luego se retira. Enfriamiento: 30 s.",
-            "Invoca un jet de combate pilotable. (Proximamente)",
-            "Invoca un tanque que puedes conducir con WASD. 3 disparos con clic derecho; puedes bajarte (Shift) y volver a subir (J). Despues se retira. Enfriamiento: 30 s."};
+            "Llama a dos policias de refuerzo que luchan a tu lado. (Proximamente)",
+            "Invoca un tanque bajo tus pies. Apunta y dispara con clic derecho una sola vez; luego se retira. Enfriamiento: 30 s.",
+            "Invoca un helicoptero pilotable. (Proximamente)",
+            "Mejora del Tanque: lo reemplaza. Conduce con WASD, 3 disparos con clic derecho; baja con Mayus y vuelve a subir con clic derecho. Enfriamiento: 30 s."};
     /** Posicion de cada habilidad en la cuadricula (columna, fila). */
-    static final int[] COL = {0, 0, 0, 1};
-    static final int[] ROW = {0, 1, 2, 1};
+    static final int[] COL = {0, 0, 0, 0, 1};
+    static final int[] ROW = {0, 1, 2, 3, 2};
     int px, py;
 
     public PoliciaTreeScreen() {
@@ -90,6 +91,38 @@ public class PoliciaTreeScreen extends Screen {
         g.fill(x + 14, y + 15, x + 15, y + 16, 0xFF60E0FF);
     }
 
+    /** Icono de REFUERZO: dos policias. */
+    static void reinforcementIcon(GuiGraphics g, int x, int y) {
+        for (int k = 0; k < 2; k++) {
+            int ox = x + k * 9;
+            g.fill(ox + 1, y + 1, ox + 6, y + 3, 0xFF1C2A5A);    // gorra
+            g.fill(ox, y + 3, ox + 7, y + 4, 0xFF10183A);        // visera
+            g.fill(ox + 1, y + 4, ox + 6, y + 7, 0xFFE8B890);    // cara
+            g.fill(ox + 2, y + 5, ox + 3, y + 6, 0xFF202020);    // ojos
+            g.fill(ox + 4, y + 5, ox + 5, y + 6, 0xFF202020);
+            g.fill(ox, y + 7, ox + 7, y + 14, 0xFF2C4A9A);       // uniforme
+            g.fill(ox + 4, y + 8, ox + 6, y + 10, 0xFFE8C040);   // placa
+            g.fill(ox, y + 11, ox + 7, y + 12, 0xFF202020);      // cinturon
+            g.fill(ox + 1, y + 14, ox + 3, y + 16, 0xFF1C2238);  // piernas
+            g.fill(ox + 4, y + 14, ox + 6, y + 16, 0xFF1C2238);
+        }
+    }
+
+    /** Icono con forma de helicoptero (16x16). */
+    static void heliIcon(GuiGraphics g, int x, int y) {
+        g.fill(x, y + 1, x + 16, y + 2, 0xFFB0B4B8);             // helice
+        g.fill(x + 7, y + 2, x + 9, y + 4, 0xFF50555A);          // eje
+        g.fill(x + 3, y + 4, x + 12, y + 10, 0xFF5E7040);        // cabina
+        g.fill(x + 3, y + 4, x + 12, y + 5, 0xFF7C9156);
+        g.fill(x + 3, y + 5, x + 6, y + 8, 0xFF7FD0F0);          // cristal
+        g.fill(x + 12, y + 5, x + 16, y + 7, 0xFF4E5E34);        // cola
+        g.fill(x + 14, y + 3, x + 16, y + 5, 0xFF3D4A28);        // aleta
+        g.fill(x + 15, y + 7, x + 16, y + 10, 0xFFB0B4B8);       // rotor de cola
+        g.fill(x + 5, y + 10, x + 6, y + 11, 0xFF26292B);        // soportes
+        g.fill(x + 9, y + 10, x + 10, y + 11, 0xFF26292B);
+        g.fill(x + 2, y + 11, x + 13, y + 12, 0xFF26292B);       // patines
+    }
+
     void padlock(GuiGraphics g, int x, int y) {
         g.fill(x + 8, y + 3, x + 10, y + 11, 0xFFD8D8D8);
         g.fill(x + 14, y + 3, x + 16, y + 11, 0xFFD8D8D8);
@@ -138,8 +171,10 @@ public class PoliciaTreeScreen extends Screen {
             int border = (open && i == sel) ? 0xFFFFFFFF : (hover ? 0xFFFFE9A0 : 0xFF6B4A0C);
             g.fill(nx - 1, y - 1, nx + 25, y + 25, border);
             g.fill(nx, y, nx + 24, y + 24, open ? 0xFFC8921C : 0xFF8A6612);
-            if (i == 1) tankIcon(g, nx + 4, y + 4);
-            else if (i == 3) mobileIcon(g, nx + 4, y + 4);
+            if (i == 1) reinforcementIcon(g, nx + 4, y + 4);
+            else if (i == 2) tankIcon(g, nx + 4, y + 4);
+            else if (i == 3) heliIcon(g, nx + 4, y + 4);
+            else if (i == 4) mobileIcon(g, nx + 4, y + 4);
             else g.renderItem(icon(i), nx + 4, y + 4);
             if (!open) {
                 g.fill(nx, y, nx + 24, y + 24, 0x99000000);
@@ -149,12 +184,12 @@ public class PoliciaTreeScreen extends Screen {
         }
         // informacion de la habilidad senalada (o la elegida)
         int show = hov >= 0 ? hov : (has(s, sel) ? sel : 0);
-        int bx0 = rx + 6, by0 = py + 138, bx1 = px + PW - 6, by1 = py + PH - 6;
+        int bx0 = rx + 6, by0 = py + 172, bx1 = px + PW - 6, by1 = py + PH - 6;
         panel(g, bx0, by0, bx1, by1);
         boolean open = has(s, show);
         g.drawString(font, NAMES[show], bx0 + 5, by0 + 4, 0xFFFFFFFF, true);
         List<FormattedCharSequence> lines = font.split(FormattedText.of(DESC[show]), bx1 - bx0 - 10);
-        for (int k = 0; k < lines.size() && k < 4; k++) {
+        for (int k = 0; k < lines.size() && k < 5; k++) {
             g.drawString(font, lines.get(k), bx0 + 5, by0 + 15 + k * 9, open ? 0xFFC8D0DC : 0xFF808890, false);
         }
         if (!open) {
