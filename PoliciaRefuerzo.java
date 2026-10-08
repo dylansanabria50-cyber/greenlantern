@@ -108,6 +108,7 @@ public class PoliciaRefuerzo {
         UUID owner;
         int tier = 1;
         int life;
+        int blockT;
 
         public AgentEntity(EntityType<? extends AgentEntity> type, Level level) {
             super(type, level);
@@ -128,6 +129,8 @@ public class PoliciaRefuerzo {
         void equip(int lv) {
             setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(sword(lv)));
             setDropChance(EquipmentSlot.MAINHAND, 0.0f);
+            setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(PoliciaShield.SHIELD.get()));
+            setDropChance(EquipmentSlot.OFFHAND, 0.0f);
         }
 
         ServerPlayer ownerPlayer() {
@@ -184,6 +187,15 @@ public class PoliciaRefuerzo {
         public void tick() {
             super.tick();
             if (level().isClientSide) return;
+            // se cubre con el escudo (como el vanilla) cuando hay un enemigo cerca o lo golpean
+            LivingEntity tg = getTarget();
+            if ((tg != null && tg.isAlive() && distanceToSqr(tg) < 36.0) || hurtTime > 0) blockT = 25;
+            if (blockT > 0) {
+                blockT--;
+                if (!isUsingItem()) startUsingItem(net.minecraft.world.InteractionHand.OFF_HAND);
+            } else if (isUsingItem()) {
+                stopUsingItem();
+            }
             life++;
             if (life > LIFE) { poof(); return; }
             if (tickCount % 20 == 0) {
