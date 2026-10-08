@@ -15,17 +15,21 @@ import java.util.List;
 
 /** Pantalla de habilidades: personaje a la izquierda, rama de habilidades a la derecha. */
 public class PoliciaTreeScreen extends Screen {
-    static final int PW = 340, PH = 250, LEFT_W = 104;
-    static final String[] NAMES = {"Escudo balistico", "REFUERZO", "Tanque", "Helicoptero", "Tanque movil"};
+    static final int PW = 340, PH = 340, LEFT_W = 104;
+    static final String[] NAMES = {"Escudo balistico", "REFUERZO", "Tanque", "Helicoptero", "Tanque movil", "Esposas", "Perro K9", "Sirena y torreta", "Dron de vigilancia"};
     static final String[] DESC = {
             "Despliega un escudo antidisturbios durante 12 s. Bloquea los golpes de frente.",
             "Policias de refuerzo que te protegen y atacan a tus enemigos.",
             "Invoca un tanque bajo tus pies. Apunta y dispara con clic derecho una sola vez; luego se retira. Enfriamiento: 30 s.",
             "Invoca un helicoptero pilotable. (Proximamente)",
-            "Mejora del Tanque: lo reemplaza. Conduce con WASD, 3 disparos con clic derecho; baja con Mayus y vuelve a subir con clic derecho. Enfriamiento: 30 s."};
+            "Mejora del Tanque: lo reemplaza. Conduce con WASD, 3 disparos con clic derecho; baja con Mayus y vuelve a subir con clic derecho. Enfriamiento: 30 s.",
+            "Apunta a un objetivo (hasta 12 m) y lo esposas: queda inmovilizado 7 s. Enfriamiento: 15 s.",
+            "Invoca un perro policia que te protege, ataca amenazas y marca con brillo a los enemigos cercanos. Dura 45 s. Enfriamiento: 60 s.",
+            "Despliega una patrulla con sirena: los mobs hostiles cercanos huyen de miedo y la torreta dispara a los que esten a tiro. Dura 20 s. Enfriamiento: 40 s.",
+            "Un dron vigila sobre ti 45 s y marca con brillo, incluso tras las paredes, a las amenazas en 32 m. Enfriamiento: 60 s."};
     /** Posicion de cada habilidad en la cuadricula (columna, fila). */
-    static final int[] COL = {0, 0, 0, 0, 1};
-    static final int[] ROW = {0, 1, 2, 3, 2};
+    static final int[] COL = {0, 0, 0, 0, 1, 0, 0, 0, 0};
+    static final int[] ROW = {0, 1, 2, 3, 2, 4, 5, 6, 7};
     int px, py;
 
     public PoliciaTreeScreen() {
@@ -51,7 +55,7 @@ public class PoliciaTreeScreen extends Screen {
     }
 
     int nodeX(int i) { return px + LEFT_W + 8 + 30 + COL[i] * 80; }
-    int nodeY(int i) { return py + 30 + ROW[i] * 36; }
+    int nodeY(int i) { return py + 30 + ROW[i] * 28; }
 
     static String cost(int i) {
         return PoliciaMod.LEVEL_COST[i] > 0 ? PoliciaMod.LEVEL_COST[i] + " niveles de experiencia" : PoliciaMod.XP_PER_NODE + " XP";
@@ -123,6 +127,57 @@ public class PoliciaTreeScreen extends Screen {
         g.fill(x + 2, y + 11, x + 13, y + 12, 0xFF26292B);       // patines
     }
 
+    /** Icono de esposas (16x16). */
+    static void cuffIcon(GuiGraphics g, int x, int y) {
+        g.fill(x + 1, y + 3, x + 6, y + 6, 0xFF9AA0A8);       // bisagra izquierda
+        g.fill(x, y + 5, x + 7, y + 13, 0xFFD0D4DA);          // aro izquierdo
+        g.fill(x + 2, y + 7, x + 5, y + 11, 0xFFC8921C);      // hueco
+        g.fill(x + 10, y + 3, x + 15, y + 6, 0xFF9AA0A8);     // bisagra derecha
+        g.fill(x + 9, y + 5, x + 16, y + 13, 0xFFD0D4DA);     // aro derecho
+        g.fill(x + 11, y + 7, x + 14, y + 11, 0xFFC8921C);
+        g.fill(x + 7, y + 8, x + 9, y + 10, 0xFF404448);      // cadena
+        g.fill(x + 6, y + 9, x + 10, y + 10, 0xFF606468);
+        g.fill(x + 1, y + 12, x + 6, y + 13, 0xFF808890);
+        g.fill(x + 10, y + 12, x + 15, y + 13, 0xFF808890);
+    }
+
+    /** Icono de perro K9 (16x16). */
+    static void dogIcon(GuiGraphics g, int x, int y) {
+        g.fill(x + 2, y + 1, x + 5, y + 6, 0xFF3A2A1A);       // oreja
+        g.fill(x + 4, y + 3, x + 12, y + 11, 0xFFB07A3A);     // cabeza
+        g.fill(x + 11, y + 6, x + 16, y + 11, 0xFFD8A860);    // hocico
+        g.fill(x + 15, y + 6, x + 16, y + 8, 0xFF101010);     // nariz
+        g.fill(x + 8, y + 5, x + 10, y + 7, 0xFF101010);      // ojo
+        g.fill(x + 4, y + 11, x + 13, y + 13, 0xFF2C4A9A);    // collar
+        g.fill(x + 7, y + 13, x + 9, y + 15, 0xFFE8C040);     // chapa
+        g.fill(x + 2, y + 11, x + 4, y + 16, 0xFF3A2A1A);     // pecho
+    }
+
+    /** Icono de patrulla con sirena (16x16). */
+    static void sirenIcon(GuiGraphics g, int x, int y) {
+        g.fill(x + 3, y + 4, x + 8, y + 9, 0xFFE03030);       // luz roja
+        g.fill(x + 8, y + 4, x + 13, y + 9, 0xFF3060F0);      // luz azul
+        g.fill(x + 3, y + 4, x + 13, y + 5, 0xFFFFFFFF);      // brillo
+        g.fill(x + 2, y + 9, x + 14, y + 12, 0xFF8A9096);     // base
+        g.fill(x + 1, y + 12, x + 15, y + 14, 0xFF26292B);
+        g.fill(x, y + 3, x + 1, y + 4, 0xFFFFE070);           // destellos
+        g.fill(x + 15, y + 3, x + 16, y + 4, 0xFFFFE070);
+        g.fill(x + 7, y + 1, x + 9, y + 3, 0xFFFFE070);
+    }
+
+    /** Icono de dron (16x16). */
+    static void droneIcon(GuiGraphics g, int x, int y) {
+        g.fill(x + 1, y + 4, x + 6, y + 5, 0xFFD0D6DE);       // helices
+        g.fill(x + 10, y + 4, x + 15, y + 5, 0xFFD0D6DE);
+        g.fill(x + 3, y + 5, x + 4, y + 8, 0xFF505660);       // soportes
+        g.fill(x + 12, y + 5, x + 13, y + 8, 0xFF505660);
+        g.fill(x + 2, y + 8, x + 14, y + 9, 0xFF505660);      // brazos
+        g.fill(x + 5, y + 7, x + 11, y + 11, 0xFF2C3038);     // cuerpo
+        g.fill(x + 5, y + 7, x + 11, y + 8, 0xFF50565E);
+        g.fill(x + 7, y + 11, x + 9, y + 13, 0xFFE03030);     // camara
+        g.fill(x + 6, y + 13, x + 10, y + 14, 0xFF50565E);
+    }
+
     void padlock(GuiGraphics g, int x, int y) {
         g.fill(x + 8, y + 3, x + 10, y + 11, 0xFFD8D8D8);
         g.fill(x + 14, y + 3, x + 16, y + 11, 0xFFD8D8D8);
@@ -175,6 +230,10 @@ public class PoliciaTreeScreen extends Screen {
             else if (i == 2) tankIcon(g, nx + 4, y + 4);
             else if (i == 3) heliIcon(g, nx + 4, y + 4);
             else if (i == 4) mobileIcon(g, nx + 4, y + 4);
+            else if (i == 5) cuffIcon(g, nx + 4, y + 4);
+            else if (i == 6) dogIcon(g, nx + 4, y + 4);
+            else if (i == 7) sirenIcon(g, nx + 4, y + 4);
+            else if (i == 8) droneIcon(g, nx + 4, y + 4);
             else g.renderItem(icon(i), nx + 4, y + 4);
             if (!open) {
                 g.fill(nx, y, nx + 24, y + 24, 0x99000000);
@@ -185,7 +244,7 @@ public class PoliciaTreeScreen extends Screen {
         }
         // informacion de la habilidad senalada (o la elegida)
         int show = hov >= 0 ? hov : (has(s, sel) ? sel : 0);
-        int bx0 = rx + 6, by0 = py + 172, bx1 = px + PW - 6, by1 = py + PH - 6;
+        int bx0 = rx + 6, by0 = py + 258, bx1 = px + PW - 6, by1 = py + PH - 6;
         panel(g, bx0, by0, bx1, by1);
         boolean open = has(s, show);
         g.drawString(font, NAMES[show], bx0 + 5, by0 + 4, 0xFFFFFFFF, true);
