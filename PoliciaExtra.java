@@ -40,7 +40,14 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
+import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent;
+import net.minecraftforge.event.entity.player.AttackEntityEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.network.NetworkHooks;
@@ -63,9 +70,17 @@ public class PoliciaExtra {
             () -> EntityType.Builder.<DroneEntity>of(DroneEntity::new, MobCategory.MISC)
                     .sized(0.7f, 0.3f).fireImmune().clientTrackingRange(10).updateInterval(2).noSave().build("policia:dron"));
 
+    public static final DeferredRegister<MobEffect> EFFECTS = DeferredRegister.create(ForgeRegistries.MOB_EFFECTS, "policia");
+    public static final RegistryObject<MobEffect> CUFF = EFFECTS.register("esposado", CuffEffect::new);
+
+    /** Efecto marcador: el cliente lo usa para dibujar las esposas en el objetivo. */
+    public static class CuffEffect extends MobEffect {
+        public CuffEffect() { super(MobEffectCategory.HARMFUL, 0xB0B4BC); }
+    }
+
     /** Enfriamiento (ticks) de cada habilidad, por indice de la rama. */
-    static final int[] CD = {0, 0, 0, 0, 0, 300, 1200, 800, 1200};
-    static final int CUFF_T = 140;        // 7 s esposado
+    static final int[] CD = {0, 0, 0, 0, 0, 600, 1200, 800, 1200};
+    static final int CUFF_T = 300;        // 15 s esposado
     static final int K9_LIFE = 900;       // 45 s
     static final int SIREN_LIFE = 400;    // 20 s
     static final int DRONE_LIFE = 900;    // 45 s
@@ -138,17 +153,19 @@ public class PoliciaExtra {
         }
         CompoundTag td = t.getPersistentData();
         td.putInt("pol_cuff", CUFF_T);
+        td.putUUID("pol_cuffo", p.getUUID());
         if (t instanceof Mob m && !m.isNoAi()) {
             m.setNoAi(true);
             td.putBoolean("pol_cuffai", true);
         }
         t.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, CUFF_T, 6, false, false));
         t.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, CUFF_T, 4, false, false));
+        t.addEffect(new MobEffectInstance(CUFF.get(), CUFF_T, 0, false, false, false));
         ServerLevel sl = p.serverLevel();
         sl.playSound(null, t.getX(), t.getY(), t.getZ(), SoundEvents.CHAIN_PLACE, SoundSource.PLAYERS, 1.2f, 0.9f);
         sl.playSound(null, t.getX(), t.getY(), t.getZ(), SoundEvents.IRON_TRAPDOOR_CLOSE, SoundSource.PLAYERS, 1.0f, 1.3f);
         sl.sendParticles(ParticleTypes.CRIT, t.getX(), t.getY() + 0.5, t.getZ(), 14, 0.3, 0.4, 0.3, 0.1);
-        PoliciaMod.msg(p, "Esposado: " + t.getName().getString() + " (7 s)");
+        PoliciaMod.msg(p, "Esposado: " + t.getName().getString() + " (15 s): arrastralo donde quieras");
         return true;
     }
 
@@ -162,17 +179,64 @@ public class PoliciaExtra {
         c--;
         d.putInt("pol_cuff", c);
         Vec3 v = t.getDeltaMovement();
-        t.setDeltaMovement(0.0, Math.min(v.y, 0.0), 0.0);
+        double vy = Math.min(v.y, 0.0);
+        double vx = 0.0, vz = 0.0;
+        if (d.hasUUID("pol_cuffo") && t.level() instanceof ServerLevel sl0) {
+            ServerPlayer o = sl0.getServer().getPlayerList().getPlayer(d.getUUID("pol_cuffo"));
+            if (o != null && o != t && o.level() == t.level()) {
+                double dx = o.getX() - t.getX(), dz = o.getZ() - t.getZ();
+                double dist = Math.sqrt(dx * dx + dz * dz);
+                if (dist > 2.6 && dist < 40.0) {
+                    double sp = Math.min(0.42, (dist - 2.2) * 0.25);
+                    vx = dx / dist * sp;
+                    vz = dz / dist * sp;
+                    if (t.horizontalCollision && t.onGround()) vy = 0.42;
+                }
+            }
+        }
+        t.setDeltaMovement(vx, vy, vz);
+        if (t instanceof ServerPlayer && (vx != 0.0 || vz != 0.0)) t.hurtMarked = true;
         if (c % 6 == 0 && t.level() instanceof ServerLevel sl) {
             for (int i = 0; i < 6; i++) {
                 double a = i * Math.PI / 3.0 + c * 0.1;
                 sl.sendParticles(CUFF_DUST, t.getX() + Math.cos(a) * 0.45, t.getY() + 0.25, t.getZ() + Math.sin(a) * 0.45, 1, 0.0, 0.0, 0.0, 0.0);
             }
         }
+        if (c == 0) d.remove("pol_cuffo");
         if (c == 0 && d.getBoolean("pol_cuffai") && t instanceof Mob m2) {
             m2.setNoAi(false);
             d.remove("pol_cuffai");
         }
+    }
+
+    static boolean cuffed(Entity e) {
+        return e instanceof LivingEntity l && l.getPersistentData().getInt("pol_cuff") > 0;
+    }
+
+    /** Un esposado no puede hacer dano, golpear, usar objetos ni interactuar con el entorno. */
+    @SubscribeEvent
+    public void cuffedAttack(LivingAttackEvent e) {
+        if (cuffed(e.getSource().getEntity())) e.setCanceled(true);
+    }
+
+    @SubscribeEvent
+    public void cuffedHit(AttackEntityEvent e) {
+        if (cuffed(e.getEntity())) e.setCanceled(true);
+    }
+
+    @SubscribeEvent
+    public void cuffedUse(PlayerInteractEvent e) {
+        if (cuffed(e.getEntity()) && e.isCancelable()) e.setCanceled(true);
+    }
+
+    @SubscribeEvent
+    public void cuffedBreak(BlockEvent.BreakEvent e) {
+        if (cuffed(e.getPlayer())) e.setCanceled(true);
+    }
+
+    @SubscribeEvent
+    public void cuffedItem(LivingEntityUseItemEvent.Start e) {
+        if (cuffed(e.getEntity())) e.setCanceled(true);
     }
 
     // ---------- perro K9 ----------
