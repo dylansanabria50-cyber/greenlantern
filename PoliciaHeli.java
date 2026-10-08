@@ -67,7 +67,7 @@ public class PoliciaHeli {
         boolean on = !h.getEntityData().get(HeliEntity.LIGHT);
         h.getEntityData().set(HeliEntity.LIGHT, on);
         if (!on) h.clearLight();
-        p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.UI_BUTTON_CLICK.get(), SoundSource.PLAYERS, 1.0f, on ? 1.4f : 0.8f);
+        p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.LEVER_CLICK, SoundSource.PLAYERS, 1.0f, on ? 1.4f : 0.8f);
         PoliciaMod.msg(p, on ? "Modo linterna: helicoptero fijo, mira para apuntar la luz" : "Modo linterna desactivado");
     }
 
