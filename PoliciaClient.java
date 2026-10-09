@@ -42,6 +42,7 @@ public class PoliciaClient {
     static final KeyMapping K_NO = new KeyMapping("Albanil: rechazar aviso del ayudante", GLFW.GLFW_KEY_N, CAT);
     static final KeyMapping K_BANK = new KeyMapping("Albanil: inventario de los ayudantes", GLFW.GLFW_KEY_U, CAT);
     static final KeyMapping K_ZONE = new KeyMapping("Albanil: elegir area de picado (mantener)", GLFW.GLFW_KEY_X, CAT);
+    static final KeyMapping K_REFS = new KeyMapping("Policia: orden a los refuerzos", GLFW.GLFW_KEY_R, CAT);
 
     static final ResourceLocation TEX_POL = new ResourceLocation("policia", "textures/entity/policia.png");
     static final ResourceLocation TEX_ALB = new ResourceLocation("policia", "textures/entity/albanil.png");
@@ -168,7 +169,7 @@ public class PoliciaClient {
     }
 
     static void keys(RegisterKeyMappingsEvent e) {
-        e.register(K_FORM); e.register(K_USE); e.register(K_NEXT); e.register(K_LIGHT); e.register(K_ORDER); e.register(K_YES); e.register(K_NO); e.register(K_BANK); e.register(K_ZONE);
+        e.register(K_FORM); e.register(K_USE); e.register(K_NEXT); e.register(K_LIGHT); e.register(K_ORDER); e.register(K_YES); e.register(K_NO); e.register(K_BANK); e.register(K_ZONE); e.register(K_REFS);
     }
 
     static void overlays(RegisterGuiOverlaysEvent e) {
@@ -436,6 +437,7 @@ public class PoliciaClient {
         while (K_NEXT.consumeClick()) { if (free) send(2); }
         while (K_LIGHT.consumeClick()) { if (free) send(4); }
         while (K_ORDER.consumeClick()) { if (free) send(7); }
+        while (K_REFS.consumeClick()) { if (free) send(61); }
         while (K_YES.consumeClick()) { if (free && alb()) send(8); }
         while (K_NO.consumeClick()) { if (free && alb()) send(9); }
         while (K_BANK.consumeClick()) { if (free && alb()) send(50); }
