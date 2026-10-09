@@ -24,7 +24,7 @@ public class PoliciaAlbanilScreen extends Screen {
             "Nivel 3: 4 ayudantes con picos de diamante. Mientras estan activos ves todos los minerales a 4 bloques.",
             "LINTERNA: una luz que sigue tu mirada hasta 48 bloques durante 60 s (tecla J con la habilidad elegida, o tecla G). Enfriamiento: 20 s.",
             "TRACTOR: pala cargadora amarilla con cabina, inventario propio (54 casillas) y luces. J la invoca, te bajas o vuelves a subir; Mayus+J la retira. W/S avanzar, A/D girar, ESPACIO sube la pala, CTRL la baja, G luces, U inventario. Rompe lo natural que tiene delante (guarda lo que rompe), pero nunca construcciones de jugadores. Dura 45 s. Enfriamiento: 35 s.",
-            "Mejora de REFUGIO (40 XP): una torre de madera de 4 pisos con anexo, camas, cofres, barriles, horno y jardin en el techo. La puerta mira hacia ti. Dura 35 s y luego desaparece. Lo que dejes en el cofre principal de la planta baja se conserva (incluido lo del REFUGIO anterior). Enfriamiento: 40 s."};
+            "Mejora de REFUGIO (40 XP): una torre de madera de 4 pisos con anexo, camas, cofres, barriles, horno y jardin en el techo. La puerta mira hacia ti. Dura 3 minutos y luego desaparece. Lo que dejes en cualquier cofre, barril u horno se conserva para la proxima vez (el cofre principal de la planta baja recibe lo del REFUGIO anterior). Enfriamiento: 40 s."};
     static final int[] CX = {45, 45, 45, 130, 130, 130, 215, 300, 45};
     static final int[] ROW = {0, 1, 2, 0, 1, 2, 0, 0, 3};
     int px, py;
