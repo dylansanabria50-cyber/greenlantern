@@ -46,6 +46,7 @@ public class PoliciaClient {
 
     static final ResourceLocation TEX_POL = new ResourceLocation("policia", "textures/entity/policia.png");
     static final ResourceLocation TEX_ALB = new ResourceLocation("policia", "textures/entity/albanil.png");
+    static final ResourceLocation TEX_LAD = new ResourceLocation("policia", "textures/entity/ladron.png");
     static ResourceLocation TEX_SKIN = TEX_POL;
     static final ResourceLocation TEX_FRONT = new ResourceLocation("policia", "textures/entity/escudo_frente.png");
     static final ResourceLocation TEX_BACK = new ResourceLocation("policia", "textures/entity/escudo_atras.png");
@@ -180,7 +181,7 @@ public class PoliciaClient {
     static class TreeButton extends net.minecraft.client.gui.components.Button {
         TreeButton() {
             super(0, 0, 20, 18, net.minecraft.network.chat.Component.literal(""),
-                    b -> Minecraft.getInstance().setScreen(alb() ? new PoliciaAlbanilScreen() : new PoliciaTreeScreen()), DEFAULT_NARRATION);
+                    b -> Minecraft.getInstance().setScreen(lad() ? new PoliciaLadronScreen() : (alb() ? new PoliciaAlbanilScreen() : new PoliciaTreeScreen())), DEFAULT_NARRATION);
             setTooltip(net.minecraft.client.gui.components.Tooltip.create(
                     net.minecraft.network.chat.Component.literal("Rama de habilidades")));
         }
@@ -188,7 +189,7 @@ public class PoliciaClient {
         @Override
         public void renderWidget(GuiGraphics g, int mx, int my, float pt) {
             super.renderWidget(g, mx, my, pt);
-            g.renderItem(alb() ? new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_PICKAXE) : new net.minecraft.world.item.ItemStack(PoliciaShield.SHIELD.get()), getX() + 2, getY() + 1);
+            g.renderItem(lad() ? new net.minecraft.world.item.ItemStack(PoliciaPlaca.GUANTE.get()) : alb() ? new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_PICKAXE) : new net.minecraft.world.item.ItemStack(PoliciaShield.SHIELD.get()), getX() + 2, getY() + 1);
         }
     }
 
@@ -258,6 +259,11 @@ public class PoliciaClient {
 
     static void onSync(PoliciaMod.Sync m) {
         STATE.put(m.id, m);
+    }
+
+    static boolean lad() {
+        PoliciaMod.Sync s = mine();
+        return s != null && s.jb == 3;
     }
 
     static boolean alb() {
@@ -360,7 +366,7 @@ public class PoliciaClient {
         if (!reflectOk || mc.getConnection() == null || mc.level == null) return;
         for (Map.Entry<UUID, PoliciaMod.Sync> en : STATE.entrySet()) {
             UUID id = en.getKey();
-            TEX_SKIN = en.getValue().jb == 2 ? TEX_ALB : TEX_POL;
+            TEX_SKIN = en.getValue().jb == 3 ? TEX_LAD : (en.getValue().jb == 2 ? TEX_ALB : TEX_POL);
             PlayerInfo info = mc.getConnection().getPlayerInfo(id);
             if (info == null) continue;
             try {
@@ -595,6 +601,7 @@ public class PoliciaClient {
         Minecraft mc = Minecraft.getInstance();
         PoliciaMod.Sync s = mine();
         if (mc.player == null || mc.options.hideGui || s == null || !s.on) return;
+        if (s.jb == 3) { PoliciaLadronScreen.hud(g, mc, s, sw, sh); return; }
         if (s.jb == 2) { PoliciaAlbanilScreen.hud(g, mc, s, sw, sh); return; }
         // escudo visto desde atras, en primera persona
         if (false && s.shield > 0 && mc.options.getCameraType().isFirstPerson()) {
