@@ -61,16 +61,20 @@ public class PoliciaAlbanil {
     static final int HOUSE2_T = 3600;                  // REFUGIO II: 3 minutos
     static final int COST = 10;
     static final int COST2 = 40;                       // REFUGIO II
+    static final int COST3 = 25;                       // PICO II
+    static final int PICK2_T = 280;                    // PICO II: 14 s
+
+    static int pickT(ServerPlayer p) { return p.getPersistentData().getInt("alb_pl") >= 1 ? PICK2_T : PICK_T; }
 
     /** Estado del propio jugador, visto por su cliente. */
     public static class AlbSync {
-        int lv, sel, pickT, structT, c0, c1, walls, hl, ht, hc, mode, lu, lt, lc, zl, zw, tu, tc, ta;
+        int lv, sel, pickT, structT, c0, c1, walls, hl, ht, hc, mode, lu, lt, lc, zl, zw, tu, tc, ta, pl;
         static void enc(AlbSync m, FriendlyByteBuf b) {
-            b.writeVarInt(m.lv); b.writeVarInt(m.sel); b.writeVarInt(m.pickT); b.writeVarInt(m.structT); b.writeVarInt(m.c0); b.writeVarInt(m.c1); b.writeVarInt(m.walls); b.writeVarInt(m.hl); b.writeVarInt(m.ht); b.writeVarInt(m.hc); b.writeVarInt(m.mode); b.writeVarInt(m.lu); b.writeVarInt(m.lt); b.writeVarInt(m.lc); b.writeVarInt(m.zl); b.writeVarInt(m.zw); b.writeVarInt(m.tu); b.writeVarInt(m.tc); b.writeVarInt(m.ta);
+            b.writeVarInt(m.lv); b.writeVarInt(m.sel); b.writeVarInt(m.pickT); b.writeVarInt(m.structT); b.writeVarInt(m.c0); b.writeVarInt(m.c1); b.writeVarInt(m.walls); b.writeVarInt(m.hl); b.writeVarInt(m.ht); b.writeVarInt(m.hc); b.writeVarInt(m.mode); b.writeVarInt(m.lu); b.writeVarInt(m.lt); b.writeVarInt(m.lc); b.writeVarInt(m.zl); b.writeVarInt(m.zw); b.writeVarInt(m.tu); b.writeVarInt(m.tc); b.writeVarInt(m.ta); b.writeVarInt(m.pl);
         }
         static AlbSync dec(FriendlyByteBuf b) {
             AlbSync m = new AlbSync();
-            m.lv = b.readVarInt(); m.sel = b.readVarInt(); m.pickT = b.readVarInt(); m.structT = b.readVarInt(); m.c0 = b.readVarInt(); m.c1 = b.readVarInt(); m.walls = b.readVarInt(); m.hl = b.readVarInt(); m.ht = b.readVarInt(); m.hc = b.readVarInt(); m.mode = b.readVarInt(); m.lu = b.readVarInt(); m.lt = b.readVarInt(); m.lc = b.readVarInt(); m.zl = b.readVarInt(); m.zw = b.readVarInt(); m.tu = b.readVarInt(); m.tc = b.readVarInt(); m.ta = b.readVarInt();
+            m.lv = b.readVarInt(); m.sel = b.readVarInt(); m.pickT = b.readVarInt(); m.structT = b.readVarInt(); m.c0 = b.readVarInt(); m.c1 = b.readVarInt(); m.walls = b.readVarInt(); m.hl = b.readVarInt(); m.ht = b.readVarInt(); m.hc = b.readVarInt(); m.mode = b.readVarInt(); m.lu = b.readVarInt(); m.lt = b.readVarInt(); m.lc = b.readVarInt(); m.zl = b.readVarInt(); m.zw = b.readVarInt(); m.tu = b.readVarInt(); m.tc = b.readVarInt(); m.ta = b.readVarInt(); m.pl = b.readVarInt();
             return m;
         }
         static void handle(AlbSync m, Supplier<NetworkEvent.Context> c) {
@@ -112,6 +116,7 @@ public class PoliciaAlbanil {
         m.tu = d.getInt("alb_tu");
         m.tc = d.getInt("alb_tcd");
         m.ta = d.getInt("alb_tact");
+        m.pl = d.getInt("alb_pl");
         PoliciaMod.NET.send(PacketDistributor.PLAYER.with(() -> p), m);
     }
 
@@ -132,6 +137,16 @@ public class PoliciaAlbanil {
         if (id == 42) { PoliciaTractor.unlock(p); return; }
         if (id == 15) {
             if (d.getInt("alb_tu") >= 1) { d.putInt("alb_sel", 4); PoliciaMod.msg(p, "Habilidad: TRACTOR"); PoliciaMod.sync(p); }
+            return;
+        }
+        if (id == 44) { // mejorar el PICO a nivel 2
+            if (d.getInt("alb_pl") >= 1) { PoliciaMod.msg(p, "PICO II ya esta desbloqueado"); return; }
+            if (PoliciaMod.xp(p) < COST3) { PoliciaMod.msg(p, "Necesitas " + COST3 + " XP (tienes " + PoliciaMod.xp(p) + ")"); return; }
+            d.putInt("pol_xp", PoliciaMod.xp(p) - COST3);
+            d.putInt("alb_pl", 1);
+            PoliciaMod.msg(p, "Habilidad mejorada: PICO II (14 s, Fuerza II y Prisa minera II)");
+            p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.1f);
+            PoliciaMod.sync(p);
             return;
         }
         if (id == 43) { // mejorar REFUGIO a nivel 2
@@ -239,7 +254,7 @@ public class PoliciaAlbanil {
         if (s == 0) {
             if (d.getInt("alb_pick") > 0) { PoliciaMod.msg(p, "El pico ya esta activo"); return; }
             if (d.getInt("alb_c0") > 0) { PoliciaMod.msg(p, "Pico en enfriamiento: " + (d.getInt("alb_c0") + 19) / 20 + " s"); return; }
-            d.putInt("alb_pick", PICK_T);
+            d.putInt("alb_pick", pickT(p));
             startPick(p);
             p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.ANVIL_PLACE, SoundSource.PLAYERS, 0.6f, 1.4f);
             PoliciaMod.msg(p, "Pico de albanil: fuerza y prisa minera");
@@ -353,8 +368,9 @@ public class PoliciaAlbanil {
     }
 
     static void effects(ServerPlayer p) {
-        p.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 25, 0, false, false, true));
-        p.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, 25, 0, false, false, true));
+        int am = p.getPersistentData().getInt("alb_pl") >= 1 ? 1 : 0;
+        p.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 25, am, false, false, true));
+        p.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, 25, am, false, false, true));
     }
 
     static void startPick(ServerPlayer p) {
@@ -450,7 +466,7 @@ public class PoliciaAlbanil {
         CompoundTag d = p.getPersistentData();
         if (kind == 0) {
             if (d.getInt("alb_pick") > 0 || d.getBoolean("alb_saved")) { PoliciaMod.msg(p, "El pico ya esta activo"); return false; }
-            d.putInt("alb_pick", PICK_T);
+            d.putInt("alb_pick", pickT(p));
             startPick(p);
             send(p);
             return true;
