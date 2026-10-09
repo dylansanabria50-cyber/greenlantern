@@ -292,6 +292,57 @@ public class PoliciaBoss {
             });
             this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<Player>(this, Player.class, 10, true, false,
                     pl -> this.kind() == 4 && !"ladron".equals(PoliciaMod.job((Player) pl))));
+            // los agentes persiguen a quien tenga nivel de Buscado (salvo que haya usado Escape)
+            this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<Player>(this, Player.class, 5, true, false,
+                    pl -> this.kind() == 5 && !((Player) pl).isCreative() && PoliciaLadron.wanted((Player) pl) > 0
+                            && ((Player) pl).getPersistentData().getInt("pol_esc") <= 0));
+            // los agentes patrullan la aldea: caminan hasta algun aldeano, se quedan un rato y vuelven al puesto
+            this.goalSelector.addGoal(3, new net.minecraft.world.entity.ai.goal.Goal() {
+                net.minecraft.world.entity.npc.Villager tv;
+                int t = 0, wait = 0;
+
+                {
+                    this.setFlags(java.util.EnumSet.of(net.minecraft.world.entity.ai.goal.Goal.Flag.MOVE));
+                }
+
+                @Override
+                public boolean canUse() {
+                    if (BossNpc.this.kind() != 5 || BossNpc.this.getTarget() != null || BossNpc.this.getRandom().nextInt(400) != 0) return false;
+                    java.util.List<net.minecraft.world.entity.npc.Villager> vs = BossNpc.this.level().getEntitiesOfClass(net.minecraft.world.entity.npc.Villager.class, BossNpc.this.getBoundingBox().inflate(80.0, 30.0, 80.0));
+                    if (vs.isEmpty()) return false;
+                    tv = vs.get(BossNpc.this.getRandom().nextInt(vs.size()));
+                    return true;
+                }
+
+                @Override
+                public boolean canContinueToUse() {
+                    return tv != null && tv.isAlive() && BossNpc.this.getTarget() == null && t < 1200 && wait < 160;
+                }
+
+                @Override
+                public void start() {
+                    t = 0;
+                    wait = 0;
+                }
+
+                @Override
+                public void stop() {
+                    tv = null;
+                    BossNpc.this.getNavigation().stop();
+                }
+
+                @Override
+                public void tick() {
+                    t++;
+                    if (BossNpc.this.distanceToSqr(tv) > 16.0) {
+                        if (t % 10 == 0) BossNpc.this.getNavigation().moveTo(tv, 0.9);
+                    } else {
+                        BossNpc.this.getNavigation().stop();
+                        BossNpc.this.getLookControl().setLookAt(tv, 30.0f, 30.0f);
+                        wait++;
+                    }
+                }
+            });
             // los agentes cazan monstruos hostiles (protegen a los aldeanos) y se pelean con los ladrones
             this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<net.minecraft.world.entity.Mob>(this, net.minecraft.world.entity.Mob.class, 5, true, false,
                     e -> this.kind() == 5 && ((e instanceof net.minecraft.world.entity.monster.Enemy)
