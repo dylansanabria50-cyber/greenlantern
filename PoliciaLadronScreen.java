@@ -16,7 +16,7 @@ import java.util.List;
 /** Rama de habilidades del ladron: Carterismo, Silbido, Suerte y las habilidades de uso (Humo, Salto, Instinto, Polvo). */
 public class PoliciaLadronScreen extends Screen {
     static final int PW = 460, PH = 340, LEFT_W = 104;
-    static final String[] NAMES = {"Carterismo", "Silbido", "Suerte", "Humo", "Salto", "Instinto", "Polvo"};
+    static final String[] NAMES = {"Carterismo", "Silbido", "Suerte", "Humo", "Salto", "Instinto", "Polvo", "Ganzua", "Escape"};
     static final String[] DESC = {
             "Con el modo ladron (B) activo, agachate (Mayus) detras de un jugador o mob y haz clic derecho. Si sale bien abres sus bolsillos y te llevas lo que quieras. Siempre activa.",
             "Los mobs a 12 bloques miran para otro lado 7 s, quedan lentos y no te atacan: facilita acercarte por la espalda. Tecla J. Enfriamiento: 15 s.",
@@ -24,11 +24,13 @@ public class PoliciaLadronScreen extends Screen {
             "Bomba de humo: te vuelves invisible 8 s, corres mas rapido y los mobs que te perseguian te pierden. Se elige con K y se usa con J. Enfriamiento: 30 s. Requiere Silbido.",
             "Salto de sombra: das un gran salto hacia donde miras y caes sin danio. Se elige con K y se usa con J. Enfriamiento: 12 s. Requiere Silbido.",
             "Sentido de ladron: todo ser vivo a 24 bloques brilla 10 s, incluso a traves de las paredes. Se elige con K y se usa con J. Enfriamiento: 25 s. Requiere Suerte nivel 1.",
-            "Polvo cegador: los mobs a 6 bloques quedan ciegos, lentos y debiles 7 s y pierden su objetivo. Se elige con K y se usa con J. Enfriamiento: 20 s. Requiere Suerte nivel 1."};
-    static final int[] CX = {174, 90, 258, 40, 140, 208, 308};
-    static final int[] ROW = {0, 1, 1, 2, 2, 2, 2};
-    static final int[] PRE = {-1, 0, 0, 1, 1, 2, 2};
-    static final int NN = 7;
+            "Polvo cegador: los mobs a 6 bloques quedan ciegos, lentos y debiles 7 s y pierden su objetivo. Se elige con K y se usa con J. Enfriamiento: 20 s. Requiere Suerte nivel 1.",
+            "Ganzua: en las aldeas con comisaria hay cofres con llave (sin abrir) que nadie mas puede abrir, y puertas de hierro. Agachate (Mayus) y clic derecho: 50% de exito, +10% por cada nivel de Suerte. Si falla salta la alarma y la policia te busca. Requiere Suerte nivel 1.",
+            "Escape: durante 10 s te vuelves invisible y mas rapido, la policia te pierde de vista y, si no cometes ningun delito, tu nivel de Buscado vuelve a cero. Se elige con K y se usa con J. Enfriamiento: 90 s. Requiere Silbido."};
+    static final int[] CX = {174, 90, 258, 40, 140, 208, 308, 258, 90};
+    static final int[] ROW = {0, 1, 1, 2, 2, 2, 2, 2, 2};
+    static final int[] PRE = {-1, 0, 0, 1, 1, 2, 2, 2, 1};
+    static final int NN = 9;
     int px, py;
 
     public PoliciaLadronScreen() {
@@ -119,7 +121,7 @@ public class PoliciaLadronScreen extends Screen {
             if (i == 0) g.renderItem(new ItemStack(PoliciaPlaca.GUANTE.get()), nx + 4, y + 4);
             else if (i == 1) g.renderItem(new ItemStack(Items.GOAT_HORN), nx + 4, y + 4);
             else if (i == 2) clover(g, nx + 5, y + 4, 14, lv > 0 ? 0xFF43A047 : 0xFF3B5B3E);
-            else g.renderItem(new ItemStack(i == 3 ? Items.GUNPOWDER : i == 4 ? Items.FEATHER : i == 5 ? Items.ENDER_EYE : Items.SUGAR), nx + 4, y + 4);
+            else g.renderItem(new ItemStack(i == 3 ? Items.GUNPOWDER : i == 4 ? Items.FEATHER : i == 5 ? Items.ENDER_EYE : i == 6 ? Items.SUGAR : i == 7 ? Items.TRIPWIRE_HOOK : Items.LEATHER_BOOTS), nx + 4, y + 4);
             if (i == 1 && !sil) {
                 g.fill(nx, y, nx + 24, y + 24, 0x99000000);
             }
@@ -146,7 +148,7 @@ public class PoliciaLadronScreen extends Screen {
             g.drawString(font, sil ? "Desbloqueada (tecla J)" : "Bloqueada - cuesta " + PoliciaMod.XP_PER_NODE + " XP", bx0 + 5, by1 - 11, sil ? 0xFF60E060 : 0xFFE8B830, false);
         } else if (show >= 3) {
             boolean op = open(show, sil, lv, mask);
-            g.drawString(font, op ? "Desbloqueada (K elige, J usa)" : "Bloqueada - cuesta " + PoliciaMod.XP_PER_NODE * 2 + " XP", bx0 + 5, by1 - 11, op ? 0xFF60E060 : 0xFFE8B830, false);
+            g.drawString(font, op ? (show == 7 ? "Desbloqueada (agachado + clic derecho)" : "Desbloqueada (K elige, J usa)") : "Bloqueada - cuesta " + PoliciaMod.XP_PER_NODE * 2 + " XP", bx0 + 5, by1 - 11, op ? 0xFF60E060 : 0xFFE8B830, false);
         } else {
             g.drawString(font, lv >= 4 ? "Nivel maximo" : "Siguiente nivel: " + PoliciaLadron.CHANCE[lv + 1] + "% - cuesta " + PoliciaMod.XP_PER_NODE * (lv + 1) + " XP", bx0 + 5, by1 - 11, 0xFFE8B830, false);
         }
@@ -181,11 +183,20 @@ public class PoliciaLadronScreen extends Screen {
         cs.add(0xFFE8C040);
         ls.add("Carterismo: Mayus + clic der. (" + PoliciaLadron.CHANCE[lv] + "%)");
         cs.add(0xFFFFFFFF);
-        int[] cds = {s.c5, s.c6, s.c7, s.c8, s.c9};
+        if (s.tcd > 0) {
+            ls.add("BUSCADO " + "*".repeat(Math.min(5, s.tcd)));
+            cs.add(0xFFFF5050);
+        }
+        int[] cds = {s.c5, s.c6, s.c7, s.c8, s.c9, 0, s.rcd};
         boolean any = false;
-        for (int a = 0; a < 5; a++) {
+        for (int a = 0; a < 7; a++) {
             if (((s.un >> a) & 1) == 0) continue;
             any = true;
+            if (a == 5) {
+                ls.add("  Ganzua: agachado + clic");
+                cs.add(0xFFB0D8B8);
+                continue;
+            }
             String pre = a == s.sel ? "> " : "  ";
             if (cds[a] > 0) {
                 ls.add(pre + PoliciaLadron.AN[a] + ": " + (cds[a] + 19) / 20 + " s");
