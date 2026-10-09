@@ -14,7 +14,7 @@ import java.util.List;
 /** Rama de habilidades del albanil. */
 public class PoliciaAlbanilScreen extends Screen {
     static final int PW = 460, PH = 340, LEFT_W = 104;
-    static final String[] NAMES = {"Pico de albanil", "MURO", "REFUGIO", "AYUDANTE I", "AYUDANTE II", "AYUDANTE III", "LINTERNA", "TRACTOR", "REFUGIO II"};
+    static final String[] NAMES = {"Pico de albanil", "MURO", "REFUGIO", "AYUDANTE I", "AYUDANTE II", "AYUDANTE III", "LINTERNA", "TRACTOR", "REFUGIO II", "PICO II"};
     static final String[] DESC = {
             "Te da un pico de diamante durante 7 s, con Fuerza I, Prisa minera I y Fortuna II. No se puede soltar ni guardar en cofres; puedes encantarlo y conserva los encantamientos. Enfriamiento: 8 s.",
             "Levanta un muro de 3 de alto por 3 de largo frente a ti. Puedes hacer hasta 3 muros (pulsa J de nuevo para cada uno). Desaparecen a los 15 s. Enfriamiento: 5 s.",
@@ -24,9 +24,10 @@ public class PoliciaAlbanilScreen extends Screen {
             "Nivel 3: 4 ayudantes con picos de diamante. Mientras estan activos ves todos los minerales a 4 bloques.",
             "LINTERNA: una luz que sigue tu mirada hasta 48 bloques durante 60 s (tecla J con la habilidad elegida, o tecla G). Enfriamiento: 20 s.",
             "TRACTOR: pala cargadora amarilla con cabina, inventario propio (54 casillas) y luces. J la invoca, te bajas o vuelves a subir; Mayus+J la retira. W/S avanzar, A/D girar, ESPACIO sube la pala, CTRL la baja, G luces, U inventario. Rompe lo natural que tiene delante (guarda lo que rompe), pero nunca construcciones de jugadores. Dura 45 s. Enfriamiento: 35 s.",
-            "Mejora de REFUGIO (40 XP): una torre de madera de 4 pisos con anexo, camas, cofres, barriles, horno y jardin en el techo. La puerta mira hacia ti. Dura 3 minutos y luego desaparece. Lo que dejes en cualquier cofre, barril u horno se conserva para la proxima vez (el cofre principal de la planta baja recibe lo del REFUGIO anterior). Enfriamiento: 40 s."};
-    static final int[] CX = {45, 45, 45, 130, 130, 130, 215, 300, 45};
-    static final int[] ROW = {0, 1, 2, 0, 1, 2, 0, 0, 3};
+            "Mejora de REFUGIO (40 XP): una torre de madera de 4 pisos con anexo, camas, cofres, barriles, horno y jardin en el techo. La puerta mira hacia ti. Dura 3 minutos y luego desaparece. Lo que dejes en cualquier cofre, barril u horno se conserva para la proxima vez (el cofre principal de la planta baja recibe lo del REFUGIO anterior). Enfriamiento: 40 s.",
+            "Mejora del Pico (25 XP): el pico dura 14 s en vez de 7 s y da Fuerza II y Prisa minera II (conserva Fortuna II y los encantamientos). Enfriamiento: 8 s."};
+    static final int[] CX = {45, 45, 45, 130, 130, 130, 215, 300, 45, 215};
+    static final int[] ROW = {0, 1, 2, 0, 1, 2, 0, 0, 3, 1};
     int px, py;
     float zoom = 1.0f;
 
@@ -44,6 +45,7 @@ public class PoliciaAlbanilScreen extends Screen {
 
     static boolean has(PoliciaAlbanil.AlbSync s, int i) {
         int lv = s == null ? 0 : s.lv;
+        if (i == 9) return s != null && s.pl >= 1;
         if (i == 8) return s != null && s.lv >= 3;
         if (i == 7) return s != null && s.tu >= 1;
         if (i == 6) return s != null && s.lu >= 1;
@@ -178,7 +180,7 @@ public class PoliciaAlbanilScreen extends Screen {
             g.fill(x0, y0, x0 + 2, y1, col);
         }
         int hov = -1;
-        for (int i = 0; i < 9; i++) {
+        for (int i = 0; i < 10; i++) {
             int nx = nodeX(i), y = nodeY(i);
             boolean open = has(s, i);
             boolean hover = mx >= nx && mx <= nx + 24 && my >= y && my <= y + 24;
@@ -186,7 +188,7 @@ public class PoliciaAlbanilScreen extends Screen {
             int border = (open && i == sel) ? 0xFFFFFFFF : (hover ? 0xFFFFE9A0 : 0xFF6B4A0C);
             g.fill(nx - 1, y - 1, nx + 25, y + 25, border);
             g.fill(nx, y, nx + 24, y + 24, open ? 0xFFC8921C : 0xFF8A6612);
-            if (i == 0) pickIcon(g, nx + 4, y + 4);
+            if (i == 0 || i == 9) pickIcon(g, nx + 4, y + 4);
             else if (i == 1) wallIcon(g, nx + 4, y + 4);
             else if (i == 2 || i == 8) houseIcon(g, nx + 4, y + 4);
             else if (i == 6) lampIcon(g, nx + 4, y + 4);
@@ -208,7 +210,7 @@ public class PoliciaAlbanilScreen extends Screen {
             g.drawString(font, lines.get(k), bx0 + 5, by0 + 15 + k * 9, open ? 0xFFC8D0DC : 0xFF808890, false);
         }
         if (!open) {
-            g.drawString(font, "Bloqueada - cuesta " + (show == 8 ? PoliciaAlbanil.COST2 : show == 7 ? PoliciaTractor.COST : (show >= 3 && show < 6 ? PoliciaAlbanil.COST + 5 * (show - 3) : PoliciaAlbanil.COST)) + " XP", bx0 + 5, by1 - 11, 0xFFE8B830, false);
+            g.drawString(font, "Bloqueada - cuesta " + (show == 9 ? PoliciaAlbanil.COST3 : show == 8 ? PoliciaAlbanil.COST2 : show == 7 ? PoliciaTractor.COST : (show >= 3 && show < 6 ? PoliciaAlbanil.COST + 5 * (show - 3) : PoliciaAlbanil.COST)) + " XP", bx0 + 5, by1 - 11, 0xFFE8B830, false);
         } else if (show == sel) {
             g.drawString(font, "Elegida (tecla J)", bx0 + 5, by1 - 11, 0xFF60E060, false);
         } else {
@@ -225,10 +227,11 @@ public class PoliciaAlbanilScreen extends Screen {
         my = (my - height / 2.0) / zoom + height / 2.0;
         if (btn == 0) {
             PoliciaAlbanil.AlbSync s = PoliciaAlbanil.CL;
-            for (int i = 0; i < 9; i++) {
+            for (int i = 0; i < 10; i++) {
                 int nx = nodeX(i), y = nodeY(i);
                 if (mx >= nx && mx <= nx + 24 && my >= y && my <= y + 24) {
-                    if (i == 8) PoliciaClient.send(has(s, i) ? 11 : 43);
+                    if (i == 9) PoliciaClient.send(has(s, i) ? 10 : 44);
+                    else if (i == 8) PoliciaClient.send(has(s, i) ? 11 : 43);
                     else if (i == 7) PoliciaClient.send(has(s, i) ? 15 : 42);
                     else if (i == 6) PoliciaClient.send(has(s, i) ? 14 : 41);
                     else if (i >= 3) {
@@ -258,7 +261,7 @@ public class PoliciaAlbanilScreen extends Screen {
         java.util.List<Integer> cs = new java.util.ArrayList<>();
         ls.add("OFICIO ALBANIL - XP " + ms.xp); cs.add(0xFFE8C040);
         String n1 = s.lv >= 3 ? "REFUGIO II" : (s.lv >= 2 ? "REFUGIO" : "MURO");
-        ls.add((s.sel == 0 ? "> " : "  ") + "1. Pico de albanil"); cs.add(s.sel == 0 ? 0xFFFFFFFF : 0xFFB0C4DE);
+        ls.add((s.sel == 0 ? "> " : "  ") + "1. Pico de albanil" + (s.pl >= 1 ? " II" : "")); cs.add(s.sel == 0 ? 0xFFFFFFFF : 0xFFB0C4DE);
         boolean o1 = s.lv >= 1;
         ls.add((s.sel == 1 && o1 ? "> " : "  ") + "2. " + n1 + (o1 ? "" : "  [" + PoliciaAlbanil.COST + " XP]"));
         cs.add(o1 ? (s.sel == 1 ? 0xFFFFFFFF : 0xFFB0C4DE) : 0xFF707070);
