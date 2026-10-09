@@ -255,6 +255,11 @@ public class PoliciaBoss {
                 this.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
                 this.setDropChance(EquipmentSlot.MAINHAND, 0.0f);
             } else if (k == 5) {
+                this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(40.0);
+                this.getAttribute(Attributes.ARMOR).setBaseValue(6.0);
+                this.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(32.0);
+                this.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.3);
+                this.setHealth(40.0f);
                 this.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
                 this.setDropChance(EquipmentSlot.MAINHAND, 0.0f);
             } else if (k == 6) {
@@ -269,11 +274,15 @@ public class PoliciaBoss {
             this.goalSelector.addGoal(0, new FloatGoal(this));
             this.goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.2, true) {
                 @Override
-                public boolean canUse() { return BossNpc.this.kind() == 4 && super.canUse(); }
+                public boolean canUse() { return (BossNpc.this.kind() == 4 || BossNpc.this.kind() == 5) && super.canUse(); }
             });
             this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 0.8) {
                 @Override
                 public boolean canUse() { return BossNpc.this.kind() >= 4 && super.canUse(); }
+            });
+            this.goalSelector.addGoal(4, new net.minecraft.world.entity.ai.goal.MoveTowardsRestrictionGoal(this, 1.0) {
+                @Override
+                public boolean canUse() { return BossNpc.this.kind() == 5 && super.canUse(); }
             });
             this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 8.0f));
             this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
@@ -283,11 +292,15 @@ public class PoliciaBoss {
             });
             this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<Player>(this, Player.class, 10, true, false,
                     pl -> this.kind() == 4 && !"ladron".equals(PoliciaMod.job((Player) pl))));
+            // los agentes cazan monstruos hostiles (protegen a los aldeanos) y se pelean con los ladrones
+            this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<net.minecraft.world.entity.Mob>(this, net.minecraft.world.entity.Mob.class, 5, true, false,
+                    e -> this.kind() == 5 && ((e instanceof net.minecraft.world.entity.monster.Enemy)
+                            || (e instanceof PoliciaMision.Pj pj && pj.hostile()))));
         }
 
         @Override
         public boolean isInvulnerableTo(DamageSource s) {
-            if ((kind() <= 3 || kind() == 5 || kind() == 6) && !s.is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY)) return true;
+            if ((kind() <= 3 || kind() == 6) && !s.is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY)) return true;
             return super.isInvulnerableTo(s);
         }
 
