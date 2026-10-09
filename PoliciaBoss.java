@@ -1,5 +1,6 @@
 package com.example.policia;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
@@ -211,6 +212,15 @@ public class PoliciaBoss {
 
         public void setSitting(boolean s) { this.entityData.set(SIT, s); }
 
+        BlockPos home;
+        int homeR;
+
+        public void setHome(BlockPos p, int r) {
+            this.home = p;
+            this.homeR = r;
+            this.restrictTo(p, r);
+        }
+
         public void setKind(int k) {
             this.entityData.set(KIND, k);
             if (k < 0 || k >= NAMES.length) return;
@@ -276,6 +286,10 @@ public class PoliciaBoss {
             super.addAdditionalSaveData(t);
             t.putInt("pk", kind());
             t.putBoolean("psit", sitting());
+            if (home != null) {
+                t.putLong("phome", home.asLong());
+                t.putInt("phr", homeR);
+            }
         }
 
         @Override
@@ -285,6 +299,7 @@ public class PoliciaBoss {
                 int k = t.getInt("pk");
                 setKind(k);
                 if (t.contains("psit")) setSitting(t.getBoolean("psit"));
+                if (t.contains("phome")) setHome(BlockPos.of(t.getLong("phome")), t.getInt("phr"));
             }
         }
 
