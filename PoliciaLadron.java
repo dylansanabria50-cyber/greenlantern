@@ -65,6 +65,25 @@ public class PoliciaLadron {
 
     public static int wcd(Player p) { return p.getPersistentData().getInt("pol_lcd"); }
 
+    /** Habilidades de uso: 0 Silbido, 1 Humo, 2 Salto, 3 Instinto, 4 Polvo. */
+    static final String[] AN = {"Silbido", "Humo", "Salto", "Instinto", "Polvo"};
+    static final int[] ACD = {300, 600, 240, 500, 400};
+
+    public static boolean has(Player p, int a) {
+        if (a == 0) return whistle(p);
+        return ((p.getPersistentData().getInt("pol_lun") >> (a - 1)) & 1) == 1;
+    }
+
+    public static int cd(Player p, int a) { return p.getPersistentData().getInt(a == 0 ? "pol_lcd" : "pol_lc" + a); }
+
+    public static int sel(Player p) {
+        int s = p.getPersistentData().getInt("pol_lse");
+        return s < 0 || s > 4 ? 0 : s;
+    }
+
+    /** Mascara de lo desbloqueado: bit 0 Silbido, bits 1 a 4 las demas. */
+    public static int mask(Player p) { return (whistle(p) ? 1 : 0) | (p.getPersistentData().getInt("pol_lun") << 1); }
+
     static void init() {
         MinecraftForge.EVENT_BUS.register(new Ev());
     }
@@ -81,11 +100,41 @@ public class PoliciaLadron {
     /** Acciones que llegan desde el teclado o desde la pantalla de la rama. */
     static void act(ServerPlayer p, int id) {
         net.minecraft.nbt.CompoundTag d = p.getPersistentData();
-        if (id == 1) { // J: silbido
+        if (id == 1) { // J: usar la habilidad elegida
             if (!active(p)) return;
-            if (!whistle(p)) { PoliciaMod.msg(p, "Desbloquea primero el Silbido en la rama de habilidades"); return; }
-            if (wcd(p) > 0) { PoliciaMod.msg(p, "Silbido en enfriamiento: " + (wcd(p) + 19) / 20 + " s"); return; }
-            whistleUse(p);
+            int a = sel(p);
+            if (!has(p, a)) { PoliciaMod.msg(p, "Desbloquea primero " + AN[a] + " en la rama de habilidades (K cambia de habilidad)"); return; }
+            if (cd(p, a) > 0) { PoliciaMod.msg(p, AN[a] + " en enfriamiento: " + (cd(p, a) + 19) / 20 + " s"); return; }
+            use(p, a);
+            return;
+        }
+        if (id == 2) { // K: cambiar de habilidad
+            int s0 = sel(p);
+            for (int i = 1; i <= 5; i++) {
+                int a = (s0 + i) % 5;
+                if (has(p, a)) {
+                    d.putInt("pol_lse", a);
+                    PoliciaMod.msg(p, "Habilidad elegida: " + AN[a]);
+                    PoliciaMod.sync(p);
+                    return;
+                }
+            }
+            PoliciaMod.msg(p, "Todavia no tienes habilidades que elegir");
+            return;
+        }
+        if (id >= 82 && id <= 85) { // desbloquear Humo, Salto, Instinto o Polvo
+            int a = id - 81;
+            if (has(p, a)) return;
+            if (a <= 2 && !whistle(p)) { PoliciaMod.msg(p, "Primero desbloquea el Silbido"); return; }
+            if (a >= 3 && luck(p) < 1) { PoliciaMod.msg(p, "Primero mejora Suerte al nivel 1"); return; }
+            int cost = PoliciaMod.XP_PER_NODE * 2;
+            if (PoliciaMod.xp(p) < cost) { PoliciaMod.msg(p, "Necesitas " + cost + " XP para " + AN[a] + " (tienes " + PoliciaMod.xp(p) + ")"); return; }
+            d.putInt("pol_xp", PoliciaMod.xp(p) - cost);
+            d.putInt("pol_lun", d.getInt("pol_lun") | (1 << (a - 1)));
+            d.putInt("pol_lse", a);
+            PoliciaMod.msg(p, "Habilidad desbloqueada: " + AN[a] + " (elegida; K cambia, J usa)");
+            p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.3f);
+            PoliciaMod.sync(p);
             return;
         }
         if (id == 80) { // mejorar Suerte
@@ -109,6 +158,52 @@ public class PoliciaLadron {
             p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.2f);
             PoliciaMod.sync(p);
         }
+    }
+
+    static void use(ServerPlayer p, int a) {
+        ServerLevel sl = p.serverLevel();
+        if (a == 0) { whistleUse(p); return; }
+        if (a == 1) { // humo: invisible y veloz, los mobs te pierden
+            p.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, 160, 0, false, false));
+            p.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 160, 1, false, false));
+            for (Mob m : sl.getEntitiesOfClass(Mob.class, p.getBoundingBox().inflate(16.0), x -> x.getTarget() == p)) m.setTarget(null);
+            sl.sendParticles(ParticleTypes.LARGE_SMOKE, p.getX(), p.getY() + 1.0, p.getZ(), 40, 0.5, 0.8, 0.5, 0.02);
+            sl.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.FIRECHARGE_USE, SoundSource.PLAYERS, 1.0f, 1.0f);
+            PoliciaMod.msg(p, "Humo: invisible 8 s");
+        } else if (a == 2) { // salto de sombra
+            Vec3 l = p.getLookAngle();
+            Vec3 h = new Vec3(l.x, 0.0, l.z);
+            if (h.lengthSqr() < 1.0E-4) h = new Vec3(0.0, 0.0, 1.0);
+            h = h.normalize().scale(1.7);
+            p.setDeltaMovement(h.x, 0.55, h.z);
+            p.hurtMarked = true;
+            p.fallDistance = 0.0f;
+            p.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 80, 0, false, false));
+            sl.sendParticles(ParticleTypes.CLOUD, p.getX(), p.getY() + 0.3, p.getZ(), 15, 0.3, 0.1, 0.3, 0.05);
+            sl.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 1.0f, 1.2f);
+        } else if (a == 3) { // instinto: ver a todos brillando
+            int n = 0;
+            for (LivingEntity e : sl.getEntitiesOfClass(LivingEntity.class, p.getBoundingBox().inflate(24.0), x -> x != p && x.isAlive())) {
+                e.addEffect(new MobEffectInstance(MobEffects.GLOWING, 200, 0, false, false));
+                n++;
+            }
+            sl.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, 1.0f, 0.6f);
+            PoliciaMod.msg(p, "Instinto: " + n + (n == 1 ? " ser cerca" : " seres cerca") + " (brillan 10 s)");
+        } else { // polvo cegador
+            int n = 0;
+            for (Mob m : sl.getEntitiesOfClass(Mob.class, p.getBoundingBox().inflate(6.0), x -> x.isAlive() && !(x instanceof AbstractVillager))) {
+                m.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 140, 0, false, false));
+                m.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 140, 2, false, false));
+                m.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 140, 1, false, false));
+                m.setTarget(null);
+                n++;
+            }
+            sl.sendParticles(ParticleTypes.POOF, p.getX(), p.getY() + 1.0, p.getZ(), 30, 1.5, 0.5, 1.5, 0.02);
+            sl.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.SAND_BREAK, SoundSource.PLAYERS, 1.2f, 0.8f);
+            PoliciaMod.msg(p, "Polvo cegador: " + n + (n == 1 ? " objetivo afectado" : " objetivos afectados"));
+        }
+        p.getPersistentData().putInt("pol_lc" + a, ACD[a]);
+        PoliciaMod.sync(p);
     }
 
     static void whistleUse(ServerPlayer p) {
@@ -246,11 +341,16 @@ public class PoliciaLadron {
                 }
             }
             for (ServerPlayer p : srv.getPlayerList().getPlayers()) {
-                int c = p.getPersistentData().getInt("pol_lcd");
-                if (c > 0) {
-                    p.getPersistentData().putInt("pol_lcd", c - 1);
-                    if (c == 1 || c % 20 == 0) PoliciaMod.sync(p);
+                boolean sy = false;
+                for (int a = 0; a < 5; a++) {
+                    String key = a == 0 ? "pol_lcd" : "pol_lc" + a;
+                    int c = p.getPersistentData().getInt(key);
+                    if (c > 0) {
+                        p.getPersistentData().putInt(key, c - 1);
+                        if (c == 1 || c % 20 == 0) sy = true;
+                    }
                 }
+                if (sy) PoliciaMod.sync(p);
             }
         }
 
