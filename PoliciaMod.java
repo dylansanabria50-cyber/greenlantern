@@ -157,6 +157,9 @@ public class PoliciaMod {
         PoliciaPlaca.init();
         PoliciaLadron.init();
         PoliciaBoss.init();
+        PoliciaStruct.init();
+        PoliciaBoard.init();
+        PoliciaGrupo.init();
         PoliciaAlbanil.init();
         MinecraftForge.EVENT_BUS.register(new PoliciaAlbanil());
         PoliciaExtra.EFFECTS.register(FMLJavaModLoadingContext.get().getModEventBus());
