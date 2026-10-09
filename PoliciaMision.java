@@ -1064,7 +1064,7 @@ public class PoliciaMision {
 
     public static class Ev {
         @SubscribeEvent
-        public void tick(TickEvent.ServerTickEvent e) {
+        public void mTick(TickEvent.ServerTickEvent e) {
             if (e.phase != TickEvent.Phase.END || ACTIVE.isEmpty()) return;
             MinecraftServer srv = ServerLifecycleHooks.getCurrentServer();
             if (srv == null) return;
@@ -1078,7 +1078,7 @@ public class PoliciaMision {
         }
 
         @SubscribeEvent
-        public void ptick(TickEvent.PlayerTickEvent e) {
+        public void mPtick(TickEvent.PlayerTickEvent e) {
             if (e.phase != TickEvent.Phase.END || !(e.player instanceof ServerPlayer sp)) return;
             ServerLevel sl = sp.serverLevel();
             if (sp.tickCount % 200 == 7) {
@@ -1104,7 +1104,7 @@ public class PoliciaMision {
         }
 
         @SubscribeEvent
-        public void brk(BlockEvent.BreakEvent e) {
+        public void mBrk(BlockEvent.BreakEvent e) {
             if (!(e.getPlayer() instanceof ServerPlayer sp) || !(e.getLevel() instanceof ServerLevel sl)) return;
             M m = ACTIVE.get(sp.getUUID());
             if (m == null || m.type != 7) return;
@@ -1119,7 +1119,7 @@ public class PoliciaMision {
         }
 
         @SubscribeEvent
-        public void stop(ServerStoppingEvent e) {
+        public void mStop(ServerStoppingEvent e) {
             for (M m : new ArrayList<>(ACTIVE.values())) {
                 ServerLevel sl = e.getServer().getLevel(m.dim);
                 if (sl != null) cleanup(sl, m);
