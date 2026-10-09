@@ -1,6 +1,11 @@
 package com.example.policia;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -66,8 +71,8 @@ public class PoliciaLadron {
     public static int wcd(Player p) { return p.getPersistentData().getInt("pol_lcd"); }
 
     /** Habilidades de uso: 0 Silbido, 1 Humo, 2 Salto, 3 Instinto, 4 Polvo. */
-    static final String[] AN = {"Silbido", "Humo", "Salto", "Instinto", "Polvo"};
-    static final int[] ACD = {300, 600, 240, 500, 400};
+    static final String[] AN = {"Silbido", "Humo", "Salto", "Instinto", "Polvo", "Ganzua", "Escape"};
+    static final int[] ACD = {300, 600, 240, 500, 400, 0, 1800};
 
     public static boolean has(Player p, int a) {
         if (a == 0) return whistle(p);
@@ -103,6 +108,7 @@ public class PoliciaLadron {
         if (id == 1) { // J: usar la habilidad elegida
             if (!active(p)) return;
             int a = sel(p);
+            if (a == 5) a = 0;
             if (!has(p, a)) { PoliciaMod.msg(p, "Desbloquea primero " + AN[a] + " en la rama de habilidades (K cambia de habilidad)"); return; }
             if (cd(p, a) > 0) { PoliciaMod.msg(p, AN[a] + " en enfriamiento: " + (cd(p, a) + 19) / 20 + " s"); return; }
             use(p, a);
@@ -110,9 +116,9 @@ public class PoliciaLadron {
         }
         if (id == 2) { // K: cambiar de habilidad
             int s0 = sel(p);
-            for (int i = 1; i <= 5; i++) {
-                int a = (s0 + i) % 5;
-                if (has(p, a)) {
+            for (int i = 1; i <= 7; i++) {
+                int a = (s0 + i) % 7;
+                if (a != 5 && has(p, a)) {
                     d.putInt("pol_lse", a);
                     PoliciaMod.msg(p, "Habilidad elegida: " + AN[a]);
                     PoliciaMod.sync(p);
@@ -122,17 +128,17 @@ public class PoliciaLadron {
             PoliciaMod.msg(p, "Todavia no tienes habilidades que elegir");
             return;
         }
-        if (id >= 82 && id <= 85) { // desbloquear Humo, Salto, Instinto o Polvo
+        if (id >= 82 && id <= 87) { // desbloquear Humo, Salto, Instinto o Polvo
             int a = id - 81;
             if (has(p, a)) return;
-            if (a <= 2 && !whistle(p)) { PoliciaMod.msg(p, "Primero desbloquea el Silbido"); return; }
-            if (a >= 3 && luck(p) < 1) { PoliciaMod.msg(p, "Primero mejora Suerte al nivel 1"); return; }
+            if ((a <= 2 || a == 6) && !whistle(p)) { PoliciaMod.msg(p, "Primero desbloquea el Silbido"); return; }
+            if (a >= 3 && a <= 5 && luck(p) < 1) { PoliciaMod.msg(p, "Primero mejora Suerte al nivel 1"); return; }
             int cost = PoliciaMod.XP_PER_NODE * 2;
             if (PoliciaMod.xp(p) < cost) { PoliciaMod.msg(p, "Necesitas " + cost + " XP para " + AN[a] + " (tienes " + PoliciaMod.xp(p) + ")"); return; }
             d.putInt("pol_xp", PoliciaMod.xp(p) - cost);
             d.putInt("pol_lun", d.getInt("pol_lun") | (1 << (a - 1)));
-            d.putInt("pol_lse", a);
-            PoliciaMod.msg(p, "Habilidad desbloqueada: " + AN[a] + " (elegida; K cambia, J usa)");
+            if (a != 5) d.putInt("pol_lse", a);
+            PoliciaMod.msg(p, a == 5 ? "Habilidad desbloqueada: Ganzua (agachate y clic derecho en un cofre con llave o puerta de hierro de una aldea)" : "Habilidad desbloqueada: " + AN[a] + " (elegida; K cambia, J usa)");
             p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.3f);
             PoliciaMod.sync(p);
             return;
@@ -158,6 +164,117 @@ public class PoliciaLadron {
             p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.2f);
             PoliciaMod.sync(p);
         }
+    }
+
+    // ---------- Buscado (ficha policial) ----------
+    public static int wanted(Player p) { return Math.max(0, Math.min(5, p.getPersistentData().getInt("pol_wnt"))); }
+
+    /** Un delito sube el nivel de Buscado y avisa a los agentes cercanos. */
+    static void crime(ServerPlayer p, int n, String why) {
+        net.minecraft.nbt.CompoundTag d = p.getPersistentData();
+        d.putInt("pol_esc", 0);
+        int w = Math.min(5, wanted(p) + n);
+        d.putInt("pol_wnt", w);
+        d.putInt("pol_wnt_t", 1200);
+        PoliciaMod.msg(p, "Buscado " + "*".repeat(w) + " (" + why + ")");
+        for (PoliciaBoss.BossNpc b : p.serverLevel().getEntitiesOfClass(PoliciaBoss.BossNpc.class, p.getBoundingBox().inflate(48.0), x -> x.kind() == 5 && x.isAlive())) b.setTarget(p);
+        PoliciaMod.sync(p);
+    }
+
+    // ---------- Ganzua ----------
+    static boolean zone(ServerLevel sl, BlockPos bp) {
+        return sl.dimension() == net.minecraft.world.level.Level.OVERWORLD && PoliciaStruct.Sites.get(sl).near(0, bp, 90);
+    }
+
+    static void pickLock(ServerPlayer p, BlockPos bp, BlockState bs, boolean door) {
+        ServerLevel sl = p.serverLevel();
+        long now = sl.getGameTime();
+        if (now - p.getPersistentData().getLong("pol_latt") < ATT_CD) return;
+        p.getPersistentData().putLong("pol_latt", now);
+        int chance = 50 + 10 * luck(p);
+        if (p.getRandom().nextInt(100) >= chance) {
+            sl.playSound(null, bp, SoundEvents.BELL_BLOCK, SoundSource.BLOCKS, 3.0f, 0.7f);
+            PoliciaMod.msg(p, "Se rompio la ganzua y salto la alarma! (" + chance + "% de exito)");
+            crime(p, 2, "alarma");
+            return;
+        }
+        if (door) {
+            ((DoorBlock) bs.getBlock()).setOpen(p, sl, bs, bp, !bs.getValue(DoorBlock.OPEN));
+        } else {
+            net.minecraft.world.MenuProvider mp = bs.getMenuProvider(sl, bp);
+            if (mp != null) p.openMenu(mp);
+        }
+        p.getPersistentData().putInt("pol_xp", PoliciaMod.xp(p) + 3);
+        sl.playSound(null, bp, SoundEvents.TRIPWIRE_CLICK_ON, SoundSource.BLOCKS, 1.0f, 1.4f);
+        PoliciaMod.msg(p, "Ganzua: abierto (" + chance + "%)");
+        crime(p, 1, door ? "puerta forzada" : "cofre forzado");
+    }
+
+    // ---------- Mercado negro ----------
+    static final net.minecraft.world.item.Item[] OI = {Items.ENDER_PEARL, Items.GOLDEN_APPLE, Items.DIAMOND, Items.EXPERIENCE_BOTTLE, Items.ARROW, Items.GOLDEN_CARROT};
+    static final int[] OC = {2, 1, 1, 8, 32, 16};
+    static final int[] OP = {8, 6, 12, 10, 4, 3};
+
+    static int price(ItemStack s) {
+        String id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).getPath();
+        int base = 0;
+        if (id.contains("netherite")) base = 20;
+        else if (id.contains("diamond")) base = 10;
+        else if (id.contains("gold")) base = 5;
+        else if (id.contains("iron")) base = 2;
+        else if (id.equals("enchanted_book")) base = 8;
+        int pr = s.getMaxStackSize() == 1 ? Math.max(3, base * 2) : Math.max(1, Math.max(1, base) * s.getCount() / 8);
+        if (s.isEnchanted()) pr += 4;
+        return pr;
+    }
+
+    static void say(ServerPlayer sp, String s) { sp.sendSystemMessage(Component.literal("[Mercader negro] " + s)); }
+
+    /** Compra y venta con el mercader del escondite: objeto en la mano = vender; mano vacia = ver ofertas; agachado y mano vacia = comprar. */
+    static void market(ServerPlayer sp, PoliciaMision.Pj m) {
+        ItemStack h = sp.getMainHandItem();
+        boolean sh = sp.isShiftKeyDown();
+        boolean job = "ladron".equals(PoliciaMod.job(sp));
+        if (!h.isEmpty()) {
+            if (h.is(Items.EMERALD)) { say(sp, "Las esmeraldas no me interesan."); return; }
+            if (sh && !job) { say(sp, "El pago en XP es solo para ladrones. Sin agacharte te pago esmeraldas."); return; }
+            int pr = price(h);
+            String nm = h.getCount() + " x " + h.getHoverName().getString();
+            sp.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+            if (sh) {
+                sp.getPersistentData().putInt("pol_xp", PoliciaMod.xp(sp) + pr * 2);
+                say(sp, "Vendido " + nm + " por " + pr * 2 + " XP.");
+                PoliciaMod.sync(sp);
+            } else {
+                PoliciaMision.give(sp, new ItemStack(Items.EMERALD, pr));
+                say(sp, "Vendido " + nm + " por " + pr + " esmeraldas.");
+            }
+            sp.level().playSound(null, sp.getX(), sp.getY(), sp.getZ(), SoundEvents.VILLAGER_YES, SoundSource.NEUTRAL, 1.0f, 0.8f);
+            return;
+        }
+        net.minecraft.nbt.CompoundTag md = m.getPersistentData();
+        int idx = md.getInt("mk_i") % OI.length;
+        if (!sh) {
+            idx = (idx + 1) % OI.length;
+            md.putInt("mk_i", idx);
+            say(sp, "Oferta: " + OC[idx] + " x " + new ItemStack(OI[idx]).getHoverName().getString() + " por " + OP[idx] + " esmeraldas. Agachate y clic con la mano vacia para comprar. Clic con un objeto para venderlo (agachado, un ladron cobra XP).");
+            return;
+        }
+        int have = 0;
+        for (ItemStack s : sp.getInventory().items) if (s.is(Items.EMERALD)) have += s.getCount();
+        if (have < OP[idx]) { say(sp, "Te faltan esmeraldas: cuesta " + OP[idx] + " y tienes " + have + "."); return; }
+        int left = OP[idx];
+        for (ItemStack s : sp.getInventory().items) {
+            if (left <= 0) break;
+            if (s.is(Items.EMERALD)) {
+                int tk = Math.min(left, s.getCount());
+                s.shrink(tk);
+                left -= tk;
+            }
+        }
+        PoliciaMision.give(sp, new ItemStack(OI[idx], OC[idx]));
+        say(sp, "Comprado: " + OC[idx] + " x " + new ItemStack(OI[idx]).getHoverName().getString() + ".");
+        sp.level().playSound(null, sp.getX(), sp.getY(), sp.getZ(), SoundEvents.VILLAGER_YES, SoundSource.NEUTRAL, 1.0f, 1.2f);
     }
 
     static void use(ServerPlayer p, int a) {
@@ -189,6 +306,14 @@ public class PoliciaLadron {
             }
             sl.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, 1.0f, 0.6f);
             PoliciaMod.msg(p, "Instinto: " + n + (n == 1 ? " ser cerca" : " seres cerca") + " (brillan 10 s)");
+        } else if (a == 6) { // escape: la policia te pierde de vista
+            p.getPersistentData().putInt("pol_esc", 200);
+            p.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, 200, 0, false, false));
+            p.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 0, false, false));
+            for (Mob m : sl.getEntitiesOfClass(Mob.class, p.getBoundingBox().inflate(48.0), x -> x.getTarget() == p)) m.setTarget(null);
+            sl.sendParticles(ParticleTypes.LARGE_SMOKE, p.getX(), p.getY() + 1.0, p.getZ(), 40, 0.5, 0.8, 0.5, 0.02);
+            sl.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.FIRECHARGE_USE, SoundSource.PLAYERS, 1.0f, 0.7f);
+            PoliciaMod.msg(p, "Escape: 10 s sin cometer delitos y la policia te pierde");
         } else { // polvo cegador
             int n = 0;
             for (Mob m : sl.getEntitiesOfClass(Mob.class, p.getBoundingBox().inflate(6.0), x -> x.isAlive() && !(x instanceof AbstractVillager))) {
@@ -285,6 +410,7 @@ public class PoliciaLadron {
         int chance = CHANCE[luck(p)];
         if (p.getRandom().nextInt(100) >= chance) {
             PoliciaMod.msg(p, "Te descubrieron! (" + chance + "% de exito)");
+            if (t instanceof AbstractVillager) crime(p, 1, "te vieron");
             sl.playSound(null, t.getX(), t.getY(), t.getZ(), SoundEvents.VILLAGER_NO, SoundSource.NEUTRAL, 1.0f, 1.0f);
             if (t instanceof ServerPlayer victim) {
                 PoliciaMod.msg(victim, "Alguien intento robarte!");
@@ -306,6 +432,7 @@ public class PoliciaLadron {
         }
         p.getPersistentData().putInt("pol_xp", PoliciaMod.xp(p) + 2);
         PoliciaMod.msg(p, "Carterismo exitoso (" + chance + "%)");
+        if (t instanceof AbstractVillager || t instanceof Player) crime(p, 1, "robo");
         PoliciaMod.sync(p);
     }
 
@@ -319,6 +446,35 @@ public class PoliciaLadron {
             e.setCanceled(true);
             e.setCancellationResult(InteractionResult.SUCCESS);
             pick(p, t);
+        }
+
+        @SubscribeEvent
+        public void lBlock(PlayerInteractEvent.RightClickBlock e) {
+            if (e.getLevel().isClientSide || e.getHand() != InteractionHand.MAIN_HAND) return;
+            if (!(e.getEntity() instanceof ServerPlayer p) || p.isCreative()) return;
+            ServerLevel sl = p.serverLevel();
+            BlockPos bp = e.getPos();
+            BlockState bs = sl.getBlockState(bp);
+            boolean door = bs.is(Blocks.IRON_DOOR);
+            boolean chest = bs.is(Blocks.CHEST) || bs.is(Blocks.TRAPPED_CHEST);
+            if (!door && !chest) return;
+            if (!zone(sl, bp)) return;
+            if (chest) {
+                BlockEntity be = sl.getBlockEntity(bp);
+                if (be == null || !be.saveWithoutMetadata().contains("LootTable")) return;
+            }
+            boolean can = "ladron".equals(PoliciaMod.job(p)) && PoliciaMod.on(p) && has(p, 5);
+            if (can && p.isShiftKeyDown()) {
+                e.setCanceled(true);
+                e.setCancellationResult(InteractionResult.SUCCESS);
+                pickLock(p, bp, bs, door);
+                return;
+            }
+            if (!chest) return;
+            if (p.isShiftKeyDown() && !p.getMainHandItem().isEmpty()) return;
+            e.setCanceled(true);
+            e.setCancellationResult(InteractionResult.FAIL);
+            PoliciaMod.msg(p, can ? "Cofre con llave: agachate y usa la ganzua (clic derecho)" : "Cofre con llave: la policia vigila esta aldea. Solo un ladron con Ganzua puede abrirlo");
         }
 
         @SubscribeEvent
@@ -342,13 +498,40 @@ public class PoliciaLadron {
             }
             for (ServerPlayer p : srv.getPlayerList().getPlayers()) {
                 boolean sy = false;
-                for (int a = 0; a < 5; a++) {
+                for (int a = 0; a < 7; a++) {
                     String key = a == 0 ? "pol_lcd" : "pol_lc" + a;
                     int c = p.getPersistentData().getInt(key);
                     if (c > 0) {
                         p.getPersistentData().putInt(key, c - 1);
                         if (c == 1 || c % 20 == 0) sy = true;
                     }
+                }
+                net.minecraft.nbt.CompoundTag dd = p.getPersistentData();
+                int w = dd.getInt("pol_wnt");
+                if (w > 0) {
+                    int es = dd.getInt("pol_esc");
+                    if (es > 0) {
+                        dd.putInt("pol_esc", es - 1);
+                        if (es % 20 == 0) {
+                            for (PoliciaBoss.BossNpc b : p.serverLevel().getEntitiesOfClass(PoliciaBoss.BossNpc.class, p.getBoundingBox().inflate(48.0), x -> x.getTarget() == p)) b.setTarget(null);
+                        }
+                        if (es == 1) {
+                            dd.putInt("pol_wnt", 0);
+                            PoliciaMod.msg(p, "Despistaste a la policia");
+                            sy = true;
+                        }
+                    } else {
+                        int wt = dd.getInt("pol_wnt_t") - 1;
+                        if (wt <= 0) {
+                            dd.putInt("pol_wnt", w - 1);
+                            wt = 1200;
+                            sy = true;
+                            if (w == 1) PoliciaMod.msg(p, "Ya no te busca la policia");
+                        }
+                        dd.putInt("pol_wnt_t", wt);
+                    }
+                } else if (dd.getInt("pol_esc") > 0) {
+                    dd.putInt("pol_esc", 0);
                 }
                 if (sy) PoliciaMod.sync(p);
             }
