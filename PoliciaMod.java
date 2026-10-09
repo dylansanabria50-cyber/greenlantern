@@ -177,7 +177,7 @@ public class PoliciaMod {
         m.shield = shield(p); m.cooldown = cooldown(p); m.xp = xp(p); m.sel = sel(p); m.un = un(p); m.tcd = p.getPersistentData().getInt("pol_tcd"); m.rl = rlevel(p); m.rcd = p.getPersistentData().getInt("pol_rcd");
         m.c5 = PoliciaExtra.cd(p, 5); m.c6 = PoliciaExtra.cd(p, 6); m.c7 = PoliciaExtra.cd(p, 7); m.c8 = PoliciaExtra.cd(p, 8); m.c9 = PoliciaExtra.cd(p, 9);
         m.jb = "albanil".equals(job(p)) ? 2 : ("policia".equals(job(p)) ? 1 : 0);
-        if ("ladron".equals(job(p))) { m.jb = 3; m.rl = PoliciaLadron.luck(p); m.c5 = PoliciaLadron.cd(p, 0); m.c6 = PoliciaLadron.cd(p, 1); m.c7 = PoliciaLadron.cd(p, 2); m.c8 = PoliciaLadron.cd(p, 3); m.c9 = PoliciaLadron.cd(p, 4); m.un = PoliciaLadron.mask(p); m.sel = PoliciaLadron.sel(p); }
+        if ("ladron".equals(job(p))) { m.jb = 3; m.rl = PoliciaLadron.luck(p); m.c5 = PoliciaLadron.cd(p, 0); m.c6 = PoliciaLadron.cd(p, 1); m.c7 = PoliciaLadron.cd(p, 2); m.c8 = PoliciaLadron.cd(p, 3); m.c9 = PoliciaLadron.cd(p, 4); m.un = PoliciaLadron.mask(p); m.sel = PoliciaLadron.sel(p); m.rcd = PoliciaLadron.cd(p, 6); m.tcd = PoliciaLadron.wanted(p); }
         return m;
     }
 
