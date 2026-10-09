@@ -82,6 +82,7 @@ public class PoliciaMisionSkinRender extends MobRenderer<PoliciaMision.Pj, Polic
         switch (e.kind()) {
             case 10: return TEX[0];
             case 0:
+            case 12:
             case 7: return TEX[2];
             case 3:
             case 5: return TEX[3];
