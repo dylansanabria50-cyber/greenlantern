@@ -30,8 +30,14 @@ public class PoliciaBook {
             "ENEMIGOS\n\nLadron, evadido y contrabandista huyen: esposalos. Pandilleros con garrote y arco, lideres, jefe de banda con barra de vida y francotiradores de torre (usa el escudo balistico). Saboteadores dejan bombas: rompe el bloque de TNT para desactivarlo. Recompensas: XP, esmeraldas y objetos especiales.",
             "MISION ESPECIAL\n\nTras cazar al primer jefe de banda, el tablero ofrece El cerebro de la organizacion: dos pistas y una guarida con el jefe final, que se teletransporta e invoca refuerzos.\n\nPremio: ESCUDO DE BURBUJA (J). Esfera azul de 14 bloques que te sigue 23 s: todo lo de adentro va muy lento menos tu. Enfriamiento 26 s."};
 
+    static final String[] LADRON = {
+            "OFICIO LADRON\n\nTe transformas con la tecla B (modo ladron). Se consigue con el Guante de ladron.\n\nTodo se hace con el modo activo.",
+            "1. CARTERISMO\n\nAgachate (Mayus) detras de un jugador o mob y haz clic derecho. Si tienes suerte se abren sus bolsillos (lo que llevaria al morir) y puedes sacar cosas.\nProbabilidad base: 30%. Si fallas te descubren.",
+            "2. SUERTE (trebol)\n\nSube la probabilidad del carterismo: nivel 1 = 40%, 2 = 45%, 3 = 50%, 4 = 55%. Cada nivel reemplaza al anterior. Se mejora con XP en la rama de habilidades.",
+            "3. SILBIDO (J)\n\nLos mobs a 12 bloques miran para otro lado 7 s y quedan lentos: asi te acercas por la espalda. Enfriamiento: 15 s. Desbloqueo: 10 XP."};
+
     static void give(ServerPlayer p, String job) {
-        String[] pg = "albanil".equals(job) ? ALBANIL : ("policia".equals(job) ? POLICIA : null);
+        String[] pg = "albanil".equals(job) ? ALBANIL : ("policia".equals(job) ? POLICIA : ("ladron".equals(job) ? LADRON : null));
         if (pg == null) return;
         for (int i = 0; i < p.getInventory().getContainerSize(); i++) {
             ItemStack s = p.getInventory().getItem(i);
@@ -39,7 +45,7 @@ public class PoliciaBook {
         }
         ItemStack b = new ItemStack(Items.WRITTEN_BOOK);
         CompoundTag t = b.getOrCreateTag();
-        t.putString("title", "albanil".equals(job) ? "Guia del Albanil" : "Guia del Policia");
+        t.putString("title", "albanil".equals(job) ? "Guia del Albanil" : ("ladron".equals(job) ? "Guia del Ladron" : "Guia del Policia"));
         t.putString("author", "Oficios");
         t.putString("pol_book", job);
         ListTag pages = new ListTag();
