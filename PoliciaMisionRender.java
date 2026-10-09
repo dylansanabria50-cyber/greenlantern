@@ -13,10 +13,12 @@ import net.minecraft.util.Mth;
 /** Dibuja bandidos, civiles y el comisario con cajas de color (sin texturas). */
 public class PoliciaMisionRender extends EntityRenderer<PoliciaMision.Pj> {
     static final int[] SKIN = {232, 190, 150};
+    PoliciaMisionSkinRender skin;
 
     public PoliciaMisionRender(EntityRendererProvider.Context ctx) {
         super(ctx);
         this.shadowRadius = 0.45f;
+        this.skin = new PoliciaMisionSkinRender(ctx);
     }
 
     @Override
@@ -67,6 +69,10 @@ public class PoliciaMisionRender extends EntityRenderer<PoliciaMision.Pj> {
     public void render(PoliciaMision.Pj e, float yaw, float pt, PoseStack ps, MultiBufferSource buf, int light) {
         VertexConsumer vc = buf.getBuffer(RenderType.entityCutoutNoCull(PoliciaExtraRender.WHITE));
         int k = e.kind();
+        if (k != 6 && k != 9) {
+            skin.render(e, yaw, pt, ps, buf, light);
+            return;
+        }
         float body = Mth.rotLerp(pt, e.yBodyRotO, e.yBodyRot);
         ps.pushPose();
         ps.mulPose(Axis.YP.rotationDegrees(-body));
