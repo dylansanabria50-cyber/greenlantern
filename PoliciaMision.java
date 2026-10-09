@@ -102,14 +102,14 @@ public class PoliciaMision {
                     .sized(2.0f, 1.8f).noSave().clientTrackingRange(10).build("policia:furgoneta"));
 
     static final String[] NAMES = {"Ladron", "Pandillero", "Pandillero arquero", "Lider de pandilla", "Jefe de banda",
-            "Francotirador", "Contrabandista", "Saboteador", "Evadido", "Aldeano", "Comisario", "El Cerebro"};
-    static final double[] HP = {16, 22, 18, 40, 120, 16, 30, 14, 20, 20, 40, 220};
-    static final double[] SPD = {0.23, 0.26, 0.24, 0.27, 0.27, 0.0, 0.25, 0.25, 0.25, 0.22, 0.0, 0.3};
-    static final double[] DMG = {2, 4, 2, 6, 9, 2, 3, 1, 3, 1, 1, 11};
-    static final int[] XP = {0, 8, 6, 10, 12, 10, 10, 10, 40, 70, 60};
-    static final int[] TIME = {0, 6000, 4800, 9600, 9600, 12000, 12000, 3000, 14400, 24000, 36000};
+            "Francotirador", "Contrabandista", "Saboteador", "Evadido", "Aldeano", "Comisario", "El Cerebro", "Mercader negro"};
+    static final double[] HP = {16, 22, 18, 40, 120, 16, 30, 14, 20, 20, 40, 220, 40};
+    static final double[] SPD = {0.23, 0.26, 0.24, 0.27, 0.27, 0.0, 0.25, 0.25, 0.25, 0.22, 0.0, 0.3, 0.0};
+    static final double[] DMG = {2, 4, 2, 6, 9, 2, 3, 1, 3, 1, 1, 11, 1};
+    static final int[] XP = {0, 8, 6, 10, 12, 10, 10, 10, 40, 70, 60, 30};
+    static final int[] TIME = {0, 6000, 4800, 9600, 9600, 12000, 12000, 3000, 14400, 24000, 36000, 24000};
     static final String[] TITLE = {"", "Atrapar al fugitivo", "Patrulla de 3 puntos", "Rescate de aldeano", "Limpiar el campamento",
-            "Recuperar evidencia", "Escolta de aldeano", "Desactivar bombas", "Cazar al jefe de banda", "El cerebro de la organizacion", "Rescate en el casino"};
+            "Recuperar evidencia", "Escolta de aldeano", "Desactivar bombas", "Cazar al jefe de banda", "El cerebro de la organizacion", "Rescate en el casino", "Asalto al campamento"};
     static final String[] DESC = {"", "Un delincuente huye con lo robado. Esposelo con la habilidad Esposas.",
             "Recorra los 3 puntos marcados antes de que se acabe el tiempo.",
             "Un aldeano fue secuestrado. Liberelo (clic derecho) y llevelo al comisario.",
@@ -118,9 +118,9 @@ public class PoliciaMision {
             "Lleve al aldeano a salvo hasta el punto marcado. Habra una emboscada.",
             "Un saboteador dejo 3 bombas. Desactivelas (romperlas) antes de que expire el tiempo.",
             "El jefe de la banda se esconde con su guardia. Cacelo.",
-            "Siga las pistas hasta la guarida del cerebro de la organizacion y derrotelo. Se teletransporta e invoca refuerzos.", "Los ladrones del casino secuestraron a unos aldeanos. Baje al casino subterraneo (tres plantas) y libere a un rehen."};
+            "Siga las pistas hasta la guarida del cerebro de la organizacion y derrotelo. Se teletransporta e invoca refuerzos.", "Los ladrones del casino secuestraron a unos aldeanos. Baje al casino subterraneo (tres plantas) y libere a un rehen.", "Hay un campamento de bandidos o ladrones en la zona. Asaltelo y elimine a todos sus habitantes."};
     static final Item[] ICON = {Items.PAPER, Items.LEAD, Items.COMPASS, Items.NAME_TAG, Items.CAMPFIRE, Items.CHEST,
-            Items.SADDLE, Items.TNT, Items.SKELETON_SKULL, Items.NETHER_STAR, Items.GOLD_INGOT};
+            Items.SADDLE, Items.TNT, Items.SKELETON_SKULL, Items.NETHER_STAR, Items.GOLD_INGOT, Items.CROSSBOW};
     static final String[] DIRS = {"este", "sureste", "sur", "suroeste", "oeste", "noroeste", "norte", "noreste"};
 
     static final Map<UUID, M> ACTIVE = new HashMap<>();
@@ -178,7 +178,7 @@ public class PoliciaMision {
 
         public void setKind(int k) {
             this.entityData.set(KIND, k);
-            if (k < 0 || k > 11) return;
+            if (k < 0 || k > 12) return;
             this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(HP[k]);
             this.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(SPD[k]);
             this.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(DMG[k]);
@@ -189,10 +189,10 @@ public class PoliciaMision {
                 this.getAttribute(Attributes.ARMOR).setBaseValue(4.0);
             }
             this.setHealth((float) HP[k]);
-            this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new net.minecraft.world.item.ItemStack(k == 2 ? net.minecraft.world.item.Items.BOW : k == 5 ? net.minecraft.world.item.Items.CROSSBOW : k == 10 ? net.minecraft.world.item.Items.AIR : (k == 4 || k == 11) ? net.minecraft.world.item.Items.IRON_SWORD : (k == 9 ? net.minecraft.world.item.Items.AIR : net.minecraft.world.item.Items.STONE_SWORD)));
+            this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new net.minecraft.world.item.ItemStack(k == 2 ? net.minecraft.world.item.Items.BOW : k == 5 ? net.minecraft.world.item.Items.CROSSBOW : (k == 10 || k == 12) ? net.minecraft.world.item.Items.AIR : (k == 4 || k == 11) ? net.minecraft.world.item.Items.IRON_SWORD : (k == 9 ? net.minecraft.world.item.Items.AIR : net.minecraft.world.item.Items.STONE_SWORD)));
             this.setDropChance(net.minecraft.world.entity.EquipmentSlot.MAINHAND, 0.0f);
             this.setCustomName(Component.literal(NAMES[k]));
-            this.setCustomNameVisible(k == 3 || k == 4 || k == 10 || k == 11);
+            this.setCustomNameVisible(k == 3 || k == 4 || k == 10 || k == 11 || k == 12);
             if (k == 11) {
                 this.getAttribute(Attributes.ARMOR).setBaseValue(10.0);
                 this.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(0.8);
@@ -209,9 +209,9 @@ public class PoliciaMision {
         boolean sneaking = false;
 
         /** Ladron de campamento: se acerca de a uno, roba un objeto al azar y huye. */
-        boolean thief() { return kind() == 0 && this.getPersistentData().getBoolean("pol_camp"); }
+        boolean thief() { return kind() == 0 && !captive(); }
 
-        boolean flees() { int k = kind(); return (k == 0 && (!thief() || !stolen.isEmpty() || fleeT > 0)) || k == 6 || k == 7 || k == 8; }
+        boolean flees() { int k = kind(); return (k == 0 && (!stolen.isEmpty() || fleeT > 0)) || k == 6 || k == 7 || k == 8; }
 
         void steal(Player p) {
             List<Integer> slots = new ArrayList<>();
@@ -225,6 +225,24 @@ public class PoliciaMision {
             hits = 0;
             this.playSound(SoundEvents.ITEM_PICKUP, 1.0f, 0.7f);
             if (p instanceof ServerPlayer sp) sp.sendSystemMessage(Component.literal("Un ladron te robo " + stolen.getCount() + " x " + stolen.getHoverName().getString() + "! Pegale 2 veces para que lo suelte"));
+        }
+
+        /** Guarda lo robado en un cofre cercano al centro del escondite. */
+        void deposit() {
+            BlockPos c = this.getRestrictCenter();
+            for (BlockPos bp : BlockPos.betweenClosed(c.offset(-9, -3, -9), c.offset(9, 4, 9))) {
+                if (this.level().getBlockEntity(bp) instanceof net.minecraft.world.level.block.entity.ChestBlockEntity ch) {
+                    ItemStack left = net.minecraft.world.level.block.entity.HopperBlockEntity.addItem(null, ch, stolen, null);
+                    stolen = left;
+                    if (left.isEmpty()) {
+                        this.getPersistentData().remove("pol_stolen");
+                        fleeT = 0;
+                        stealCd = 1200;
+                        return;
+                    }
+                }
+            }
+            if (!stolen.isEmpty()) this.getPersistentData().put("pol_stolen", stolen.save(new CompoundTag()));
         }
 
         void dropStolen() {
@@ -295,6 +313,44 @@ public class PoliciaMision {
             this.goalSelector.addGoal(1, new AvoidEntityGoal<Player>(this, Player.class, 18.0f, 1.0, 1.35) {
                 @Override
                 public boolean canUse() { return Pj.this.flees() && !Pj.this.captive() && super.canUse(); }
+            });
+            // el ladron que escapo con un objeto vuelve a su escondite y lo guarda en un cofre
+            this.goalSelector.addGoal(3, new Goal() {
+                {
+                    this.setFlags(EnumSet.of(Goal.Flag.MOVE));
+                }
+
+                boolean far() {
+                    return Pj.this.hasRestriction() && Pj.this.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(Pj.this.getRestrictCenter())) > 12.0 * 12.0;
+                }
+
+                boolean safe() {
+                    Player np = Pj.this.level().getNearestPlayer(Pj.this, 14.0);
+                    return np == null;
+                }
+
+                @Override
+                public boolean canUse() {
+                    return Pj.this.thief() && !Pj.this.stolen.isEmpty() && Pj.this.hasRestriction() && far() && safe();
+                }
+
+                @Override
+                public boolean canContinueToUse() {
+                    return Pj.this.thief() && !Pj.this.stolen.isEmpty() && Pj.this.hasRestriction() && safe() && Pj.this.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(Pj.this.getRestrictCenter())) > 3.0 * 3.0;
+                }
+
+                @Override
+                public void tick() {
+                    if (Pj.this.tickCount % 10 == 0) {
+                        BlockPos c = Pj.this.getRestrictCenter();
+                        Pj.this.getNavigation().moveTo(c.getX() + 0.5, c.getY(), c.getZ() + 0.5, 1.0);
+                    }
+                }
+
+                @Override
+                public void stop() {
+                    if (Pj.this.hasRestriction() && !Pj.this.stolen.isEmpty() && Pj.this.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(Pj.this.getRestrictCenter())) <= 3.0 * 3.0) Pj.this.deposit();
+                }
             });
             this.goalSelector.addGoal(2, new Goal() {
                 Player tgt;
@@ -395,7 +451,7 @@ public class PoliciaMision {
                 @Override
                 public boolean canUse() {
                     int k = Pj.this.kind();
-                    return k != 5 && k != 9 && k != 10 && super.canUse();
+                    return k != 5 && k != 9 && k != 10 && k != 12 && super.canUse();
                 }
             });
             this.goalSelector.addGoal(7, new LookAtPlayerGoal(this, Player.class, 8.0f));
@@ -437,19 +493,20 @@ public class PoliciaMision {
             if (h != InteractionHand.MAIN_HAND) return InteractionResult.PASS;
             if (p instanceof ServerPlayer sp) {
                 if (kind() == 10) openBoard(sp, this);
+                else if (kind() == 12) PoliciaLadron.market(sp, this);
                 else if (kind() == 9 && captive()) free(sp, this);
             }
-            return (kind() == 10 || (kind() == 9 && captive())) ? InteractionResult.sidedSuccess(this.level().isClientSide) : InteractionResult.PASS;
+            return (kind() == 10 || kind() == 12 || (kind() == 9 && captive())) ? InteractionResult.sidedSuccess(this.level().isClientSide) : InteractionResult.PASS;
         }
 
         @Override
         public boolean isInvulnerableTo(DamageSource s) {
-            if (kind() == 10 && !s.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) return true;
+            if ((kind() == 10 || kind() == 12) && !s.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) return true;
             return super.isInvulnerableTo(s);
         }
 
         @Override
-        public boolean isPushable() { return kind() != 10 && !captive() && super.isPushable(); }
+        public boolean isPushable() { return kind() != 10 && kind() != 12 && !captive() && super.isPushable(); }
 
         @Override
         public boolean removeWhenFarAway(double d) { return false; }
@@ -458,7 +515,7 @@ public class PoliciaMision {
         public void tick() {
             super.tick();
             if (this.level().isClientSide) return;
-            if (kind() != 10 && !this.getPersistentData().getBoolean("pol_cas") && --life <= 0) {
+            if (kind() != 10 && kind() != 12 && !this.getPersistentData().getBoolean("pol_cas") && --life <= 0) {
                 ((ServerLevel) this.level()).sendParticles(ParticleTypes.POOF, getX(), getY() + 1, getZ(), 8, 0.3, 0.5, 0.3, 0.02);
                 this.discard();
                 return;
@@ -500,7 +557,16 @@ public class PoliciaMision {
             int k = kind();
             if (k == 0 || k == 6 || k == 8) this.spawnAtLocation(new ItemStack(Items.EMERALD, 2 + this.random.nextInt(3)));
             else if (k >= 1 && k <= 5 && this.random.nextInt(3) == 0) this.spawnAtLocation(new ItemStack(Items.EMERALD));
-            if (k == 4) this.spawnAtLocation(new ItemStack(Items.GOLD_INGOT, 4));
+            if (k == 4) {
+                this.spawnAtLocation(new ItemStack(Items.GOLD_INGOT, 4));
+                this.spawnAtLocation(new ItemStack(Items.EMERALD, 8));
+                ItemStack sw = new ItemStack(Items.DIAMOND_SWORD);
+                sw.setHoverName(Component.literal("Espada del Jefe de Banda"));
+                sw.enchant(net.minecraft.world.item.enchantment.Enchantments.SHARPNESS, 4);
+                sw.enchant(net.minecraft.world.item.enchantment.Enchantments.UNBREAKING, 3);
+                sw.enchant(net.minecraft.world.item.enchantment.Enchantments.FIRE_ASPECT, 2);
+                this.spawnAtLocation(sw);
+            }
             dropStolen();
         }
 
@@ -582,6 +648,7 @@ public class PoliciaMision {
         e.setKind(kind);
         e.moveTo(p.getX() + 0.5, p.getY(), p.getZ() + 0.5, sl.random.nextFloat() * 360.0f, 0.0f);
         e.life = 24000;
+        if (kind == 0 && m != null) e.fleeT = 1200;
         if (m != null) {
             e.mission = m.pl;
             m.ents.add(e.getUUID());
@@ -705,9 +772,30 @@ public class PoliciaMision {
                 m.dest = s;
                 return true;
             }
+            case 11: {
+                BlockPos s = campOf(sl, pp);
+                if (s == null) return false;
+                m.dest = s;
+                return true;
+            }
             default:
                 return false;
         }
+    }
+
+    /** Campamento de bandidos o ladrones conocido mas cercano. */
+    static BlockPos campOf(ServerLevel sl, BlockPos from) {
+        PoliciaStruct.Sites st = PoliciaStruct.Sites.get(sl);
+        BlockPos best = null;
+        double bd = 1200.0 * 1200.0;
+        for (int k = 3; k <= 6; k++) {
+            BlockPos p = st.nearest(k, from);
+            if (p != null && p.distSqr(from) < bd) {
+                bd = p.distSqr(from);
+                best = p;
+            }
+        }
+        return best;
     }
 
     static boolean setup9(ServerLevel sl, ServerPlayer sp, M m) {
@@ -801,6 +889,10 @@ public class PoliciaMision {
             give(sp, new ItemStack(Items.DIAMOND, 5));
             give(sp, new ItemStack(Items.NETHERITE_INGOT));
             extra = ", 5 diamantes, un lingote de netherita y la habilidad ESCUDO DE BURBUJA";
+        }
+        if (m.type == 11) {
+            give(sp, new ItemStack(Items.DIAMOND, 2));
+            extra = ", 2 diamantes";
         }
         if (m.type == 8) {
             sp.getPersistentData().putInt("pol_bdone", sp.getPersistentData().getInt("pol_bdone") + 1);
@@ -1027,6 +1119,19 @@ public class PoliciaMision {
                 if (hint) PoliciaMod.msg(sp, "Destino: " + dir(pos, m.dest) + " - " + (m.end - now) / 20 + " s");
                 break;
             }
+            case 11: {
+                if (t % 20 == 0 && t > 40 && pos.distanceToSqr(Vec3.atCenterOf(m.dest)) < 48.0 * 48.0) {
+                    boolean any = false;
+                    for (Pj e : sl.getEntitiesOfClass(Pj.class, new net.minecraft.world.phys.AABB(m.dest).inflate(24.0, 12.0, 24.0))) {
+                        if (e.isAlive() && e.getPersistentData().getBoolean("pol_camp")) { any = true; break; }
+                    }
+                    if (!any) {
+                        finish(sp, sl, m, 1.0);
+                        return;
+                    }
+                }
+                break;
+            }
             case 7: {
                 if (t % 10 == 0) {
                     for (BlockPos b : m.bombs) sl.sendParticles(ParticleTypes.LARGE_SMOKE, b.getX() + 0.5, b.getY() + 1.2, b.getZ() + 0.5, 2, 0.1, 0.1, 0.1, 0.01);
@@ -1052,6 +1157,7 @@ public class PoliciaMision {
         Random r = new Random(com.getUUID().getLeastSignificantBits() ^ ((sl.getGameTime() / 24000L) * 7919L));
         List<Integer> pool = new ArrayList<>();
         for (int i = 1; i <= 7; i++) pool.add(i);
+        if (campOf(sl, com.blockPosition()) != null) pool.add(11);
         Collections.shuffle(pool, r);
         return new int[]{pool.get(0), pool.get(1), pool.get(2)};
     }
