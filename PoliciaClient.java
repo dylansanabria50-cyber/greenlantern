@@ -93,6 +93,7 @@ public class PoliciaClient {
         e.registerEntityRenderer(PoliciaAyudante.AYU.get(), PoliciaAyudanteRender::new);
         e.registerEntityRenderer(PoliciaTractor.TRACTOR.get(), PoliciaTractorRender::new);
         e.registerEntityRenderer(PoliciaBubble.BUBBLE.get(), PoliciaBubbleRender::new);
+        e.registerEntityRenderer(PoliciaBoss.BOSS.get(), PoliciaBossRender::new);
         e.registerEntityRenderer(PoliciaMision.PJ.get(), PoliciaMisionRender::new);
         e.registerEntityRenderer(PoliciaMision.COM.get(), PoliciaMisionRender::new);
         e.registerEntityRenderer(PoliciaMision.VAN.get(), PoliciaMisionRender::new);
