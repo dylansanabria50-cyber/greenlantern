@@ -50,7 +50,7 @@ public class PoliciaBubble {
                     .build("policia:burbuja"));
 
     static final int DUR = 200;          // 10 s
-    public static final double R = 2.0; // 4 bloques de diametro
+    public static final double R = 7.0; // 14 bloques de diametro
 
     static class B {
         int left = DUR;
