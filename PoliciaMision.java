@@ -106,10 +106,10 @@ public class PoliciaMision {
     static final double[] HP = {16, 22, 18, 40, 120, 16, 30, 14, 20, 20, 40, 220};
     static final double[] SPD = {0.23, 0.26, 0.24, 0.27, 0.27, 0.0, 0.25, 0.25, 0.25, 0.22, 0.0, 0.3};
     static final double[] DMG = {2, 4, 2, 6, 9, 2, 3, 1, 3, 1, 1, 11};
-    static final int[] XP = {0, 8, 6, 10, 12, 10, 10, 10, 40, 70};
-    static final int[] TIME = {0, 6000, 4800, 9600, 9600, 12000, 12000, 3000, 14400, 24000};
+    static final int[] XP = {0, 8, 6, 10, 12, 10, 10, 10, 40, 70, 60};
+    static final int[] TIME = {0, 6000, 4800, 9600, 9600, 12000, 12000, 3000, 14400, 24000, 36000};
     static final String[] TITLE = {"", "Atrapar al fugitivo", "Patrulla de 3 puntos", "Rescate de aldeano", "Limpiar el campamento",
-            "Recuperar evidencia", "Escolta de aldeano", "Desactivar bombas", "Cazar al jefe de banda", "El cerebro de la organizacion"};
+            "Recuperar evidencia", "Escolta de aldeano", "Desactivar bombas", "Cazar al jefe de banda", "El cerebro de la organizacion", "Rescate en el casino"};
     static final String[] DESC = {"", "Un delincuente huye con lo robado. Esposelo con la habilidad Esposas.",
             "Recorra los 3 puntos marcados antes de que se acabe el tiempo.",
             "Un aldeano fue secuestrado. Liberelo (clic derecho) y llevelo al comisario.",
@@ -118,9 +118,9 @@ public class PoliciaMision {
             "Lleve al aldeano a salvo hasta el punto marcado. Habra una emboscada.",
             "Un saboteador dejo 3 bombas. Desactivelas (romperlas) antes de que expire el tiempo.",
             "El jefe de la banda se esconde con su guardia. Cacelo.",
-            "Siga las pistas hasta la guarida del cerebro de la organizacion y derrotelo. Se teletransporta e invoca refuerzos."};
+            "Siga las pistas hasta la guarida del cerebro de la organizacion y derrotelo. Se teletransporta e invoca refuerzos.", "Los ladrones del casino secuestraron a unos aldeanos. Baje al casino subterraneo (tres plantas) y libere a un rehen."};
     static final Item[] ICON = {Items.PAPER, Items.LEAD, Items.COMPASS, Items.NAME_TAG, Items.CAMPFIRE, Items.CHEST,
-            Items.SADDLE, Items.TNT, Items.SKELETON_SKULL, Items.NETHER_STAR};
+            Items.SADDLE, Items.TNT, Items.SKELETON_SKULL, Items.NETHER_STAR, Items.GOLD_INGOT};
     static final String[] DIRS = {"este", "sureste", "sur", "suroeste", "oeste", "noroeste", "norte", "noreste"};
 
     static final Map<UUID, M> ACTIVE = new HashMap<>();
@@ -347,7 +347,7 @@ public class PoliciaMision {
         public void tick() {
             super.tick();
             if (this.level().isClientSide) return;
-            if (kind() != 10 && --life <= 0) {
+            if (kind() != 10 && !this.getPersistentData().getBoolean("pol_cas") && --life <= 0) {
                 ((ServerLevel) this.level()).sendParticles(ParticleTypes.POOF, getX(), getY() + 1, getZ(), 8, 0.3, 0.5, 0.3, 0.02);
                 this.discard();
                 return;
@@ -393,12 +393,14 @@ public class PoliciaMision {
         public void addAdditionalSaveData(CompoundTag t) {
             super.addAdditionalSaveData(t);
             t.putInt("pk", kind());
+            t.putBoolean("pcap", captive());
         }
 
         @Override
         public void readAdditionalSaveData(CompoundTag t) {
             super.readAdditionalSaveData(t);
             if (t.contains("pk")) setKind(t.getInt("pk"));
+            if (t.contains("pcap")) setCaptive(t.getBoolean("pcap"));
         }
     }
 
@@ -627,17 +629,18 @@ public class PoliciaMision {
         m.start = sl.getGameTime();
         m.end = m.start + TIME[type];
         ACTIVE.put(m.pl, m);
-        if (!(type == 9 ? setup9(sl, sp, m) : setup(sl, sp, m))) {
+        if (!(type == 9 ? setup9(sl, sp, m) : type == 10 ? PoliciaBoard.setup10(sl, sp, m) : setup(sl, sp, m))) {
             cleanup(sl, m);
             PoliciaMod.msg(sp, "No encuentro un lugar para la mision, intente en otra zona");
             return;
         }
-        sp.sendSystemMessage(Component.literal("[Comisario] Mision: " + TITLE[type] + ". " + DESC[type] + " Tiempo: " + TIME[type] / 1200 + " min."));
-        PoliciaMod.msg(sp, "Mision aceptada: " + TITLE[type]);
+        PoliciaBoard.narrate(sp, type, m);
     }
 
     static void cleanup(ServerLevel sl, M m) {
         ACTIVE.remove(m.pl);
+        ServerPlayer cp = sl.getServer().getPlayerList().getPlayer(m.pl);
+        if (cp != null) PoliciaBoard.removeCompass(cp);
         for (UUID u : m.ents) {
             Entity e = sl.getEntity(u);
             if (e != null) {
@@ -671,6 +674,7 @@ public class PoliciaMision {
         sp.getPersistentData().putInt("pol_xp", PoliciaMod.xp(sp) + xp);
         sp.getPersistentData().putInt("pol_mdone", sp.getPersistentData().getInt("pol_mdone") + 1);
         give(sp, new ItemStack(Items.EMERALD, em));
+        PoliciaGrupo.share(sp, xp, em);
         String extra = "";
         if (m.type == 4 || m.type == 3) {
             give(sp, new ItemStack(Items.GOLDEN_APPLE));
@@ -698,6 +702,15 @@ public class PoliciaMision {
 
     static void free(ServerPlayer sp, Pj h) {
         M m = ACTIVE.get(sp.getUUID());
+        if (h.getPersistentData().getBoolean("pol_cas")) {
+            h.setCaptive(false);
+            h.removeEffect(MobEffects.GLOWING);
+            h.owner = sp.getUUID();
+            h.getPersistentData().putBoolean("pol_cas", false);
+            sp.sendSystemMessage(Component.literal("[Comisario] Rehen liberado."));
+            if (m != null && m.type == 10) finish(sp, sp.serverLevel(), m, 1.0);
+            return;
+        }
         if (m == null || m.type != 3 || !h.getUUID().equals(m.hostage)) {
             PoliciaMod.msg(sp, "No es el aldeano de su mision");
             return;
@@ -749,10 +762,10 @@ public class PoliciaMision {
                 if (m.phase == 1) sp.sendSystemMessage(Component.literal("[Comisario] Documento falso hallado. Hay otra pista mas adentro."));
                 else sp.sendSystemMessage(Component.literal("[Comisario] Ya sabemos donde se esconde el cerebro. Vaya a la guarida, con cuidado."));
             } else if (t % 40 == 0) {
-                PoliciaMod.msg(sp, "Pista " + (m.phase + 1) + "/2: " + dir(pos, p) + " - " + (m.end - now) / 20 + " s");
+                PoliciaMod.msg(sp, "Pista " + (m.phase + 1) + "/2: siga la brujula");
             }
         } else if (t % 40 == 0) {
-            PoliciaMod.msg(sp, "Guarida del cerebro: " + dir(pos, m.dest) + " - " + (m.end - now) / 20 + " s");
+            PoliciaMod.msg(sp, "Guarida del cerebro: siga la brujula");
         }
     }
 
@@ -775,7 +788,7 @@ public class PoliciaMision {
             return;
         }
         Vec3 pos = sp.position();
-        boolean hint = t % 40 == 0;
+        boolean hint = false;
         if (m.type == 9) {
             tick9(sp, sl, m, pos, t, now);
             return;
@@ -988,6 +1001,8 @@ public class PoliciaMision {
             sp.sendSystemMessage(Component.literal("[Comisario] Solo atiendo a policias. Vuelva con su placa."));
             return;
         }
+        PoliciaBoard.open(sp, com);
+        if (true) return;
         ServerLevel sl = sp.serverLevel();
         int[] ts = offered(com, sl);
         int done = sp.getPersistentData().getInt("pol_mdone");
