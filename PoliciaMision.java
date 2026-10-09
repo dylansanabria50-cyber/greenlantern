@@ -189,6 +189,8 @@ public class PoliciaMision {
                 this.getAttribute(Attributes.ARMOR).setBaseValue(4.0);
             }
             this.setHealth((float) HP[k]);
+            this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new net.minecraft.world.item.ItemStack(k == 2 ? net.minecraft.world.item.Items.BOW : k == 5 ? net.minecraft.world.item.Items.CROSSBOW : k == 10 ? net.minecraft.world.item.Items.AIR : (k == 4 || k == 11) ? net.minecraft.world.item.Items.IRON_SWORD : (k == 9 ? net.minecraft.world.item.Items.AIR : net.minecraft.world.item.Items.STONE_SWORD)));
+            this.setDropChance(net.minecraft.world.entity.EquipmentSlot.MAINHAND, 0.0f);
             this.setCustomName(Component.literal(NAMES[k]));
             this.setCustomNameVisible(k == 3 || k == 4 || k == 10 || k == 11);
             if (k == 11) {
