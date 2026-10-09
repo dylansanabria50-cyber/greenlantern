@@ -123,7 +123,7 @@ public class PoliciaStruct {
                 mx = Math.max(mx, y);
             }
         }
-        if (mx - mn > 5 || mx < sl.getMinBuildHeight() + 30) return -999;
+        if (mx - mn > (w > 25 ? 8 : 5) || mx < sl.getMinBuildHeight() + 30) return -999;
         return mx;
     }
 
@@ -215,14 +215,29 @@ public class PoliciaStruct {
         return true;
     }
 
-    /** La comisaria solo aparece junto a una aldea, fuera de sus casas. */
+    /** La comisaria solo aparece junto a una aldea (se detecta por sus aldeanos), fuera de sus casas. */
     static boolean genNearVillage(ServerPlayer sp, ServerLevel sl) {
-        BlockPos v = sl.findNearestMapStructure(net.minecraft.tags.StructureTags.VILLAGE, sp.blockPosition(), 12, false);
+        java.util.List<net.minecraft.world.entity.npc.Villager> vs = sl.getEntitiesOfClass(net.minecraft.world.entity.npc.Villager.class,
+                sp.getBoundingBox().inflate(90.0, 60.0, 90.0));
+        BlockPos v = null;
+        if (!vs.isEmpty()) {
+            net.minecraft.world.entity.npc.Villager an = vs.get(0);
+            for (net.minecraft.world.entity.npc.Villager vl : vs) if (vl.distanceToSqr(sp) < an.distanceToSqr(sp)) an = vl;
+            double sx = 0, sz = 0;
+            int n = 0;
+            for (net.minecraft.world.entity.npc.Villager vl : vs) {
+                if (vl.distanceToSqr(an) > 48.0 * 48.0) continue;
+                sx += vl.getX();
+                sz += vl.getZ();
+                n++;
+            }
+            v = new BlockPos((int) (sx / n), an.getBlockY(), (int) (sz / n));
+        }
         if (v == null) return false;
-        if (Sites.get(sl).near(0, v, 160)) return false;
-        for (int i = 0; i < 14; i++) {
+        if (Sites.get(sl).near(0, v, 140)) return false;
+        for (int i = 0; i < 30; i++) {
             double ang = sl.random.nextDouble() * Math.PI * 2.0;
-            double dd = 30.0 + sl.random.nextDouble() * 35.0;
+            double dd = 28.0 + sl.random.nextDouble() * 47.0;
             int cx = v.getX() + (int) (Math.cos(ang) * dd);
             int cz = v.getZ() + (int) (Math.sin(ang) * dd);
             int x0 = cx - W[0] / 2, z0 = cz - D[0] / 2;
@@ -391,11 +406,7 @@ public class PoliciaStruct {
     static void tryGen(ServerPlayer sp, ServerLevel sl) {
         Sites st = Sites.get(sl);
         for (int k = 0; k < 3; k++) {
-            if (k == 0) {
-                if (sl.random.nextInt(100) >= 35) continue;
-                if (genNearVillage(sp, sl)) return;
-                continue;
-            }
+            if (k == 0) continue;
             if (st.near(k, sp.blockPosition(), 320)) continue;
             if (sl.random.nextInt(100) >= 45) continue;
             for (int i = 0; i < 4; i++) {
@@ -420,6 +431,13 @@ public class PoliciaStruct {
                     // se reintenta mas tarde
                 }
             }
+            if (sp.tickCount % 200 == 133 && sp.serverLevel().dimension() == Level.OVERWORLD) {
+                try {
+                    genNearVillage(sp, sp.serverLevel());
+                } catch (RuntimeException ex) {
+                    ex.printStackTrace();
+                }
+            }
             if (sp.tickCount % 600 != 321) return;
             ServerLevel sl = sp.serverLevel();
             if (sl.dimension() != Level.OVERWORLD) return;
@@ -441,6 +459,10 @@ public class PoliciaStruct {
                         if (k < 0) {
                             c.getSource().sendFailure(net.minecraft.network.chat.Component.literal("Use: comisaria, obra o casino"));
                             return 0;
+                        }
+                        if (k == 0 && genNearVillage(p, p.serverLevel())) {
+                            c.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("Comisaria colocada junto a la aldea"), false);
+                            return 1;
                         }
                         Direction f = p.getDirection();
                         place(p.serverLevel(), k, p.getBlockX() + f.getStepX() * 14, p.getBlockZ() + f.getStepZ() * 14, true);
