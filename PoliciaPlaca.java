@@ -22,6 +22,10 @@ public class PoliciaPlaca {
     public static final RegistryObject<Item> BALDE = PoliciaShield.ITEMS.register("balde_albanil",
             () -> new JobBadge(new Item.Properties().stacksTo(1), "albanil", "albanil", "Pulsa B para activar el modo albanil"));
 
+    /** Guante de cuero negro: transforma en ladron. */
+    public static final RegistryObject<Item> GUANTE = PoliciaShield.ITEMS.register("guante_ladron",
+            () -> new JobBadge(new Item.Properties().stacksTo(1), "ladron", "ladron", "Pulsa B para activar el modo ladron"));
+
     /** Se llama desde el constructor del mod para que el objeto quede registrado a tiempo. */
     public static void init() { }
 
