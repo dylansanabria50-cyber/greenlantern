@@ -32,7 +32,8 @@ public class PoliciaBoard {
             "Un saboteador dejo tres bombas. Desactivelas rompiendolas antes de que acabe el tiempo. La brujula marca la mas cercana.",
             "El jefe de la banda se esconde con su guardia. La brujula le lleva a su escondite. Cacelo.",
             "Siga las pistas hasta la guarida de El Cerebro. Se teletransporta e invoca refuerzos. Vaya preparado.",
-            "Los ladrones del casino secuestraron a unos aldeanos. El casino esta bajo tierra, con tres plantas y mucha gente armada. La brujula le lleva a la entrada: baje, abrase paso y libere a un rehen."};
+            "Los ladrones del casino secuestraron a unos aldeanos. El casino esta bajo tierra, con tres plantas y mucha gente armada. La brujula le lleva a la entrada: baje, abrase paso y libere a un rehen.",
+            "Los vecinos denuncian un campamento de bandidos o un escondite de ladrones cerca. La brujula marca el lugar: asaltelo y elimine a todos sus habitantes. Cuidado con los arqueros y con el jefe."};
 
     static void init() {
         PoliciaMod.NET.registerMessage(3, Open.class, Open::enc, Open::dec, Open::handle);
