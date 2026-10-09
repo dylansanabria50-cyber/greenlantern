@@ -28,8 +28,8 @@ import java.util.List;
 /** Construcciones: comisaria, obra y casino subterraneo de tres plantas. */
 public class PoliciaStruct {
     static final String[] SN = {"comisaria", "obra", "casino"};
-    static final int[] W = {15, 17, 13};
-    static final int[] D = {11, 13, 13};
+    static final int[] W = {31, 17, 13};
+    static final int[] D = {23, 13, 13};
 
     static void init() {
         MinecraftForge.EVENT_BUS.register(new Ev());
@@ -128,6 +128,10 @@ public class PoliciaStruct {
     }
 
     static void prepare(ServerLevel sl, int x0, int z0, int w, int d, int g) {
+        prepareH(sl, x0, z0, w, d, g, 10);
+    }
+
+    static void prepareH(ServerLevel sl, int x0, int z0, int w, int d, int g, int h) {
         for (int x = x0; x < x0 + w; x++) {
             for (int z = z0; z < z0 + d; z++) {
                 for (int y = g; y > g - 14; y--) {
@@ -139,7 +143,7 @@ public class PoliciaStruct {
                         break;
                     }
                 }
-                for (int y = g + 1; y <= g + 10; y++) {
+                for (int y = g + 1; y <= g + h; y++) {
                     BlockPos p = new BlockPos(x, y, z);
                     if (!sl.getBlockState(p).isAir()) sl.setBlock(p, Blocks.AIR.defaultBlockState(), 2);
                 }
@@ -177,53 +181,15 @@ public class PoliciaStruct {
     // ------------------------------------------------------------------ comisaria
 
     static void comisaria(ServerLevel sl, int x0, int z0, int g) {
-        prepare(sl, x0 - 1, z0 - 1, 17, 13, g);
-        int x1 = x0 + 14, z1 = z0 + 10;
-        fill(sl, x0, g, z0, x1, g, z1, Blocks.POLISHED_ANDESITE);
-        for (int x = x0; x <= x1; x++) {
-            for (int z = z0; z <= z1; z++) {
-                boolean edge = x == x0 || x == x1 || z == z0 || z == z1;
-                if (!edge) continue;
-                for (int y = g + 1; y <= g + 4; y++) {
-                    Block b = y == g + 1 ? Blocks.BLUE_CONCRETE : Blocks.WHITE_CONCRETE;
-                    boolean win = (y == g + 2 || y == g + 3) && ((((x - x0) % 3 == 1) && (z == z0 || z == z1)) || (((z - z0) % 3 == 1) && (x == x0 || x == x1)));
-                    if (win) b = Blocks.BLUE_STAINED_GLASS;
-                    set(sl, x, y, z, b);
-                }
-            }
-        }
-        fill(sl, x0 + 6, g + 1, z1, x0 + 8, g + 3, z1, Blocks.AIR);
-        fill(sl, x0, g + 5, z0, x1, g + 5, z1, Blocks.BLUE_CONCRETE);
-        fill(sl, x0 - 1, g + 5, z0 - 1, x1 + 1, g + 5, z0 - 1, Blocks.WHITE_CONCRETE);
-        fill(sl, x0 - 1, g + 5, z1 + 1, x1 + 1, g + 5, z1 + 1, Blocks.WHITE_CONCRETE);
-        for (int lx : new int[]{3, 7, 11}) for (int lz : new int[]{3, 7}) set(sl, x0 + lx, g + 4, z0 + lz, Blocks.SEA_LANTERN);
-        // tabique con hueco hacia el despacho
-        fill(sl, x0 + 1, g + 1, z0 + 4, x0 + 13, g + 3, z0 + 4, Blocks.QUARTZ_BLOCK);
-        fill(sl, x0 + 6, g + 1, z0 + 4, x0 + 8, g + 3, z0 + 4, Blocks.AIR);
-        // despacho del jefe
-        fill(sl, x0 + 5, g + 1, z0 + 3, x0 + 9, g + 1, z0 + 3, Blocks.DARK_OAK_PLANKS);
-        set(sl, x0 + 7, g + 1, z0 + 1, Blocks.DARK_OAK_SLAB);
-        set(sl, x0 + 1, g + 1, z0 + 1, Blocks.BOOKSHELF);
-        set(sl, x0 + 1, g + 2, z0 + 1, Blocks.BOOKSHELF);
-        set(sl, x0 + 13, g + 1, z0 + 1, Blocks.BOOKSHELF);
-        set(sl, x0 + 13, g + 2, z0 + 1, Blocks.BOOKSHELF);
-        // sala principal
-        for (int dx : new int[]{3, 4, 10, 11}) set(sl, x0 + dx, g + 1, z0 + 7, Blocks.DARK_OAK_SLAB);
-        set(sl, x0 + 1, g + 1, z0 + 6, Blocks.BARREL);
-        set(sl, x0 + 13, g + 1, z0 + 6, Blocks.BARREL);
-        set(sl, x0 + 1, g + 1, z0 + 9, Blocks.CRAFTING_TABLE);
-        set(sl, x0 + 13, g + 1, z0 + 9, Blocks.CRAFTING_TABLE);
-        // farolas de entrada
-        set(sl, x0 + 5, g + 1, z1 + 1, Blocks.BLUE_CONCRETE);
-        set(sl, x0 + 5, g + 2, z1 + 1, Blocks.LANTERN);
-        set(sl, x0 + 9, g + 1, z1 + 1, Blocks.BLUE_CONCRETE);
-        set(sl, x0 + 9, g + 2, z1 + 1, Blocks.LANTERN);
-        BlockPos home = new BlockPos(x0 + 7, g + 1, z0 + 7);
-        npc(sl, 0, x0 + 7.5, g + 1.5, z0 + 1.5, 0.0f, null, 0);
-        npc(sl, 5, x0 + 4.5, g + 1, z0 + 8.5, 0.0f, home, 6);
-        npc(sl, 5, x0 + 10.5, g + 1, z0 + 8.5, 0.0f, home, 6);
-        npc(sl, 5, x0 + 7.5, g + 1, z0 + 6.5, 0.0f, home, 6);
-        Sites.get(sl).add(0, new BlockPos(x0 + 7, g + 1, z1));
+        prepareH(sl, x0 - 1, z0 - 1, PoliciaSchem.W + 2, PoliciaSchem.L + 2, g, PoliciaSchem.H + 2);
+        fill(sl, x0 + 8, g, z0 + 2, x0 + 28, g, z0 + 12, Blocks.STONE_BRICKS);
+        PoliciaSchem.paste(sl, x0, g + 1, z0);
+        BlockPos home = new BlockPos(x0 + 14, g + 1, z0 + 9);
+        npc(sl, 0, x0 + 24.5, g + 1.0, z0 + 9.5, 180.0f, null, 0);
+        npc(sl, 5, x0 + 10.5, g + 1, z0 + 5.5, 0.0f, home, 7);
+        npc(sl, 5, x0 + 14.5, g + 1, z0 + 9.5, 0.0f, home, 7);
+        npc(sl, 5, x0 + 18.5, g + 1, z0 + 9.5, 0.0f, home, 7);
+        Sites.get(sl).add(0, new BlockPos(x0 + 18, g + 1, z0 + 15));
     }
 
     // ------------------------------------------------------------------ obra
