@@ -126,7 +126,7 @@ public class PoliciaBubble {
 
     public static class Ev {
         @SubscribeEvent
-        public void tick(TickEvent.ServerTickEvent e) {
+        public void bTick(TickEvent.ServerTickEvent e) {
             if (e.phase != TickEvent.Phase.END || ACTIVE.isEmpty()) return;
             MinecraftServer srv = ServerLifecycleHooks.getCurrentServer();
             if (srv == null) return;
@@ -173,7 +173,7 @@ public class PoliciaBubble {
         }
 
         @SubscribeEvent
-        public void ltick(LivingEvent.LivingTickEvent e) {
+        public void bLtick(LivingEvent.LivingTickEvent e) {
             if (ACTIVE.isEmpty()) return;
             LivingEntity le = e.getEntity();
             if (le.level().isClientSide || le instanceof Player) return;
@@ -191,13 +191,13 @@ public class PoliciaBubble {
         }
 
         @SubscribeEvent
-        public void atk(LivingAttackEvent e) {
+        public void bAtk(LivingAttackEvent e) {
             if (!(e.getEntity() instanceof ServerPlayer p) || !ACTIVE.containsKey(p.getUUID())) return;
             if (e.getSource().is(DamageTypeTags.IS_PROJECTILE)) e.setCanceled(true);
         }
 
         @SubscribeEvent
-        public void hurt(LivingHurtEvent e) {
+        public void bHurt(LivingHurtEvent e) {
             if (!(e.getEntity() instanceof ServerPlayer p) || !ACTIVE.containsKey(p.getUUID())) return;
             if (e.getSource().getEntity() != null) e.setAmount(e.getAmount() * 0.4f);
         }
