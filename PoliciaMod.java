@@ -197,6 +197,7 @@ public class PoliciaMod {
         }
         if (id == 4) { if (p.getVehicle() instanceof PoliciaTractor.TractorEntity) PoliciaTractor.lamp(p); else if ("albanil".equals(job(p))) PoliciaAlbanil.toggleLamp(p); else PoliciaHeli.toggleLight(p); return; }
         if (id == 5 || id == 6) { if (p.getVehicle() instanceof PoliciaTractor.TractorEntity) PoliciaTractor.arm(p, id == 5 ? 1 : -1); else PoliciaHeli.vert(p, id == 5 ? 1 : -1); return; }
+        if (id == 61) { PoliciaRefuerzo.cycle(p); return; }
         if ("albanil".equals(job(p))) { PoliciaAlbanil.act(p, id); return; }
         if (id == 30) { // mejorar REFUERZO (cuesta XP)
             int lv = rlevel(p);
