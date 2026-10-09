@@ -27,7 +27,7 @@ public class PoliciaTreeScreen extends Screen {
             "Invoca un perro policia que te protege, ataca amenazas y marca con brillo a los enemigos cercanos. Dura 45 s. Enfriamiento: 60 s.",
             "Despliega una patrulla con sirena: los mobs hostiles cercanos huyen de miedo y la torreta dispara a los que esten a tiro. Dura 20 s. Enfriamiento: 40 s.",
             "Un dron vigila sobre ti 45 s y marca con brillo, incluso tras las paredes, a las amenazas en 32 m. Enfriamiento: 60 s.",
-            "Recompensa de la mision especial El cerebro de la organizacion. Una esfera azul de 14 bloques te sigue 10 s: todo lo que entra (enemigos, flechas, otros jugadores) se mueve muy lento, menos tu. Bloquea proyectiles y reduce el dano cuerpo a cuerpo. Enfriamiento: 40 s."};
+            "Recompensa de la mision especial El cerebro de la organizacion. Una esfera azul de 14 bloques te sigue 23 s: todo lo que entra (enemigos, flechas, otros jugadores) se mueve muy lento, menos tu. Bloquea proyectiles y reduce el dano cuerpo a cuerpo. Enfriamiento: 26 s."};
     /** Posicion de cada habilidad en la cuadricula (columna, fila). */
     static final int[] CX = {174, 72, 174, 276, 174, 38, 106, 242, 310, 276};
     static final int[] ROW = {0, 1, 1, 1, 2, 2, 2, 2, 2, 0};
