@@ -79,7 +79,7 @@ public class PoliciaExtra {
     }
 
     /** Enfriamiento (ticks) de cada habilidad, por indice de la rama. */
-    static final int[] CD = {0, 0, 0, 0, 0, 600, 1200, 800, 1200, 1000};
+    static final int[] CD = {0, 0, 0, 0, 0, 600, 1200, 800, 1200, 980};
     static final int CUFF_T = 300;        // 15 s esposado
     static final int K9_LIFE = 900;       // 45 s
     static final int SIREN_LIFE = 400;    // 20 s
