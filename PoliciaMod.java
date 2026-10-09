@@ -511,7 +511,7 @@ public class PoliciaMod {
     public void onClone(PlayerEvent.Clone e) {
         CompoundTag o = e.getOriginal().getPersistentData();
         CompoundTag n = e.getEntity().getPersistentData();
-        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver", "pol_rl", "pol_job", "pol_hcd_t", "alb_lv","alb_hl","alb_ench","alb_mode","alb_bank","alb_lu", "alb_tu", "alb_tinv", "alb_sel", "alb_chest", "alb_inner", "alb_c0", "alb_c1", "pol_mdone", "pol_bdone", "pol_cerebro", "pol_lsu", "pol_lsi", "pol_lun", "pol_lse", "pol_cin0", "pol_cin2", "pol_comp", "pol_party"}) {
+        for (String k : new String[]{"pol_on", "pol_xp", "pol_sel", "pol_un", "pol_ver", "pol_rl", "pol_job", "pol_hcd_t", "alb_lv", "alb_pl", "alb_hl","alb_ench","alb_mode","alb_bank","alb_lu", "alb_tu", "alb_tinv", "alb_sel", "alb_chest", "alb_inner", "alb_c0", "alb_c1", "pol_mdone", "pol_bdone", "pol_cerebro", "pol_lsu", "pol_lsi", "pol_lun", "pol_lse", "pol_cin0", "pol_cin2", "pol_comp", "pol_party"}) {
             if (o.contains(k)) n.put(k, o.get(k).copy());
         }
     }
