@@ -1,6 +1,9 @@
 package com.example.policia;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraftforge.registries.DeferredRegister;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
@@ -82,6 +85,23 @@ public class PoliciaBoss {
     public static final RegistryObject<Item> VEST = PoliciaShield.ITEMS.register("chaleco_antibalas",
             () -> new ArmorItem(VestMat.INSTANCE, ArmorItem.Type.CHESTPLATE, new Item.Properties()));
 
+    public static final DeferredRegister<CreativeModeTab> TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, "policia");
+
+    public static final RegistryObject<CreativeModeTab> TAB = TABS.register("oficios",
+            () -> CreativeModeTab.builder().title(Component.literal("Oficios"))
+                    .icon(() -> new ItemStack(PoliciaPlaca.PLACA.get()))
+                    .displayItems((params, out) -> {
+                        out.accept(PoliciaPlaca.PLACA.get());
+                        out.accept(PoliciaPlaca.BALDE.get());
+                        out.accept(PoliciaPlaca.GUANTE.get());
+                        out.accept(PoliciaShield.SHIELD.get());
+                        out.accept(VEST.get());
+                        String[][] sk = {{"refuerzo", "Refuerzo"}, {"k9", "Perro K9"}, {"esposas", "Esposas"}, {"sirena", "Sirena y torreta"},
+                                {"dron", "Dron de vigilancia"}, {"burbuja", "Escudo de burbuja"}, {"pico", "Pico de albanil"},
+                                {"muro", "Muro"}, {"refugio", "Refugio"}, {"silbido", "Silbido"}};
+                        for (String[] x : sk) out.accept(single(x[0], x[1]));
+                    }).build());
+
     // 0 jefe de policia, 1 capataz, 2 jefe de ladrones, 3 perista, 4 guardia ladron, 5 agente, 6 obrero
     static final String[] NAMES = {"Jefe de policia", "Capataz", "Jefe de ladrones", "Perista", "Ladron", "Agente", "Obrero"};
     static final String[] JOBS = {"policia", "albanil", "ladron"};
@@ -89,6 +109,7 @@ public class PoliciaBoss {
 
     static void init() {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(PoliciaBoss::attrs);
+        TABS.register(FMLJavaModLoadingContext.get().getModEventBus());
         MinecraftForge.EVENT_BUS.register(new Ev());
     }
 
