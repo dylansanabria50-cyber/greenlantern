@@ -121,6 +121,7 @@ public class PoliciaBossRender extends MobRenderer<PoliciaBoss.BossNpc, PoliciaB
     }
 
     @Override
-    protected void scale(PoseStack ps, PoliciaBoss.BossNpc e, float pt) {
+    protected void scale(PoliciaBoss.BossNpc e, PoseStack ps, float pt) {
+        if (e.sitting()) ps.translate(0.0, 0.7, 0.0);
     }
 }
