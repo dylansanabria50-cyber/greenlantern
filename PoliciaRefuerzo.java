@@ -140,6 +140,7 @@ public class PoliciaRefuerzo {
 
         boolean threat(LivingEntity e) {
             if (e instanceof AgentEntity || (owner != null && e.getUUID().equals(owner))) return false;
+            if (e instanceof PoliciaMision.Pj bj) return bj.hostile();
             if (e instanceof Enemy) return true;
             return owner != null && e instanceof Mob m && m.getTarget() != null && owner.equals(m.getTarget().getUUID());
         }
