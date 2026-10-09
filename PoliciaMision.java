@@ -204,7 +204,50 @@ public class PoliciaMision {
 
         boolean hostile() { int k = kind(); return (k >= 1 && k <= 5) || k == 11; }
 
-        boolean flees() { int k = kind(); return k == 0 || k == 6 || k == 7 || k == 8; }
+        ItemStack stolen = ItemStack.EMPTY;
+        int fleeT = 0, stealCd = 100, hits = 0;
+        boolean sneaking = false;
+
+        /** Ladron de campamento: se acerca de a uno, roba un objeto al azar y huye. */
+        boolean thief() { return kind() == 0 && this.getPersistentData().getBoolean("pol_camp"); }
+
+        boolean flees() { int k = kind(); return (k == 0 && (!thief() || !stolen.isEmpty() || fleeT > 0)) || k == 6 || k == 7 || k == 8; }
+
+        void steal(Player p) {
+            List<Integer> slots = new ArrayList<>();
+            for (int i = 0; i < 36; i++) if (!p.getInventory().getItem(i).isEmpty()) slots.add(i);
+            if (slots.isEmpty()) { stealCd = 600; return; }
+            ItemStack it = p.getInventory().getItem(slots.get(this.random.nextInt(slots.size())));
+            stolen = it.split(Math.min(it.getCount(), 16));
+            p.getInventory().setChanged();
+            this.getPersistentData().put("pol_stolen", stolen.save(new CompoundTag()));
+            fleeT = 1200;
+            hits = 0;
+            this.playSound(SoundEvents.ITEM_PICKUP, 1.0f, 0.7f);
+            if (p instanceof ServerPlayer sp) sp.sendSystemMessage(Component.literal("Un ladron te robo " + stolen.getCount() + " x " + stolen.getHoverName().getString() + "! Pegale 2 veces para que lo suelte"));
+        }
+
+        void dropStolen() {
+            if (stolen.isEmpty()) return;
+            this.spawnAtLocation(stolen);
+            stolen = ItemStack.EMPTY;
+            this.getPersistentData().remove("pol_stolen");
+            hits = 0;
+            fleeT = 300;
+            stealCd = 1200;
+            this.playSound(SoundEvents.ITEM_PICKUP, 1.0f, 1.3f);
+            if (this.level() instanceof ServerLevel sl) sl.sendParticles(ParticleTypes.POOF, getX(), getY() + 1, getZ(), 10, 0.3, 0.5, 0.3, 0.02);
+        }
+
+        @Override
+        public boolean hurt(DamageSource s, float a) {
+            boolean r = super.hurt(s, a);
+            if (r && !this.level().isClientSide && thief()) {
+                fleeT = Math.max(fleeT, 100);
+                if (!stolen.isEmpty() && s.getEntity() instanceof Player && ++hits >= 2) dropStolen();
+            }
+            return r;
+        }
 
         boolean melee() { int k = kind(); return k == 1 || k == 3 || k == 4 || k == 11; }
 
@@ -252,6 +295,71 @@ public class PoliciaMision {
             this.goalSelector.addGoal(1, new AvoidEntityGoal<Player>(this, Player.class, 18.0f, 1.0, 1.35) {
                 @Override
                 public boolean canUse() { return Pj.this.flees() && !Pj.this.captive() && super.canUse(); }
+            });
+            this.goalSelector.addGoal(2, new Goal() {
+                Player tgt;
+                int t = 0;
+
+                {
+                    this.setFlags(EnumSet.of(Goal.Flag.MOVE));
+                }
+
+                @Override
+                public boolean canUse() {
+                    if (!Pj.this.thief() || Pj.this.captive() || !Pj.this.stolen.isEmpty() || Pj.this.fleeT > 0 || Pj.this.stealCd > 0) return false;
+                    if (Pj.this.getRandom().nextInt(10) != 0) return false;
+                    Player best = null;
+                    double bd = 18.0 * 18.0;
+                    for (Player p : Pj.this.level().players()) {
+                        if (p.isCreative() || p.isSpectator() || !p.isAlive() || "ladron".equals(PoliciaMod.job(p))) continue;
+                        double d = p.distanceToSqr(Pj.this);
+                        if (d < bd) { bd = d; best = p; }
+                    }
+                    if (best == null) return false;
+                    if (!Pj.this.level().getEntitiesOfClass(Pj.class, Pj.this.getBoundingBox().inflate(24.0), x -> x != Pj.this && x.sneaking).isEmpty()) return false;
+                    tgt = best;
+                    return true;
+                }
+
+                @Override
+                public boolean canContinueToUse() {
+                    return tgt != null && tgt.isAlive() && Pj.this.stolen.isEmpty() && Pj.this.fleeT <= 0 && t < 700 && Pj.this.distanceToSqr(tgt) < 30.0 * 30.0;
+                }
+
+                @Override
+                public void start() {
+                    Pj.this.sneaking = true;
+                    t = 0;
+                }
+
+                @Override
+                public void stop() {
+                    Pj.this.sneaking = false;
+                    tgt = null;
+                    Pj.this.stealCd = 200;
+                    Pj.this.getNavigation().stop();
+                }
+
+                @Override
+                public void tick() {
+                    t++;
+                    net.minecraft.world.phys.Vec3 look = tgt.getLookAngle();
+                    double dx = Pj.this.getX() - tgt.getX(), dz = Pj.this.getZ() - tgt.getZ();
+                    double len = Math.sqrt(dx * dx + dz * dz);
+                    double hl = Math.max(1.0E-4, Math.sqrt(look.x * look.x + look.z * look.z));
+                    boolean seen = len > 1.0E-4 && (look.x * dx + look.z * dz) / (len * hl) > 0.2;
+                    double d2 = Pj.this.distanceToSqr(tgt);
+                    if (!seen && d2 < 2.4 * 2.4) {
+                        Pj.this.steal(tgt);
+                        return;
+                    }
+                    if (seen && d2 < 64.0) {
+                        Pj.this.getNavigation().stop();
+                        Pj.this.getLookControl().setLookAt(tgt, 30.0f, 30.0f);
+                    } else if (t % 5 == 0) {
+                        Pj.this.getNavigation().moveTo(tgt, seen ? 0.8 : 1.1);
+                    }
+                }
             });
             this.goalSelector.addGoal(2, new RangedAttackGoal(this, 1.0, 30, 16.0f) {
                 @Override
@@ -355,6 +463,9 @@ public class PoliciaMision {
                 this.discard();
                 return;
             }
+            if (stealCd > 0) stealCd--;
+            if (fleeT > 0) fleeT--;
+            if (stolen.isEmpty() && this.getPersistentData().contains("pol_stolen")) stolen = ItemStack.of(this.getPersistentData().getCompound("pol_stolen"));
             if (kind() == 4 || kind() == 11) bar.setProgress(Mth.clamp(getHealth() / getMaxHealth(), 0.0f, 1.0f));
             if (kind() == 11) cerebro();
         }
@@ -390,6 +501,7 @@ public class PoliciaMision {
             if (k == 0 || k == 6 || k == 8) this.spawnAtLocation(new ItemStack(Items.EMERALD, 2 + this.random.nextInt(3)));
             else if (k >= 1 && k <= 5 && this.random.nextInt(3) == 0) this.spawnAtLocation(new ItemStack(Items.EMERALD));
             if (k == 4) this.spawnAtLocation(new ItemStack(Items.GOLD_INGOT, 4));
+            dropStolen();
         }
 
         @Override
