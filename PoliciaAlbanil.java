@@ -59,6 +59,7 @@ public class PoliciaAlbanil {
     static final int WALL_T = 300, WALL_CD = 100;      // 15 s y 5 s
     static final int HOUSE_T = 700, HOUSE_CD = 800;    // 35 s y 40 s
     static final int COST = 10;
+    static final int COST2 = 40;                       // REFUGIO II
 
     /** Estado del propio jugador, visto por su cliente. */
     public static class AlbSync {
@@ -91,7 +92,7 @@ public class PoliciaAlbanil {
     static void send(ServerPlayer p) {
         CompoundTag d = p.getPersistentData();
         AlbSync m = new AlbSync();
-        m.lv = Math.max(0, Math.min(2, d.getInt("alb_lv")));
+        m.lv = Math.max(0, Math.min(3, d.getInt("alb_lv")));
         m.sel = d.getInt("alb_sel");
         m.pickT = d.getInt("alb_pick");
         m.structT = d.getInt("alb_st");
@@ -117,10 +118,10 @@ public class PoliciaAlbanil {
         if (s == 2) return "AYUDANTE";
         if (s == 3) return "LINTERNA";
         if (s == 4) return "TRACTOR";
-        return s == 0 ? NAMES[0] : (lv(p) >= 2 ? NAMES[2] : NAMES[1]);
+        return s == 0 ? NAMES[0] : (lv(p) >= 3 ? "REFUGIO II" : (lv(p) >= 2 ? NAMES[2] : NAMES[1]));
     }
 
-    static int lv(ServerPlayer p) { return Math.max(0, Math.min(2, p.getPersistentData().getInt("alb_lv"))); }
+    static int lv(ServerPlayer p) { return Math.max(0, Math.min(3, p.getPersistentData().getInt("alb_lv"))); }
 
     // ---------- acciones ----------
     static void act(ServerPlayer p, int id) {
@@ -130,6 +131,18 @@ public class PoliciaAlbanil {
         if (id == 42) { PoliciaTractor.unlock(p); return; }
         if (id == 15) {
             if (d.getInt("alb_tu") >= 1) { d.putInt("alb_sel", 4); PoliciaMod.msg(p, "Habilidad: TRACTOR"); PoliciaMod.sync(p); }
+            return;
+        }
+        if (id == 43) { // mejorar REFUGIO a nivel 2
+            int lv = lv(p);
+            if (lv >= 3) { PoliciaMod.msg(p, "REFUGIO II ya esta desbloqueado"); return; }
+            if (lv < 2) { PoliciaMod.msg(p, "Desbloquea primero: REFUGIO"); return; }
+            if (PoliciaMod.xp(p) < COST2) { PoliciaMod.msg(p, "Necesitas " + COST2 + " XP (tienes " + PoliciaMod.xp(p) + ")"); return; }
+            d.putInt("pol_xp", PoliciaMod.xp(p) - COST2);
+            d.putInt("alb_lv", 3);
+            PoliciaMod.msg(p, "Habilidad mejorada: REFUGIO II");
+            p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.0f);
+            PoliciaMod.sync(p);
             return;
         }
         if (id == 41) { // desbloquear LINTERNA
@@ -240,10 +253,11 @@ public class PoliciaAlbanil {
                 d.putInt("alb_st", house ? HOUSE_T : WALL_T);
                 d.putInt("alb_house", house ? 1 : 0);
             }
-            if (house) buildHouse(p);
+            if (house && lv(p) >= 3) buildHouse2(p);
+            else if (house) buildHouse(p);
             else { buildWall(p); d.putInt("alb_walls", d.getInt("alb_walls") + 1); }
             p.level().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.ANVIL_USE, SoundSource.PLAYERS, 0.7f, 1.2f);
-            PoliciaMod.msg(p, house ? "REFUGIO levantado" : "MURO " + d.getInt("alb_walls") + "/3");
+            PoliciaMod.msg(p, house ? (lv(p) >= 3 ? "REFUGIO II levantado" : "REFUGIO levantado") : "MURO " + d.getInt("alb_walls") + "/3");
         }
         PoliciaMod.sync(p);
     }
@@ -425,6 +439,98 @@ public class PoliciaAlbanil {
         CompoundTag d = p.getPersistentData();
         d.putLongArray("alb_w", arr);
         d.putString("alb_wd", p.level().dimension().location().toString());
+        d.remove("alb_wb");
+        d.remove("alb_cp");
+    }
+
+    /** Uso unico (compra en la tienda): dura lo mismo que la habilidad del oficio y luego desaparece. */
+    static boolean useSingle(ServerPlayer p, int kind) {
+        CompoundTag d = p.getPersistentData();
+        if (!isAlb(p)) { PoliciaMod.msg(p, "Solo un albanil puede usar esta habilidad"); return false; }
+        if (kind == 0) {
+            if (d.getInt("alb_pick") > 0 || d.getBoolean("alb_saved")) { PoliciaMod.msg(p, "El pico ya esta activo"); return false; }
+            d.putInt("alb_pick", PICK_T);
+            startPick(p);
+            send(p);
+            return true;
+        }
+        if (d.getInt("alb_st") > 0 || d.getLongArray("alb_w").length > 0) { PoliciaMod.msg(p, "Ya hay una construccion en pie"); return false; }
+        d.putInt("alb_walls", kind == 1 ? 1 : 0);
+        d.putInt("alb_house", kind == 2 ? 1 : 0);
+        d.putInt("alb_st", kind == 2 ? HOUSE_T : WALL_T);
+        if (kind == 2) buildHouse(p); else buildWall(p);
+        send(p);
+        return true;
+    }
+
+    static BlockPos rotAt(BlockPos a, int dx, int dz, int steps) {
+        for (int k = 0; k < steps; k++) {
+            int nx = -dz, nz = dx;
+            dx = nx;
+            dz = nz;
+        }
+        return new BlockPos(a.getX() + dx, a.getY(), a.getZ() + dz);
+    }
+
+    /** REFUGIO II: torre de cuatro pisos del esquema, sobre la superficie y con la puerta hacia el jugador. */
+    static void buildHouse2(ServerPlayer p) {
+        ServerLevel lv = p.serverLevel();
+        CompoundTag d = p.getPersistentData();
+        if (d.getLongArray("alb_w").length > 0) removeStruct(p);
+        Direction f = p.getDirection();
+        int steps = (f.getOpposite().get2DDataValue() - Direction.SOUTH.get2DDataValue() + 4) % 4;
+        net.minecraft.world.level.block.Rotation rot = net.minecraft.world.level.block.Rotation.values()[steps];
+        BlockPos pp = p.blockPosition();
+        BlockPos a = pp.relative(f, 2);
+        int top = pp.getY();
+        for (int sx = 3; sx <= 24; sx += 3) {
+            for (int sz = 3; sz <= 19; sz += 4) {
+                BlockPos w = rotAt(a, sx - 16, sz - 19, steps);
+                top = Math.max(top, lv.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, w.getX(), w.getZ()));
+            }
+        }
+        if (top - pp.getY() > 8) top = pp.getY();
+        int[] cells = PoliciaRef.cells();
+        List<Long> out = new ArrayList<>();
+        List<Integer> ids = new ArrayList<>();
+        BlockPos chest = null;
+        for (int y = 0; y < PoliciaRef.H; y++) {
+            for (int z = 0; z < PoliciaRef.L; z++) {
+                for (int x = 0; x < PoliciaRef.W; x++) {
+                    int i = cells[(y * PoliciaRef.L + z) * PoliciaRef.W + x];
+                    if (i < 0) continue;
+                    BlockState s = PoliciaRef.state(i).rotate(rot);
+                    BlockPos q = rotAt(a, x - 16, z - 19, steps);
+                    BlockPos bp = new BlockPos(q.getX(), top + y, q.getZ());
+                    if (!free(lv, bp)) continue;
+                    lv.setBlock(bp, s, 18);
+                    out.add(bp.asLong());
+                    ids.add(BuiltInRegistries.BLOCK.getId(s.getBlock()));
+                    LIVE.add(bp.asLong());
+                    if (x == 12 && y == 1 && z == 10) chest = bp;
+                    if (y == 0) {
+                        for (int k = 1; k <= 9; k++) {
+                            BlockPos u = bp.below(k);
+                            if (!free(lv, u)) break;
+                            lv.setBlock(u, s, 18);
+                            out.add(u.asLong());
+                            ids.add(BuiltInRegistries.BLOCK.getId(s.getBlock()));
+                            LIVE.add(u.asLong());
+                        }
+                    }
+                }
+            }
+        }
+        if (chest != null && d.contains("alb_chest") && lv.getBlockEntity(chest) instanceof ChestBlockEntity cbe) {
+            cbe.load(d.getCompound("alb_chest").copy());
+            cbe.setChanged();
+        }
+        store(p, out);
+        int[] arr = new int[ids.size()];
+        for (int k = 0; k < arr.length; k++) arr[k] = ids.get(k);
+        d.putIntArray("alb_wb", arr);
+        if (chest != null) d.putLong("alb_cp", chest.asLong());
+        d.remove("alb_o");
     }
 
     static void buildWall(ServerPlayer p) {
@@ -590,10 +696,31 @@ public class PoliciaAlbanil {
             for (long l : arr) ours.add(l);
             captureInner(p, lv, ours);
         }
-        for (long l : arr) {
+        int[] wb = d.getIntArray("alb_wb");
+        boolean big = wb.length == arr.length && arr.length > 0;
+        long cp = d.contains("alb_cp") ? d.getLong("alb_cp") : Long.MIN_VALUE;
+        for (int n = 0; n < arr.length; n++) {
+            long l = arr[n];
             BlockPos bp = BlockPos.of(l);
             LIVE.remove(l);
             BlockState st = lv.getBlockState(bp);
+            if (big) {
+                if (BuiltInRegistries.BLOCK.getId(st.getBlock()) != wb[n]) continue;
+                BlockEntity be = lv.getBlockEntity(bp);
+                if (be instanceof Container ct) {
+                    if (l == cp && be instanceof ChestBlockEntity cb) {
+                        CompoundTag keep = new CompoundTag();
+                        keep.put("Items", cb.saveWithoutMetadata().getList("Items", 10).copy());
+                        d.put("alb_chest", keep);
+                        cb.clearContent();
+                    } else {
+                        net.minecraft.world.Containers.dropContents(lv, bp, ct);
+                        ct.clearContent();
+                    }
+                }
+                lv.setBlock(bp, Blocks.AIR.defaultBlockState(), 18);
+                continue;
+            }
             if (!MINE.contains(st.getBlock())) continue;
             if (st.is(Blocks.CHEST) && lv.getBlockEntity(bp) instanceof ChestBlockEntity cbe) {
                 CompoundTag full = cbe.saveWithoutMetadata();
@@ -605,6 +732,8 @@ public class PoliciaAlbanil {
             lv.setBlock(bp, Blocks.AIR.defaultBlockState(), 3);
         }
         d.remove("alb_w");
+        d.remove("alb_wb");
+        d.remove("alb_cp");
         lv.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.STONE_BREAK, SoundSource.PLAYERS, 0.8f, 0.8f);
     }
 
