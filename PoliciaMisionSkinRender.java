@@ -36,6 +36,37 @@ public class PoliciaMisionSkinRender extends MobRenderer<PoliciaMision.Pj, Polic
             if (e.isAggressive() && !ranged && k != 9 && k != 10) {
                 AnimationUtils.animateZombieArms(this.leftArm, this.rightArm, true, this.attackTime, ageInTicks);
             }
+            float t = ageInTicks;
+            boolean idle = limbSwingAmount < 0.04f && !e.isAggressive();
+            if (k == 9 && e.captive()) {
+                // rehen atado: cabeza gacha, munecas juntas y temblor
+                this.head.xRot = 0.4f;
+                this.leftArm.xRot = -0.9f;
+                this.rightArm.xRot = -0.9f;
+                this.leftArm.yRot = 0.5f;
+                this.rightArm.yRot = -0.5f;
+                this.leftArm.zRot += (float) Math.sin(t * 1.7f) * 0.03f;
+            } else if (k == 10 && idle) {
+                // el comisario escribe en su libreta
+                this.rightArm.xRot = -1.1f + (float) Math.sin(t * 0.5f) * 0.08f;
+                this.leftArm.xRot = -1.0f;
+                this.leftArm.yRot = 0.4f;
+                this.head.xRot = 0.2f;
+            } else if (idle) {
+                if (k != 5) {
+                    // bandido: vigila, se rasca la cabeza cada tanto
+                    float c = t % 200.0f;
+                    if (c < 40.0f) {
+                        this.rightArm.xRot = -2.3f + (float) Math.sin(t * 0.6f) * 0.1f;
+                        this.rightArm.yRot = -0.4f;
+                    }
+                    this.head.yRot += (float) Math.sin(t * 0.05f) * 0.5f;
+                }
+                float br = (float) Math.sin(t * 0.09f) * 0.04f + 0.03f;
+                this.rightArm.zRot += br;
+                this.leftArm.zRot -= br;
+            }
+            this.hat.copyFrom(this.head);
             this.leftSleeve.copyFrom(this.leftArm);
             this.rightSleeve.copyFrom(this.rightArm);
         }
