@@ -22,13 +22,13 @@ public class PoliciaBook {
 
     static final String[] POLICIA = {
             "OFICIO POLICIA\n\nB: activar o desactivar el modo policia.\nJ: usar la habilidad elegida.\nK: cambiar de habilidad.\n\nLas habilidades se desbloquean en el arbol de habilidades (clic en el icono) y cuestan XP.",
-            "1. ESCUDO BALISTICO (J)\n\nTe protege durante unos segundos y luego entra en enfriamiento.\n\n2. REFUERZO (J)\n\nLlama a policias que luchan a tu lado. Se mejora hasta el nivel 4 con XP.",
+            "1. ESCUDO BALISTICO (J)\n\nTe protege durante unos segundos y luego entra en enfriamiento.\n\n2. REFUERZO (J)\n\nLlama a policias que luchan a tu lado. Tecla R: cambia la orden (proteger / atacar a quien te ataco / dividirse y atacar). Se mejora hasta el nivel 4 con XP.",
             "3. TANQUE (J)\n\nApunta y haz clic derecho para disparar un proyectil explosivo.\n\n4. TANQUE MOVIL\n\nPilotable: W/A/S/D para moverte, clic derecho para disparar (3 disparos). Mayus: bajarte. J: volver a subir.",
             "5. HELICOPTERO (J)\n\nW / S: avanzar. A / D: desplazarte.\nESPACIO: subir. CTRL: bajar.\nG: modo linterna.\nMayus: salir.",
             "6. ESPOSAS\n7. PERRO K9\n8. SIRENA Y TORRETA\n9. DRON DE VIGILANCIA\n\nElige la habilidad con K y usala con J. Cada una se desbloquea en el arbol de habilidades.",
             "COMISARIO Y MISIONES\n\nEn cada aldea hay un comisario junto a la campana. Clic derecho: tablero con 3 misiones (se renuevan cada dia). Solo atiende a policias.\n\nMisiones: atrapar fugitivo, patrulla de 3 puntos, rescate, limpiar campamento, evidencia, escolta y bombas. Cada 3 cumplidas se desbloquea cazar al jefe de banda.",
             "ENEMIGOS\n\nLadron, evadido y contrabandista huyen: esposalos. Pandilleros con garrote y arco, lideres, jefe de banda con barra de vida y francotiradores de torre (usa el escudo balistico). Saboteadores dejan bombas: rompe el bloque de TNT para desactivarlo. Recompensas: XP, esmeraldas y objetos especiales.",
-            "MISION ESPECIAL\n\nTras cazar al primer jefe de banda, el tablero ofrece El cerebro de la organizacion: dos pistas y una guarida con el jefe final, que se teletransporta e invoca refuerzos.\n\nPremio: ESCUDO DE BURBUJA (J). Esfera azul de 2,5 bloques que te sigue 10 s: todo lo de adentro va muy lento menos tu. Enfriamiento 40 s."};
+            "MISION ESPECIAL\n\nTras cazar al primer jefe de banda, el tablero ofrece El cerebro de la organizacion: dos pistas y una guarida con el jefe final, que se teletransporta e invoca refuerzos.\n\nPremio: ESCUDO DE BURBUJA (J). Esfera azul de 4 bloques que te sigue 10 s: todo lo de adentro va muy lento menos tu. Enfriamiento 40 s."};
 
     static void give(ServerPlayer p, String job) {
         String[] pg = "albanil".equals(job) ? ALBANIL : ("policia".equals(job) ? POLICIA : null);
