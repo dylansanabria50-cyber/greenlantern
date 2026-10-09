@@ -155,6 +155,7 @@ public class PoliciaMod {
         PoliciaExtra.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
         PoliciaHeli.ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
         PoliciaPlaca.init();
+        PoliciaLadron.init();
         PoliciaAlbanil.init();
         MinecraftForge.EVENT_BUS.register(new PoliciaAlbanil());
         PoliciaExtra.EFFECTS.register(FMLJavaModLoadingContext.get().getModEventBus());
@@ -172,6 +173,7 @@ public class PoliciaMod {
         m.shield = shield(p); m.cooldown = cooldown(p); m.xp = xp(p); m.sel = sel(p); m.un = un(p); m.tcd = p.getPersistentData().getInt("pol_tcd"); m.rl = rlevel(p); m.rcd = p.getPersistentData().getInt("pol_rcd");
         m.c5 = PoliciaExtra.cd(p, 5); m.c6 = PoliciaExtra.cd(p, 6); m.c7 = PoliciaExtra.cd(p, 7); m.c8 = PoliciaExtra.cd(p, 8); m.c9 = PoliciaExtra.cd(p, 9);
         m.jb = "albanil".equals(job(p)) ? 2 : ("policia".equals(job(p)) ? 1 : 0);
+        if ("ladron".equals(job(p))) { m.jb = 3; m.rl = PoliciaLadron.luck(p); m.c5 = PoliciaLadron.wcd(p); m.un = PoliciaLadron.whistle(p) ? 1 : 0; }
         return m;
     }
 
@@ -185,7 +187,7 @@ public class PoliciaMod {
     static void act(ServerPlayer p, int id) {
         CompoundTag d = p.getPersistentData();
         if (id == 0) { // alternar forma policia (skin)
-            if (!on(p) && job(p).isEmpty()) { msg(p, "Necesitas un oficio: craftea una Placa de policia o un Balde de albanil y usalo"); return; }
+            if (!on(p) && job(p).isEmpty()) { msg(p, "Necesitas un oficio: craftea una Placa de policia, un Balde de albanil o un Guante de ladron y usalo"); return; }
             d.putBoolean("pol_on", !on(p));
             if (!on(p)) { d.putInt("pol_shield", 0); endShield(p); if ("albanil".equals(job(p))) PoliciaAlbanil.reset(p); }
             d.putInt("pol_tf", 40);
@@ -198,6 +200,7 @@ public class PoliciaMod {
         if (id == 4) { if (p.getVehicle() instanceof PoliciaTractor.TractorEntity) PoliciaTractor.lamp(p); else if ("albanil".equals(job(p))) PoliciaAlbanil.toggleLamp(p); else PoliciaHeli.toggleLight(p); return; }
         if (id == 5 || id == 6) { if (p.getVehicle() instanceof PoliciaTractor.TractorEntity) PoliciaTractor.arm(p, id == 5 ? 1 : -1); else PoliciaHeli.vert(p, id == 5 ? 1 : -1); return; }
         if (id == 61) { PoliciaRefuerzo.cycle(p); return; }
+        if ("ladron".equals(job(p))) { PoliciaLadron.act(p, id); return; }
         if ("albanil".equals(job(p))) { PoliciaAlbanil.act(p, id); return; }
         if (id == 30) { // mejorar REFUERZO (cuesta XP)
             int lv = rlevel(p);
