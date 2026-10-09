@@ -27,12 +27,13 @@ import java.util.List;
 
 /** Construcciones: comisaria, obra y casino subterraneo de tres plantas. */
 public class PoliciaStruct {
-    static final String[] SN = {"comisaria", "obra", "casino"};
-    static final int[] W = {31, 17, 13};
-    static final int[] D = {23, 13, 13};
+    static final String[] SN = {"comisaria", "obra", "casino", "bandidos", "ladrones"};
+    static final int[] W = {31, 17, 13, 19, 19};
+    static final int[] D = {23, 13, 13, 19, 19};
 
     static void init() {
         MinecraftForge.EVENT_BUS.register(new Ev());
+        PoliciaCamp.init();
     }
 
     // ------------------------------------------------------------------ registro de sitios
@@ -41,7 +42,7 @@ public class PoliciaStruct {
         final List<List<Long>> l = new ArrayList<>();
 
         Sites() {
-            for (int i = 0; i < 3; i++) l.add(new ArrayList<>());
+            for (int i = 0; i < 5; i++) l.add(new ArrayList<>());
         }
 
         static Sites get(ServerLevel sl) {
@@ -50,13 +51,13 @@ public class PoliciaStruct {
 
         static Sites load(CompoundTag t) {
             Sites s = new Sites();
-            for (int i = 0; i < 3; i++) for (long v : t.getLongArray("k" + i)) s.l.get(i).add(v);
+            for (int i = 0; i < 5; i++) for (long v : t.getLongArray("k" + i)) s.l.get(i).add(v);
             return s;
         }
 
         @Override
         public CompoundTag save(CompoundTag t) {
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < 5; i++) {
                 long[] a = new long[l.get(i).size()];
                 for (int j = 0; j < a.length; j++) a[j] = l.get(i).get(j);
                 t.putLongArray("k" + i, a);
@@ -398,6 +399,8 @@ public class PoliciaStruct {
         switch (k) {
             case 0: comisaria(sl, x0, z0, g); break;
             case 1: obra(sl, x0, z0, g); break;
+            case 3: PoliciaCamp.build(sl, 0, x0, z0, g); break;
+            case 4: PoliciaCamp.build(sl, 1, x0, z0, g); break;
             default: casino(sl, x0, z0, g); break;
         }
         return true;
@@ -405,7 +408,7 @@ public class PoliciaStruct {
 
     static void tryGen(ServerPlayer sp, ServerLevel sl) {
         Sites st = Sites.get(sl);
-        for (int k = 0; k < 3; k++) {
+        for (int k = 0; k < 5; k++) {
             if (k == 0) continue;
             if (st.near(k, sp.blockPosition(), 320)) continue;
             if (sl.random.nextInt(100) >= 45) continue;
@@ -455,9 +458,9 @@ public class PoliciaStruct {
                         ServerPlayer p = c.getSource().getPlayerOrException();
                         String t = StringArgumentType.getString(c, "tipo");
                         int k = -1;
-                        for (int i = 0; i < 3; i++) if (SN[i].equals(t)) k = i;
+                        for (int i = 0; i < 5; i++) if (SN[i].equals(t)) k = i;
                         if (k < 0) {
-                            c.getSource().sendFailure(net.minecraft.network.chat.Component.literal("Use: comisaria, obra o casino"));
+                            c.getSource().sendFailure(net.minecraft.network.chat.Component.literal("Use: comisaria, obra, casino, bandidos o ladrones"));
                             return 0;
                         }
                         if (k == 0 && genNearVillage(p, p.serverLevel())) {
