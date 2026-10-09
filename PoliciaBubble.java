@@ -49,7 +49,7 @@ public class PoliciaBubble {
                     .sized(0.5f, 0.5f).noSave().fireImmune().clientTrackingRange(16).updateInterval(1)
                     .build("policia:burbuja"));
 
-    static final int DUR = 200;          // 10 s
+    static final int DUR = 460;          // 23 s
     public static final double R = 7.0; // 14 bloques de diametro
 
     static class B {
@@ -81,7 +81,7 @@ public class PoliciaBubble {
         st.ent = b.getUUID();
         ACTIVE.put(p.getUUID(), st);
         sl.playSound(null, p.blockPosition(), SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 1.0f, 1.5f);
-        PoliciaMod.msg(p, "Escudo de burbuja activado: 10 s");
+        PoliciaMod.msg(p, "Escudo de burbuja activado: 23 s");
         return true;
     }
 
