@@ -298,6 +298,9 @@ public class PoliciaMision {
             });
             this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<Player>(this, Player.class, 10, true, false,
                     le -> Pj.this.hostile() && Pj.police(le)));
+            // los ladrones se pelean con los agentes y guardias (nunca con un jugador ladron)
+            this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<PoliciaBoss.BossNpc>(this, PoliciaBoss.BossNpc.class, 10, true, false,
+                    le -> Pj.this.hostile() && le instanceof PoliciaBoss.BossNpc bn && (bn.kind() == 4 || bn.kind() == 5)));
         }
 
         @Override
