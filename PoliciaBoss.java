@@ -315,11 +315,34 @@ public class PoliciaBoss {
             return InteractionResult.sidedSuccess(this.level().isClientSide);
         }
 
+        /** Fabrica una silla (escalera de roble oscuro con apoyabrazos) bajo el jefe sentado. */
+        void ensureChair() {
+            BlockPos seat = this.blockPosition();
+            net.minecraft.world.level.block.state.BlockState st = this.level().getBlockState(seat);
+            if (st.getBlock() instanceof net.minecraft.world.level.block.StairBlock) return;
+            net.minecraft.core.Direction d = net.minecraft.core.Direction.fromYRot(this.getYRot());
+            float yy = d.toYRot();
+            this.setYRot(yy);
+            this.setYBodyRot(yy);
+            this.setYHeadRot(yy);
+            this.setPos(this.getX() + d.getStepX() * 0.15, this.getY(), this.getZ() + d.getStepZ() * 0.15);
+            this.level().setBlock(seat, net.minecraft.world.level.block.Blocks.DARK_OAK_STAIRS.defaultBlockState()
+                    .setValue(net.minecraft.world.level.block.StairBlock.FACING, d.getOpposite()), 3);
+            for (net.minecraft.core.Direction s : new net.minecraft.core.Direction[]{d.getClockWise(), d.getCounterClockWise()}) {
+                BlockPos ap = seat.relative(s);
+                if (this.level().getBlockState(ap).isAir()) {
+                    this.level().setBlock(ap, net.minecraft.world.level.block.Blocks.DARK_OAK_SLAB.defaultBlockState()
+                            .setValue(net.minecraft.world.level.block.SlabBlock.TYPE, net.minecraft.world.level.block.state.properties.SlabType.TOP), 3);
+                }
+            }
+        }
+
         @Override
         public void tick() {
             super.tick();
             if (this.level().isClientSide) return;
             int k = kind();
+            if ((k == 0 || k == 2) && tickCount % 20 == 5) ensureChair();
             if ((k == 0 || k == 2) && tickCount % 10 == 0) {
                 String key = k == 0 ? "pol_cin0" : "pol_cin2";
                 for (ServerPlayer sp : this.level().getEntitiesOfClass(ServerPlayer.class, this.getBoundingBox().inflate(7.0, 3.0, 7.0))) {
