@@ -70,6 +70,20 @@ public class PoliciaRefuerzo {
         }
     }
 
+    static final String[] ORDERS = {"PROTEGER (te cuidan de cerca)", "ATACAR al que te ataco", "DIVIDIRSE y atacar a los enemigos"};
+
+    /** Cambia la orden de los refuerzos (tecla R). */
+    public static void cycle(ServerPlayer p) {
+        CompoundTag d = p.getPersistentData();
+        int m = (d.getInt("pol_rord") + 1) % ORDERS.length;
+        d.putInt("pol_rord", m);
+        PoliciaMod.msg(p, "Orden de refuerzos: " + ORDERS[m]);
+        p.serverLevel().playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.NOTE_BLOCK_BELL.value(), SoundSource.PLAYERS, 0.8f, 1.0f + 0.25f * m);
+        if (m == 0 && p.level() instanceof ServerLevel sl) {
+            for (AgentEntity a : sl.getEntitiesOfClass(AgentEntity.class, p.getBoundingBox().inflate(128.0), x -> p.getUUID().equals(x.owner))) a.setTarget(null);
+        }
+    }
+
     /** Invoca a los policias de refuerzo segun el nivel de la habilidad. */
     public static void use(ServerPlayer p) {
         CompoundTag d = p.getPersistentData();
@@ -195,6 +209,13 @@ public class PoliciaRefuerzo {
             } else if (isUsingItem()) {
                 stopUsingItem();
             }
+            if (tickCount % 10 == 0) {
+                ServerPlayer ow = ownerPlayer();
+                if (ow != null && ow.getPersistentData().getInt("pol_rord") == 0) {
+                    LivingEntity t2 = getTarget();
+                    if (t2 != null && t2.distanceToSqr(ow) > 256.0) setTarget(null);
+                }
+            }
             life++;
             if (life > LIFE) { poof(); return; }
             if (tickCount % 20 == 0) {
@@ -262,8 +283,19 @@ public class PoliciaRefuerzo {
                 a.setTarget(null);
                 my = null;
             }
+            int mode = o.getPersistentData().getInt("pol_rord");
+            if (mode == 1) {
+                LivingEntity hb1 = o.getLastHurtByMob();
+                if (hb1 != null && hb1.isAlive() && o.tickCount - o.getLastHurtByMobTimestamp() < 400 && !(hb1 instanceof AgentEntity)
+                        && a.canAttack(hb1) && a.distanceToSqr(hb1) < 1600.0 && hb1 != my) {
+                    cand = hb1;
+                    return true;
+                }
+                return false;
+            }
+            double rad = mode == 0 ? 9.0 : 30.0;
             java.util.List<LivingEntity> threats = new java.util.ArrayList<>();
-            for (LivingEntity e : a.level().getEntitiesOfClass(LivingEntity.class, o.getBoundingBox().inflate(24.0),
+            for (LivingEntity e : a.level().getEntitiesOfClass(LivingEntity.class, o.getBoundingBox().inflate(rad),
                     x -> x.isAlive() && a.threat(x) && a.canAttack(x))) {
                 threats.add(e);
             }
