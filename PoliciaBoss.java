@@ -191,9 +191,9 @@ public class PoliciaBoss {
                 case "dron": return PoliciaExtra.drone(p);
                 case "burbuja": return PoliciaBubble.use(p);
                 case "silbido": PoliciaLadron.whistleUse(p); return true;
-                case "muro": PoliciaAlbanil.buildWall(p); return true;
-                case "refugio": PoliciaAlbanil.buildHouse(p); return true;
-                case "pico": PoliciaAlbanil.startPick(p); return true;
+                case "muro": return PoliciaAlbanil.useSingle(p, 1);
+                case "refugio": return PoliciaAlbanil.useSingle(p, 2);
+                case "pico": return PoliciaAlbanil.useSingle(p, 0);
                 default:
                     PoliciaMod.msg(p, "Objeto sin efecto");
                     return false;
