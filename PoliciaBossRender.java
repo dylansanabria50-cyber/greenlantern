@@ -117,6 +117,7 @@ public class PoliciaBossRender extends MobRenderer<PoliciaBoss.BossNpc, PoliciaB
     @Override
     public ResourceLocation getTextureLocation(PoliciaBoss.BossNpc e) {
         int k = Math.max(0, Math.min(NAMES.length - 1, e.kind()));
+        if (k == 5) return new ResourceLocation("policia", "textures/entity/agente_" + (e.getUUID().hashCode() & 3) + ".png");
         return new ResourceLocation("policia", "textures/entity/" + NAMES[k] + ".png");
     }
 
