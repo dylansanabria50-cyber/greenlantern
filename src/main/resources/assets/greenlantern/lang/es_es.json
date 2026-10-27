@@ -1,12 +1,16 @@
 {
   "key.greenlantern.combat": "Armas y caza (rueda)",
-  "key.greenlantern.suit": "Traje de Linterna Verde",
+  "key.greenlantern.suit": "Traje (Shift: diseño)",
   "item.greenlantern.power_ring": "Anillo de Poder de Linterna Verde",
   "block.greenlantern.construct_block": "Construccion de Energia Verde",
   "block.greenlantern.shield_block": "Burbuja de Energia Verde",
   "key.categories.greenlantern": "Linterna Verde",
-  "key.greenlantern.flight": "Activar/Desactivar vuelo",
-  "key.greenlantern.blast": "Rayo de energia",
+  "key.greenlantern.flight": "Volar",
+  "key.greenlantern.blast": "Crear objetos",
   "key.greenlantern.shield": "Escudo de energia",
-  "key.greenlantern.wall": "Muro de energia"
+  "key.greenlantern.wall": "Muro de energia",
+  "block.greenlantern.willpower_battery": "Batería de Voluntad",
+  "item.greenlantern.willpower_battery": "Batería de Voluntad",
+  "entity.greenlantern.jet": "Caza de energía",
+  "key.greenlantern.jet": "Caza de energía"
 }

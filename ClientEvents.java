@@ -24,6 +24,9 @@ public class ClientEvents {
     public static final String CATEGORY = "key.categories.greenlantern";
 
     public static final KeyMapping BLAST = new KeyMapping("key.greenlantern.blast", GLFW.GLFW_KEY_R, CATEGORY);
+    public static final KeyMapping SUIT = new KeyMapping("key.greenlantern.suit", GLFW.GLFW_KEY_H, CATEGORY);
+    public static final KeyMapping FLIGHT = new KeyMapping("key.greenlantern.flight", GLFW.GLFW_KEY_G, CATEGORY);
+    public static final KeyMapping JET = new KeyMapping("key.greenlantern.jet", GLFW.GLFW_KEY_J, CATEGORY);
 
 
 
@@ -46,6 +49,15 @@ public class ClientEvents {
         @SubscribeEvent
         public static void registerKeys(RegisterKeyMappingsEvent e) {
             e.register(BLAST);
+            e.register(SUIT);
+            e.register(FLIGHT);
+            e.register(JET);
+        }
+
+        /** Barra de voluntad arriba a la izquierda (solo con el anillo). */
+        @SubscribeEvent
+        public static void registerOverlays(net.minecraftforge.client.event.RegisterGuiOverlaysEvent e) {
+            e.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "willpower", (gui, g, pt, w, h) -> ForgeBus.drawWillpower(g));
         }
     }
 
@@ -57,6 +69,12 @@ public class ClientEvents {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
             if (mc.screen != null) { holdTicks = 0; armed = false; return; }
+            while (SUIT.consumeClick()) {
+                if (net.minecraft.client.gui.screens.Screen.hasShiftDown()) { mc.setScreen(new DesignScreen(ClientSuit.design(mc.player.getId()))); return; }
+                ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(1));
+            }
+            while (FLIGHT.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(2));
+            while (JET.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(3));
             if (!BLAST.isDown()) armed = true;
             if (armed && BLAST.isDown()) {
                 holdTicks++;
@@ -100,10 +118,27 @@ public class ClientEvents {
             }
         }
 
-        /** Panel de poderes a la derecha de la pantalla (solo con el anillo puesto). */
+        /** Barra de voluntad: verde, amarilla y roja (titila) cuando queda poca. */
+        static void drawWillpower(GuiGraphics g) {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player == null || mc.options.hideGui || !RingPowers.hasRing(mc.player)) return;
+            int e = Math.max(0, Math.min(RingPowers.MAX_ENERGY, ClientSuit.energy));
+            int x = 6, y = 6, w = 102;
+            boolean poca = e < 20;
+            int color = e > 50 ? 0xFF3DFF8E : e >= 20 ? 0xFFFFBF4D : ((mc.player.tickCount / 5) % 2 == 0 ? 0xFFFF5D5D : 0xFF7A2424);
+            g.fill(x - 2, y - 2, x + w + 2, y + 21, 0x990E1F15);
+            g.drawString(mc.font, "Voluntad " + e + "/" + RingPowers.MAX_ENERGY + (ClientSuit.isOn(mc.player.getId()) ? "  \u00a7a[traje]" : ""), x, y, poca ? 0xFF8A8A : 0x9DFFC6, false);
+            g.fill(x, y + 11, x + w, y + 17, 0xFF0F2A1F);
+            g.fill(x + 1, y + 12, x + 1 + (w - 2) * e / RingPowers.MAX_ENERGY, y + 16, color);
+        }
+
+        /** Panel de poderes a la derecha de la pantalla (solo con el anillo). */
         private static void drawPanel(Minecraft mc, GuiGraphics g, int w, int h) {
             String[][] rows = {
-                                        {BLAST.getTranslatedKeyMessage().getString(), "Crear objetos (mantener: favoritos)"},
+                    {SUIT.getTranslatedKeyMessage().getString(), "Traje (Shift: diseño)"},
+                    {FLIGHT.getTranslatedKeyMessage().getString(), "Volar"},
+                    {JET.getTranslatedKeyMessage().getString(), "Caza de energia"},
+                    {BLAST.getTranslatedKeyMessage().getString(), "Crear objetos (mantener: favoritos)"},
             };
             int textW = 0;
             for (String[] r : rows) textW = Math.max(textW, mc.font.width("[" + r[0] + "] " + r[1]));
@@ -128,7 +163,7 @@ public class ClientEvents {
             GuiGraphics g = e.getGuiGraphics();
             int w = e.getWindow().getGuiScaledWidth();
             int h = e.getWindow().getGuiScaledHeight();
-            if (RingPowers.isWorn(mc.player)) drawPanel(mc, g, w, h);
+            if (RingPowers.hasRing(mc.player) && !mc.options.hideGui) drawPanel(mc, g, w, h);
             for (int i = 0; i < 9; i++) {
                 if (RingPowers.isConjured(mc.player.getInventory().items.get(i))) {
                     int x = w / 2 - 90 + i * 20 + 2;

@@ -52,24 +52,21 @@ sourceSets {
             include '*.java'
             exclude 'CombatItem.java'
             exclude 'CombatScreen.java'
-            exclude 'JetEntity.java'
-            exclude 'JetModel.java'
-            exclude 'JetRenderer.java'
             exclude 'BoxModel.java'
             exclude 'GunRenderer.java'
             exclude 'RocketRenderer.java'
-            exclude 'FlightTrail.java'
             exclude 'ShieldBlock.java'
             exclude 'ShieldFx.java'
             exclude 'ShieldRender.java'
-            exclude 'SuitEvents.java'
-            exclude 'SuitLayer.java'
-            exclude 'SuitTexture.java'
             exclude 'SuitLight.java'
-            exclude 'ClientSuit.java'
             exclude 'ConstructBlock.java'
             exclude 'HideOthers.java'
             exclude 'GlJeiPlugin.java'
         }
     }
+}
+
+// los modelos y texturas de jet, ametralladora y cohetes que estaban en recursos vienen de otro mod: no van en el .jar
+processResources {
+    exclude 'assets/greenlantern/jet.txt', 'assets/greenlantern/jet_png.b64', 'assets/greenlantern/gun.txt', 'assets/greenlantern/gun_barrel.txt', 'assets/greenlantern/gun_png.b64', 'assets/greenlantern/rocket.txt'
 }

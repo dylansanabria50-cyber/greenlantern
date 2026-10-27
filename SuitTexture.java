@@ -5,49 +5,230 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
 
-import java.io.ByteArrayInputStream;
-import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 
-/** Textura del traje de Linterna Verde (skin enviada por el usuario), cargada desde el propio codigo. */
-public class SuitTexture {
-    private static final String DATA = "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";
-    private static ResourceLocation tex;
+/**
+ * El traje se dibuja en el momento como una skin de 64x64 (formato clasico), igual que en la pagina
+ * "Traje de Voluntad": tres trajes, tres emblemas propios, tres verdes y antifaz opcional.
+ * Para la transformacion se arman cuadros donde el traje sube de los pies a la cabeza con una linea de luz.
+ */
+public final class SuitTexture {
+    public static final String[] TRAJES = {"Centinela", "Cometa", "Faro"};
+    public static final String[] EMBLEMAS = {"Estrella", "Llama", "Alas"};
+    public static final String[] VERDES = {"Esmeralda", "Jade", "Lima"};
+    /** verde principal, claro, brillo */
+    static final int[][] VERDE = {{0x1fb866, 0x3dff8e, 0xd2ffe6}, {0x13a37a, 0x2ee6a8, 0xc8fff0}, {0x5cbf18, 0x9dff3d, 0xecffd2}};
+    static final String[][] EMB = {
+            {".a..a.", "..aa..", ".abba.", ".abba.", "..aa..", ".a..a."},
+            {"..a...", "..aa..", ".aab..", ".abba.", "abbbba", ".abba."},
+            {"a....a", "aa..aa", ".abba.", "..bb..", "..aa..", "......"}};
+    public static final int FRAMES = 16;
 
-    /** Pone encima el cuerpo del traje del mod de referencia (cuerpo, brazos y piernas); la cabeza queda la del jugador. */
-    private static void overlaySuit(NativeImage img) {
-        try {
-            var res = Minecraft.getInstance().getResourceManager()
-                    .getResource(new ResourceLocation("greenlantern", "suit_png.b64"));
-            if (res.isEmpty()) return;
-            byte[] png;
-            try (java.io.InputStream in = res.get().open()) {
-                png = Base64.getMimeDecoder().decode(new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).trim());
+    public static int traje(int d) { return Math.min(2, d & 3); }
+    public static int emblema(int d) { return Math.min(2, (d >> 2) & 3); }
+    public static int verde(int d) { return Math.min(2, (d >> 4) & 3); }
+    public static boolean antifaz(int d) { return ((d >> 6) & 1) == 0; }
+    public static int pack(int t, int e, int v, boolean antifaz) { return (t & 3) | (e & 3) << 2 | (v & 3) << 4 | (antifaz ? 0 : 64); }
+
+    /** Color claro del diseño (para el aura y las particulas). */
+    public static int luz(int d) { return VERDE[verde(d)][1]; }
+
+    public record Juego(ResourceLocation[] base, ResourceLocation[] brillo) { }
+
+    private static final Map<Integer, Juego> CACHE = new HashMap<>();
+
+    public static Juego get(int design) {
+        return CACHE.computeIfAbsent(design & 127, SuitTexture::armar);
+    }
+
+    // ---------- partes de la skin ----------
+    private record Parte(String nombre, int ox, int oy, int w, int h, int d, int yArriba) { }
+
+    private static final Parte[] PARTES = {
+            new Parte("cabeza", 0, 0, 8, 8, 8, 32), new Parte("torso", 16, 16, 8, 12, 4, 24),
+            new Parte("brazoD", 40, 16, 4, 12, 4, 24), new Parte("brazoI", 32, 48, 4, 12, 4, 24),
+            new Parte("piernaD", 0, 16, 4, 12, 4, 12), new Parte("piernaI", 16, 48, 4, 12, 4, 12)};
+    private static final String[] CARAS = {"top", "bottom", "right", "front", "left", "back"};
+
+    private static int[] rect(Parte p, String cara) {
+        int x = p.ox, y = p.oy, w = p.w, h = p.h, d = p.d;
+        return switch (cara) {
+            case "top" -> new int[]{x + d, y, w, d};
+            case "bottom" -> new int[]{x + d + w, y, w, d};
+            case "right" -> new int[]{x, y + d, d, h};
+            case "front" -> new int[]{x + d, y + d, w, h};
+            case "left" -> new int[]{x + d + w, y + d, d, h};
+            default -> new int[]{x + d + w + d, y + d, w, h};
+        };
+    }
+
+    private static char cabeza(String cara, int u, int v, boolean antifaz) {
+        if (cara.equals("top")) return 'h';
+        if (cara.equals("bottom")) return 'k';
+        if (cara.equals("back")) return v <= 5 ? 'h' : 'k';
+        if (cara.equals("front")) {
+            if (v <= 1) return 'h';
+            if (v == 3 || v == 4) {
+                if (antifaz) return v == 3 && (u == 1 || u == 2 || u == 5 || u == 6) ? 'o' : 'm';
+                if (v == 3) return u == 1 || u == 6 ? 'w' : u == 2 || u == 5 ? 'p' : 'k';
             }
-            NativeImage suit = NativeImage.read(new ByteArrayInputStream(png));
-            int w = Math.min(Math.min(suit.getWidth(), img.getWidth()), 64);
-            int h = Math.min(Math.min(suit.getHeight(), img.getHeight()), 64);
-            for (int y = 0; y < h; y++) {
-                for (int x = 0; x < w; x++) {
-                    int p = suit.getPixelRGBA(x, y);
-                    if ((p >>> 24) > 0) img.setPixelRGBA(x, y, p);
+            if (v == 6 && (u == 3 || u == 4)) return 'q';
+            return 'k';
+        }
+        int haciaFrente = cara.equals("right") ? u : 7 - u;
+        if (v <= 2) return 'h';
+        if (haciaFrente <= 1 && v <= 5) return 'h';
+        if (antifaz && (v == 3 || v == 4) && haciaFrente >= 5) return 'm';
+        return 'k';
+    }
+
+    private static char tipo(int design, String parte, String cara, int u, int v) {
+        int t = traje(design);
+        if (parte.equals("cabeza")) return cabeza(cara, u, v, antifaz(design));
+        if (parte.equals("brazoD") && v == 10 && !cara.equals("top") && !cara.equals("bottom")) return 'r';
+        if (parte.equals("torso") && cara.equals("front") && u >= 1 && u <= 6 && v >= 1 && v <= 6) {
+            char c = EMB[emblema(design)][v - 1].charAt(u - 1);
+            return c == 'a' ? 'b' : c == 'b' ? 'g' : 'e';
+        }
+        boolean brazo = parte.startsWith("brazo");
+        boolean derecho = parte.endsWith("D");
+        boolean interior = derecho ? cara.equals("left") : cara.equals("right");
+        boolean exterior = derecho ? cara.equals("right") : cara.equals("left");
+        boolean arribaAbajo = cara.equals("top") || cara.equals("bottom");
+        if (t == 0) { // Centinela: pechera en V, guantes y botas
+            if (parte.equals("torso")) {
+                if (cara.equals("top")) return 'g';
+                if (cara.equals("bottom")) return 'n';
+                if (cara.equals("front") || cara.equals("back")) return v < 7 - Math.abs(u - 3.5) * 1.5 ? 'g' : 'n';
+                return v < 2 ? 'g' : 'n';
+            }
+            if (brazo) return arribaAbajo || v < 2 || v >= 7 ? 'g' : 'n';
+            if (arribaAbajo) return 'n';
+            if (v >= 8) return 'g';
+            return exterior && (u == 1 || u == 2) ? 'g' : 'n';
+        }
+        if (t == 1) { // Cometa: franja diagonal y mangas
+            if (parte.equals("torso")) {
+                if (cara.equals("top")) return 'g';
+                if (cara.equals("bottom")) return 'n';
+                if (cara.equals("front") || cara.equals("back")) {
+                    int uu = cara.equals("front") ? u : 7 - u;
+                    return Math.abs(uu - (7 - v * 7.0 / 11)) < 1.6 ? 'g' : 'n';
+                }
+                return v < 2 ? 'g' : 'n';
+            }
+            if (brazo) { if (arribaAbajo) return 'g'; if (interior) return 'n'; return v == 6 || v == 7 ? 'n' : 'g'; }
+            if (arribaAbajo) return 'n';
+            if (v >= 9) return 'g';
+            return cara.equals("front") && (u == 1 || u == 2) ? 'g' : 'n';
+        }
+        // Faro: casi todo verde con paneles negros
+        if (parte.equals("torso")) {
+            if (cara.equals("bottom") || cara.equals("right") || cara.equals("left")) return 'n';
+            if (cara.equals("back")) return u == 3 || u == 4 ? 'n' : 'g';
+            if (cara.equals("front")) return v >= 7 && (u <= 1 || u >= 6) ? 'n' : 'g';
+            return 'g';
+        }
+        if (brazo) return interior ? 'n' : 'g';
+        if (cara.equals("bottom") || v >= 10) return 'n';
+        return interior ? 'n' : 'g';
+    }
+
+    private static int colorDe(char t, int[] p) {
+        return switch (t) {
+            case 'g', 'm' -> p[0];
+            case 'l' -> p[1];
+            case 'b', 'r' -> p[2];
+            case 'h' -> 0x3b2a1e;
+            case 'k' -> 0xc99a76;
+            case 'q' -> 0x8a5a48;
+            case 'w' -> 0xffffff;
+            case 'p' -> 0x2a3b5a;
+            case 'o' -> 0xe9fff3;
+            case 'e' -> 0x050807;
+            default -> 0x0b1310;
+        };
+    }
+
+    private static float brilloDe(char t) {
+        return switch (t) {
+            case 'o', 'b', 'r' -> 1.0f;
+            case 'l' -> 0.6f;
+            case 'g' -> 0.07f;
+            case 'm' -> 0.08f;
+            default -> 0f;
+        };
+    }
+
+    private static int abgr(int a, int rgb) {
+        int r = (rgb >> 16) & 255, g = (rgb >> 8) & 255, b = rgb & 255;
+        return (a << 24) | (b << 16) | (g << 8) | r;
+    }
+
+    private static int escala(int rgb, float f) {
+        int r = Math.min(255, Math.round(((rgb >> 16) & 255) * f)), g = Math.min(255, Math.round(((rgb >> 8) & 255) * f)), b = Math.min(255, Math.round((rgb & 255) * f));
+        return (r << 16) | (g << 8) | b;
+    }
+
+    private static float ruido(int x, int y) {
+        double s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+        return (float) (s - Math.floor(s));
+    }
+
+    /** Pixel por pixel: color, brillo y altura desde los pies (en pixeles del modelo). */
+    private static Juego armar(int design) {
+        int[] col = new int[64 * 64], emi = new int[64 * 64];
+        float[] alto = new float[64 * 64];
+        boolean[] usado = new boolean[64 * 64];
+        int[] p = VERDE[verde(design)];
+        for (Parte parte : PARTES) {
+            for (String cara : CARAS) {
+                int[] r = rect(parte, cara);
+                int w = r[2], h = r[3];
+                char[] T = new char[w * h];
+                for (int v = 0; v < h; v++) for (int u = 0; u < w; u++) T[v * w + u] = tipo(design, parte.nombre, cara, u, v);
+                char[] T2 = T.clone(); // juntas que brillan donde el verde toca el negro
+                for (int v = 0; v < h; v++) for (int u = 0; u < w; u++) {
+                    if (T[v * w + u] != 'g') continue;
+                    int[][] vec = {{u - 1, v}, {u + 1, v}, {u, v - 1}, {u, v + 1}};
+                    for (int[] q : vec) if (q[0] >= 0 && q[1] >= 0 && q[0] < w && q[1] < h && T[q[1] * w + q[0]] == 'n') { T2[v * w + u] = 'l'; break; }
+                }
+                for (int v = 0; v < h; v++) for (int u = 0; u < w; u++) {
+                    char t = T2[v * w + u];
+                    int x = r[0] + u, y = r[1] + v, i = y * 64 + x;
+                    float f = (t == 'w' || t == 'o' || t == 'b') ? 1f : 0.9f + ruido(x, y) * 0.16f;
+                    col[i] = escala(colorDe(t, p), f);
+                    float e = brilloDe(t);
+                    emi[i] = escala((t == 'r' || t == 'b' || t == 'o') ? p[2] : p[1], e);
+                    alto[i] = cara.equals("top") ? parte.yArriba : cara.equals("bottom") ? parte.yArriba - parte.h : parte.yArriba - v - 0.5f;
+                    usado[i] = true;
                 }
             }
-            suit.close();
-        } catch (Exception ex) {
-            ex.printStackTrace();
         }
+        ResourceLocation[] base = new ResourceLocation[FRAMES], brillo = new ResourceLocation[FRAMES];
+        var tm = Minecraft.getInstance().getTextureManager();
+        for (int f = 0; f < FRAMES; f++) {
+            boolean completo = f == FRAMES - 1;
+            float corte = (f + 1) * 33.0f / FRAMES;
+            NativeImage a = new NativeImage(NativeImage.Format.RGBA, 64, 64, true);
+            NativeImage b = new NativeImage(NativeImage.Format.RGBA, 64, 64, true);
+            for (int i = 0; i < 64 * 64; i++) {
+                if (!usado[i]) continue;
+                int x = i % 64, y = i / 64;
+                if (completo || alto[i] < corte - 1.5f) {
+                    a.setPixelRGBA(x, y, abgr(255, col[i]));
+                    b.setPixelRGBA(x, y, abgr(255, emi[i]));
+                } else if (alto[i] < corte) { // linea de luz que va subiendo
+                    a.setPixelRGBA(x, y, abgr(255, p[2]));
+                    b.setPixelRGBA(x, y, abgr(255, p[2]));
+                }
+            }
+            base[f] = tm.register("greenlantern_traje_" + design + "_" + f, new DynamicTexture(a));
+            brillo[f] = tm.register("greenlantern_brillo_" + design + "_" + f, new DynamicTexture(b));
+        }
+        return new Juego(base, brillo);
     }
 
-    public static ResourceLocation get() {
-        if (tex == null) {
-            try {
-                NativeImage img = NativeImage.read(new ByteArrayInputStream(Base64.getDecoder().decode(DATA)));
-                overlaySuit(img);
-                tex = Minecraft.getInstance().getTextureManager().register("greenlantern_suit", new DynamicTexture(img));
-            } catch (Exception ex) {
-                tex = new ResourceLocation("minecraft", "textures/entity/steve.png");
-            }
-        }
-        return tex;
-    }
+    private SuitTexture() { }
 }

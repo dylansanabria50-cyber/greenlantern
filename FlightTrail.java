@@ -48,7 +48,7 @@ public class FlightTrail {
         clock++;
         for (Player p : mc.level.players()) {
             double sp = Math.hypot(p.getX() - p.xo, p.getZ() - p.zo);
-            boolean fly = RingPowers.isWorn(p) && !p.onGround() && !p.isPassenger()
+            boolean fly = ClientSuit.progress(p.getId(), 0f) >= 1f && !p.onGround() && !p.isPassenger()
                     && (p.getAbilities().flying || sp > 0.5);
             if (fly) add(p.getId(), p.getX(), p.getY() + 0.9, p.getZ());
         }

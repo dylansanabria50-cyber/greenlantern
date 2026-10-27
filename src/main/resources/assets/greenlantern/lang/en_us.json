@@ -3,8 +3,13 @@
   "block.greenlantern.construct_block": "Green Energy Construct",
   "block.greenlantern.shield_block": "Green Energy Bubble",
   "key.categories.greenlantern": "Green Lantern",
-  "key.greenlantern.flight": "Toggle flight",
-  "key.greenlantern.blast": "Energy blast",
+  "key.greenlantern.flight": "Fly",
+  "key.greenlantern.blast": "Create items",
   "key.greenlantern.shield": "Energy shield",
-  "key.greenlantern.wall": "Energy wall"
+  "key.greenlantern.wall": "Energy wall",
+  "block.greenlantern.willpower_battery": "Willpower Battery",
+  "item.greenlantern.willpower_battery": "Willpower Battery",
+  "entity.greenlantern.jet": "Energy Jet",
+  "key.greenlantern.suit": "Suit (Shift: design)",
+  "key.greenlantern.jet": "Energy jet"
 }

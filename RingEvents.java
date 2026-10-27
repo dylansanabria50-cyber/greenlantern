@@ -73,10 +73,48 @@ public class RingEvents {
             p.onUpdateAbilities();
         }
 
-        // Regeneracion de voluntad: +1 cada medio segundo
-        if (ring && p.tickCount % 10 == 0 && energy < RingPowers.MAX_ENERGY) {
+        boolean suit = RingPowers.isSuitOn(p);
+        if (suit) {
+            // sin anillo o sin voluntad el traje se disuelve
+            if (!ring) { RingPowers.setSuit(p, false); }
+            else if (energy <= 0) {
+                RingPowers.setSuit(p, false);
+                p.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00a7cSin voluntad: el traje se disuelve"), true);
+            } else {
+                if (p.tickCount % 40 == 0) p.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.DAMAGE_RESISTANCE, 60, 0, false, false, false));
+                // volar gasta voluntad: 1 cada 2 segundos en el aire
+                if (RingPowers.isFlying(p) && ab.flying && !p.onGround() && p.tickCount % 40 == 0) RingPowers.setEnergy(p, energy - 1);
+                if (RingPowers.isFlying(p) && !ab.mayfly && !p.isCreative()) RingPowers.setFlight(p, true);
+            }
+        } else if (RingPowers.isFlying(p)) {
+            RingPowers.setFlight(p, false);
+        }
+
+        // la voluntad vuelve sola, despacio, con el traje guardado: +1 cada 2 segundos
+        if (ring && !suit && p.tickCount % 40 == 0 && energy < RingPowers.MAX_ENERGY) {
             RingPowers.setEnergy(p, energy + 1);
         }
+
+        // barra de voluntad del cliente
+        int now = RingPowers.getEnergy(p);
+        Integer sent = SENT.get(p.getUUID());
+        if (sent == null || sent != now) {
+            SENT.put(p.getUUID(), now);
+            ModNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> p), new ModNetwork.EnergyPacket(now));
+        }
+    }
+
+    private static final Map<UUID, Integer> SENT = new HashMap<>();
+
+    /** Con el traje puesto no hay daño por caída. */
+    @SubscribeEvent
+    public void onFall(LivingFallEvent e) {
+        if (e.getEntity() instanceof Player p && RingPowers.isSuitOn(p)) e.setCanceled(true);
+    }
+
+    @SubscribeEvent
+    public void onLogout(PlayerEvent.PlayerLoggedOutEvent e) {
+        SENT.remove(e.getEntity().getUUID());
     }
 
     // ---------- bloques colocados con objetos creados ----------

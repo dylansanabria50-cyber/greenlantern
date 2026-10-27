@@ -75,58 +75,115 @@ public class RingPowers {
     return k != null && k.getNamespace().equals("legends_superheroes") && k.getPath().equals("willpower_ring");
   }
 
-  static java.lang.reflect.Method SUIT_GET;
-  static boolean SUIT_INIT;
-
-  /** Verdadero si el jugador lleva puesto el traje de Linterna Verde de Legends Superheroes. */
-  public static boolean isGlSuit(Player p) {
-    try {
-      if (!SUIT_INIT) {
-        SUIT_INIT = true;
-        Class<?> c = Class.forName("com.tihyo.legends.armors.LegendsSuit");
-        SUIT_GET = c.getMethod("getSuit", net.minecraft.world.entity.LivingEntity.class);
-      }
-      if (SUIT_GET == null) return false;
-      Object o = SUIT_GET.invoke(null, p);
-      return o != null && o.getClass().getName().contains(".greenlantern.");
-    } catch (Throwable t) {
-      return false;
-    }
-  }
-
+  /** Tiene el anillo: puesto en su ranura, en la armadura, en la mano o en el inventario. */
   public static boolean hasRing(Player p) {
-    return isGlSuit(p);
+    if (isWorn(p)) return true;
+    for (ItemStack s : p.getInventory().items) if (isRing(s)) return true;
+    for (ItemStack s : p.getInventory().offhand) if (isRing(s)) return true;
+    return false;
   }
 
-  @SuppressWarnings("unused")
-  static boolean hasRingOld(Player p) {
-        for (ItemStack s : p.getInventory().items) if (isRing(s)) return true;
-        for (ItemStack s : p.getInventory().offhand) if (isRing(s)) return true;
-        return isWorn(p);
-    }
-
-    /** El anillo esta "puesto" si esta en alguna de las 4 ranuras de armadura. */
-    public static boolean isWorn(Player p) {
-    return isGlSuit(p);
+  /** El anillo esta puesto: en su ranura propia o en una ranura de armadura. */
+  public static boolean isWorn(Player p) {
+    if (RingSlot.has(p)) return true;
+    for (ItemStack s : p.getInventory().armor) if (isRing(s)) return true;
+    return false;
   }
 
-  @SuppressWarnings("unused")
-  static boolean isWornOld(Player p) {
-        if (RingSlot.has(p)) return true;
-        for (ItemStack s : p.getInventory().armor) if (isRing(s)) return true;
-        return false;
+  // ---------- traje ----------
+  public static final int COST_SUIT = 10;
+  public static final int COST_JET = 25;
+  public static final float NORMAL_FLY_SPEED = 0.05f;
+  public static final float RING_FLY_SPEED = 0.12f;
+
+  public static boolean isSuitOn(Player p) { return data(p).getBoolean("GLSuitOn"); }
+
+  /** Diseño elegido: traje (bits 0-1), emblema (2-3), verde (4-5), sin antifaz (bit 6). */
+  public static int design(Player p) { return data(p).getInt("GLDesign") & 127; }
+
+  public static void setDesign(ServerPlayer p, int d) {
+    data(p).putInt("GLDesign", d & 127);
+    sendSuit(p);
+  }
+
+  public static void sendSuit(ServerPlayer p) {
+    ModNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> p),
+        new ModNetwork.SuitPacket(p.getId(), isSuitOn(p), design(p)));
+  }
+
+  public static void setSuit(ServerPlayer p, boolean on) {
+    if (isSuitOn(p) == on) return;
+    data(p).putBoolean("GLSuitOn", on);
+    if (!on) setFlight(p, false);
+    sendSuit(p);
+    ServerLevel level = p.serverLevel();
+    level.playSound(null, p.blockPosition(), on ? SoundEvents.BEACON_ACTIVATE : SoundEvents.BEACON_DEACTIVATE, SoundSource.PLAYERS, 1.0f, on ? 1.5f : 1.3f);
+  }
+
+  public static boolean isFlying(Player p) { return data(p).getBoolean("GLFlying"); }
+
+  public static void setFlight(ServerPlayer p, boolean on) {
+    data(p).putBoolean("GLFlying", on);
+    net.minecraft.world.entity.player.Abilities ab = p.getAbilities();
+    if (!p.isCreative() && !p.isSpectator()) {
+      ab.mayfly = on;
+      if (!on) ab.flying = false;
     }
+    if (on) ab.flying = true;
+    ab.setFlyingSpeed(on ? RING_FLY_SPEED : NORMAL_FLY_SPEED);
+    p.onUpdateAbilities();
+  }
+
+  private static void toggleSuit(ServerPlayer p) {
+    if (isSuitOn(p)) { setSuit(p, false); bar(p, "El traje vuelve al anillo"); return; }
+    if (!hasRing(p)) { p.displayClientMessage(Component.literal("\u00a7cNecesitas el Anillo de Poder"), true); return; }
+    if (Oath.active(p)) return;
+    if (!spend(p, COST_SUIT)) return;
+    setSuit(p, true);
+    p.serverLevel().sendParticles(GREEN, p.getX(), p.getY() + 1.0, p.getZ(), 40, 0.4, 0.9, 0.4, 0.02);
+    bar(p, "Traje activado");
+  }
+
+  private static void toggleFlight(ServerPlayer p) {
+    if (!isSuitOn(p)) { p.displayClientMessage(Component.literal("\u00a7cPrimero activa el traje (H)"), true); return; }
+    boolean on = !isFlying(p);
+    setFlight(p, on);
+    if (on) p.serverLevel().sendParticles(GREEN, p.getX(), p.getY() + 0.1, p.getZ(), 30, 0.6, 0.1, 0.6, 0.05);
+    bar(p, on ? "Vuelo activado" : "Vuelo desactivado");
+  }
+
+  private static void summonJet(ServerPlayer p) {
+    if (!isSuitOn(p)) { p.displayClientMessage(Component.literal("\u00a7cPrimero activa el traje (H)"), true); return; }
+    if (p.isPassenger()) return;
+    if (!spend(p, COST_JET)) return;
+    ServerLevel level = p.serverLevel();
+    JetEntity jet = GreenLanternMod.JET.get().create(level);
+    if (jet == null) return;
+    jet.moveTo(p.getX(), p.getY() + 0.3, p.getZ(), p.getYRot(), 0.0f);
+    level.addFreshEntity(jet);
+    p.startRiding(jet);
+    level.sendParticles(GREEN, p.getX(), p.getY() + 0.6, p.getZ(), 50, 1.2, 0.4, 1.2, 0.05);
+    level.playSound(null, p.blockPosition(), SoundEvents.BEACON_POWER_SELECT, SoundSource.PLAYERS, 1.0f, 1.4f);
+    bar(p, "Caza de energia: W acelera, S frena, mira para dirigir (35 s)");
+  }
 
     private static void bar(ServerPlayer p, String msg) {
         p.displayClientMessage(Component.literal("\u00a7a" + msg + " \u00a77[Voluntad " + getEnergy(p) + "/" + MAX_ENERGY + "]"), true);
     }
 
     // ---------- acciones ----------
-    public static void activate(ServerPlayer p, int action) { }
+    public static void activate(ServerPlayer p, int action) {
+        switch (action) {
+            case 1 -> toggleSuit(p);
+            case 2 -> toggleFlight(p);
+            case 3 -> summonJet(p);
+            default -> { }
+        }
+    }
 
-    private static boolean spend(ServerPlayer p, int cost) {
+    static boolean spend(ServerPlayer p, int cost) {
         if (getEnergy(p) < cost) {
-            p.displayClientMessage(Component.literal("\u00a7cEl anillo necesita recargarse (Shift + clic derecho)"), true);
+            p.displayClientMessage(Component.literal("\u00a7cTe falta voluntad: recargala jurando ante una Bateria de Voluntad"), true);
             return false;
         }
         setEnergy(p, getEnergy(p) - cost);
@@ -233,10 +290,8 @@ public class RingPowers {
         if (end >= 0) markConjured(result, end);
     }
 
+    /** Recarga completa (al terminar el juramento ante la bateria). */
     public static void recharge(Player p) {
         setEnergy(p, MAX_ENERGY);
-        p.level().playSound(null, p.blockPosition(), SoundEvents.BEACON_POWER_SELECT, SoundSource.PLAYERS, 1.0f, 0.7f);
-        p.displayClientMessage(Component.literal(
-                "\u00a7aEn el dia mas brillante, en la noche mas oscura... \u00a77(Voluntad restaurada)"), false);
     }
 }

@@ -18,15 +18,9 @@ import java.util.List;
 public class PowerRingItem extends Item {
     public PowerRingItem(Properties props) { super(props); }
 
-    /** Shift + clic derecho: recarga el anillo con el juramento (cooldown de 30 s). */
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (player.isShiftKeyDown()) {
-            if (!level.isClientSide) RingPowers.recharge(player);
-            player.getCooldowns().addCooldown(this, 600);
-            return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
-        }
         // clic derecho: ponerse el anillo en su ranura propia del inventario
         if (RingSlot.has(player)) return InteractionResultHolder.pass(stack);
         if (!level.isClientSide) RingSlot.equip(player, stack);
@@ -44,7 +38,7 @@ public class PowerRingItem extends Item {
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tips, TooltipFlag flag) {
         tips.add(Component.literal("Clic derecho: ponertelo (ranura propia en el inventario)").withStyle(ChatFormatting.GREEN));
-        tips.add(Component.literal("G: volar | R: crear objetos | V: burbuja | B: muro").withStyle(ChatFormatting.GRAY));
-        tips.add(Component.literal("Shift + clic derecho: recargar voluntad").withStyle(ChatFormatting.DARK_GREEN));
+        tips.add(Component.literal("H: traje (Shift+H: diseño) | G: volar | J: caza | R: crear objetos").withStyle(ChatFormatting.GRAY));
+        tips.add(Component.literal("Recarga: clic derecho en una Bateria de Voluntad").withStyle(ChatFormatting.DARK_GREEN));
     }
 }
