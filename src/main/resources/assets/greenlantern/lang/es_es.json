@@ -12,5 +12,9 @@
   "block.greenlantern.willpower_battery": "Batería de Voluntad",
   "item.greenlantern.willpower_battery": "Batería de Voluntad",
   "entity.greenlantern.jet": "Caza de energía",
-  "key.greenlantern.jet": "Caza de energía"
+  "key.greenlantern.jet": "Caza de energía",
+  "key.greenlantern.beam": "Rayo del anillo",
+  "key.greenlantern.wave": "Cargar el anillo (onda)",
+  "key.greenlantern.bubble": "Burbuja de voluntad (mantener)",
+  "key.greenlantern.pulse": "Pulso de la burbuja"
 }

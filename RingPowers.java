@@ -177,6 +177,11 @@ public class RingPowers {
             case 1 -> toggleSuit(p);
             case 2 -> toggleFlight(p);
             case 3 -> summonJet(p);
+            case 4 -> Powers.beam(p);
+            case 5 -> Powers.wave(p);
+            case 6 -> Powers.bubble(p, true);
+            case 7 -> Powers.bubble(p, false);
+            case 8 -> Powers.pulse(p);
             default -> { }
         }
     }

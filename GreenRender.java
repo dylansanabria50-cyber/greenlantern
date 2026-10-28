@@ -49,4 +49,14 @@ public class GreenRender extends RenderType {
                     .setCullState(NO_CULL)
                     .setWriteMaskState(COLOR_WRITE)
                     .createCompositeState(false));
+
+    /** Luz suave (anillo, rayo, burbuja): suma luz respetando el alfa de cada vertice, sin escribir profundidad. */
+    public static final RenderType GLOW = RenderType.create("greenlantern_glow",
+            DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.QUADS, 8192, false, true,
+            RenderType.CompositeState.builder()
+                    .setShaderState(POSITION_COLOR_SHADER)
+                    .setTransparencyState(LIGHTNING_TRANSPARENCY)
+                    .setCullState(NO_CULL)
+                    .setWriteMaskState(COLOR_WRITE)
+                    .createCompositeState(false));
 }

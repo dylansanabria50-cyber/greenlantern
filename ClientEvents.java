@@ -27,6 +27,11 @@ public class ClientEvents {
     public static final KeyMapping SUIT = new KeyMapping("key.greenlantern.suit", GLFW.GLFW_KEY_H, CATEGORY);
     public static final KeyMapping FLIGHT = new KeyMapping("key.greenlantern.flight", GLFW.GLFW_KEY_G, CATEGORY);
     public static final KeyMapping JET = new KeyMapping("key.greenlantern.jet", GLFW.GLFW_KEY_J, CATEGORY);
+    public static final KeyMapping BEAM = new KeyMapping("key.greenlantern.beam", GLFW.GLFW_KEY_V, CATEGORY);
+    public static final KeyMapping WAVE = new KeyMapping("key.greenlantern.wave", GLFW.GLFW_KEY_B, CATEGORY);
+    public static final KeyMapping BUBBLE = new KeyMapping("key.greenlantern.bubble", GLFW.GLFW_KEY_Z, CATEGORY);
+    public static final KeyMapping PULSE = new KeyMapping("key.greenlantern.pulse", GLFW.GLFW_KEY_X, CATEGORY);
+    private static boolean bubbleHeld = false;
 
 
 
@@ -52,6 +57,10 @@ public class ClientEvents {
             e.register(SUIT);
             e.register(FLIGHT);
             e.register(JET);
+            e.register(BEAM);
+            e.register(WAVE);
+            e.register(BUBBLE);
+            e.register(PULSE);
         }
 
         /** Barra de voluntad arriba a la izquierda (solo con el anillo). */
@@ -68,7 +77,17 @@ public class ClientEvents {
             if (e.phase != TickEvent.Phase.END) return;
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
-            if (mc.screen != null) { holdTicks = 0; armed = false; return; }
+            if (mc.screen != null) {
+                holdTicks = 0; armed = false;
+                if (bubbleHeld) { bubbleHeld = false; ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(7)); }
+                return;
+            }
+            while (BEAM.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(4));
+            while (WAVE.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(5));
+            while (PULSE.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(8));
+            while (BUBBLE.consumeClick()) { }
+            boolean holdBubble = BUBBLE.isDown();
+            if (holdBubble != bubbleHeld) { bubbleHeld = holdBubble; ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(holdBubble ? 6 : 7)); }
             while (SUIT.consumeClick()) {
                 if (net.minecraft.client.gui.screens.Screen.hasShiftDown()) { mc.setScreen(new DesignScreen(ClientSuit.design(mc.player.getId()))); return; }
                 ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(1));
@@ -125,7 +144,7 @@ public class ClientEvents {
             int e = Math.max(0, Math.min(RingPowers.MAX_ENERGY, ClientSuit.energy));
             int x = 6, y = 6, w = 102;
             boolean poca = e < 20;
-            int color = e > 50 ? 0xFF3DFF8E : e >= 20 ? 0xFFFFBF4D : ((mc.player.tickCount / 5) % 2 == 0 ? 0xFFFF5D5D : 0xFF7A2424);
+            int color = e > 50 ? 0xFF50CC4B : e >= 20 ? 0xFFFFBF4D : ((mc.player.tickCount / 5) % 2 == 0 ? 0xFFFF5D5D : 0xFF7A2424);
             g.fill(x - 2, y - 2, x + w + 2, y + 21, 0x990E1F15);
             g.drawString(mc.font, "Voluntad " + e + "/" + RingPowers.MAX_ENERGY + (ClientSuit.isOn(mc.player.getId()) ? "  \u00a7a[traje]" : ""), x, y, poca ? 0xFF8A8A : 0x9DFFC6, false);
             g.fill(x, y + 11, x + w, y + 17, 0xFF0F2A1F);
@@ -139,6 +158,9 @@ public class ClientEvents {
                     {FLIGHT.getTranslatedKeyMessage().getString(), "Volar"},
                     {JET.getTranslatedKeyMessage().getString(), "Caza de energia"},
                     {BLAST.getTranslatedKeyMessage().getString(), "Crear objetos (mantener: favoritos)"},
+                    {BEAM.getTranslatedKeyMessage().getString(), "Rayo del anillo"},
+                    {WAVE.getTranslatedKeyMessage().getString(), "Cargar el anillo (onda)"},
+                    {BUBBLE.getTranslatedKeyMessage().getString(), "Burbuja (mantener) / " + PULSE.getTranslatedKeyMessage().getString() + ": pulso"},
             };
             int textW = 0;
             for (String[] r : rows) textW = Math.max(textW, mc.font.width("[" + r[0] + "] " + r[1]));

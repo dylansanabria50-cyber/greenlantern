@@ -16,9 +16,9 @@ import java.util.Map;
 public final class SuitTexture {
     public static final String[] TRAJES = {"Centinela", "Cometa", "Faro"};
     public static final String[] EMBLEMAS = {"Estrella", "Llama", "Alas"};
-    public static final String[] VERDES = {"Esmeralda", "Jade", "Lima"};
+    public static final String[] VERDES = {"Linterna", "Jade", "Lima"};
     /** verde principal, claro, brillo */
-    static final int[][] VERDE = {{0x1fb866, 0x3dff8e, 0xd2ffe6}, {0x13a37a, 0x2ee6a8, 0xc8fff0}, {0x5cbf18, 0x9dff3d, 0xecffd2}};
+    static final int[][] VERDE = {{0x2f9e3a, 0x50cc4b, 0xd8ffc8}, {0x13a37a, 0x2ee6a8, 0xc8fff0}, {0x5cbf18, 0x9dff3d, 0xecffd2}};
     static final String[][] EMB = {
             {".a..a.", "..aa..", ".abba.", ".abba.", "..aa..", ".a..a."},
             {"..a...", "..aa..", ".aab..", ".abba.", "abbbba", ".abba."},
@@ -179,11 +179,17 @@ public final class SuitTexture {
     /** Pixel por pixel: color, brillo y altura desde los pies (en pixeles del modelo). */
     private static Juego armar(int design) {
         int[] col = new int[64 * 64], emi = new int[64 * 64];
-        float[] alto = new float[64 * 64];
+        float[] umbral = new float[64 * 64];
+        boolean[] borde = new boolean[64 * 64];
         boolean[] usado = new boolean[64 * 64];
+        int ip = 0;
         int[] p = VERDE[verde(design)];
         for (Parte parte : PARTES) {
+            ip++;
+            int ic = 0;
             for (String cara : CARAS) {
+                ic++;
+                float orden = ruido(ip * 7 + 1, ic * 3 + 7);
                 int[] r = rect(parte, cara);
                 int w = r[2], h = r[3];
                 char[] T = new char[w * h];
@@ -201,26 +207,30 @@ public final class SuitTexture {
                     col[i] = escala(colorDe(t, p), f);
                     float e = brilloDe(t);
                     emi[i] = escala((t == 'r' || t == 'b' || t == 'o') ? p[2] : p[1], e);
-                    alto[i] = cara.equals("top") ? parte.yArriba : cara.equals("bottom") ? parte.yArriba - parte.h : parte.yArriba - v - 0.5f;
+                    umbral[i] = 0.6f * orden + 0.4f * ruido(x * 3 + 11, y * 5 + 3);
+                    borde[i] = t == 'l' || t == 'b' || t == 'o' || t == 'r' || u == 0 || v == 0 || u == w - 1 || v == h - 1;
                     usado[i] = true;
                 }
             }
         }
         ResourceLocation[] base = new ResourceLocation[FRAMES], brillo = new ResourceLocation[FRAMES];
         var tm = Minecraft.getInstance().getTextureManager();
+        // como en Legends: primero aparece el contorno de cada pieza en verde brillante y despues se rellena por partes
         for (int f = 0; f < FRAMES; f++) {
             boolean completo = f == FRAMES - 1;
-            float corte = (f + 1) * 33.0f / FRAMES;
+            float pf = (f + 1f) / FRAMES;
             NativeImage a = new NativeImage(NativeImage.Format.RGBA, 64, 64, true);
             NativeImage b = new NativeImage(NativeImage.Format.RGBA, 64, 64, true);
             for (int i = 0; i < 64 * 64; i++) {
                 if (!usado[i]) continue;
                 int x = i % 64, y = i / 64;
-                if (completo || alto[i] < corte - 1.5f) {
-                    a.setPixelRGBA(x, y, abgr(255, col[i]));
-                    b.setPixelRGBA(x, y, abgr(255, emi[i]));
-                } else if (alto[i] < corte) { // linea de luz que va subiendo
-                    a.setPixelRGBA(x, y, abgr(255, p[2]));
+                float corte = 0.38f + umbral[i] * 0.6f;
+                if (completo || pf >= corte) {
+                    boolean recien = !completo && pf - corte < 0.1f;
+                    a.setPixelRGBA(x, y, abgr(255, recien ? p[1] : col[i]));
+                    b.setPixelRGBA(x, y, abgr(255, recien ? p[1] : emi[i]));
+                } else if (borde[i] && pf > umbral[i] * 0.55f) {
+                    a.setPixelRGBA(x, y, abgr(255, p[1]));
                     b.setPixelRGBA(x, y, abgr(255, p[2]));
                 }
             }
@@ -228,6 +238,53 @@ public final class SuitTexture {
             brillo[f] = tm.register("greenlantern_brillo_" + design + "_" + f, new DynamicTexture(b));
         }
         return new Juego(base, brillo);
+    }
+
+    // ---------- capa de energia que envuelve al jugador al transformarse ----------
+    public static final int ENERGY_FRAMES = 12;
+    private static ResourceLocation[] energia;
+
+    private static float suave(float a, float b, float x) { float t = Math.max(0f, Math.min(1f, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
+
+    /** Ruido suave (manchas) en el espacio de la textura. */
+    private static float manchas(float x, float y) {
+        float s = 0f, amp = 0.6f, tot = 0f;
+        for (int o = 0; o < 3; o++) {
+            float fx = x / (5f / (1 << o)), fy = y / (5f / (1 << o));
+            int ix = (int) Math.floor(fx), iy = (int) Math.floor(fy);
+            float tx = fx - ix, ty = fy - iy;
+            tx = tx * tx * (3 - 2 * tx); ty = ty * ty * (3 - 2 * ty);
+            float a = ruido(ix + o * 31, iy), b = ruido(ix + 1 + o * 31, iy), c = ruido(ix + o * 31, iy + 1), d = ruido(ix + 1 + o * 31, iy + 1);
+            s += amp * (a + (b - a) * tx + (c - a) * ty + (a - b - c + d) * tx * ty);
+            tot += amp; amp *= 0.5f;
+        }
+        return s / tot;
+    }
+
+    public static ResourceLocation energia(float form) {
+        if (energia == null) {
+            energia = new ResourceLocation[ENERGY_FRAMES];
+            var tm = Minecraft.getInstance().getTextureManager();
+            for (int f = 0; f < ENERGY_FRAMES; f++) {
+                float fv = (f + 1f) / ENERGY_FRAMES, nivel = fv * 1.35f - 0.12f;
+                NativeImage img = new NativeImage(NativeImage.Format.RGBA, 64, 64, true);
+                for (int y = 0; y < 64; y++) for (int x = 0; x < 64; x++) {
+                    float m = manchas(x, y), vapor = suave(0.3f, 0.7f, manchas(x * 2.1f + 17, y * 2.1f + 5));
+                    float cubre = suave(m - 0.13f, m + 0.13f, nivel);
+                    float frente = fv >= 0.99f ? 0f : 1f - suave(0.02f, 0.14f, Math.abs(m - nivel));
+                    float chispa = ruido(x * 7 + 3, y * 13 + 1) > 0.88f ? frente : 0f;
+                    float r = 0.02f + 0.05f * vapor + 0.42f * frente + 0.75f * chispa;
+                    float g = 0.30f + 0.60f * vapor + 1.25f * frente + 1.5f * chispa;
+                    float b = 0.12f + 0.28f * vapor + 0.72f * frente + 1.05f * chispa;
+                    float a = (0.2f + 0.25f * vapor + 0.07f * m + 0.7f * frente + 0.5f * chispa) * cubre;
+                    int rgb = (Math.min(255, Math.round(r * 255)) << 16) | (Math.min(255, Math.round(g * 255)) << 8) | Math.min(255, Math.round(b * 255));
+                    img.setPixelRGBA(x, y, abgr(Math.min(255, Math.round(a * 255)), rgb));
+                }
+                energia[f] = tm.register("greenlantern_energia_" + f, new DynamicTexture(img));
+            }
+        }
+        int f = Math.max(0, Math.min(ENERGY_FRAMES - 1, Math.round(form * (ENERGY_FRAMES - 1))));
+        return energia[f];
     }
 
     private SuitTexture() { }

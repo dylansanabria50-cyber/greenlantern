@@ -30,7 +30,7 @@ public class ClientSuit {
     private static final Map<Integer, Boolean> ON = new HashMap<>();
     private static final Map<Integer, Long> SINCE = new HashMap<>();
     private static final Map<Integer, Integer> DESIGN = new HashMap<>();
-    public static final float FORM_TICKS = 34f, DISSOLVE_TICKS = 22f;
+    public static final float FORM_TICKS = 18f, DISSOLVE_TICKS = 18f, ENERGY_TICKS = 20f;
     /** Voluntad del jugador local (la manda el servidor). */
     public static int energy = 100;
     /** Mientras la pantalla de diseño esta abierta: muestra el traje del jugador local con este diseño. */
@@ -64,6 +64,14 @@ public class ClientSuit {
         if (on == null || mc.level == null) return 0f;
         float t = (mc.level.getGameTime() + pt) - SINCE.get(id);
         return on ? Mth.clamp(t / FORM_TICKS, 0f, 1f) : 1f - Mth.clamp(t / DISSOLVE_TICKS, 0f, 1f);
+    }
+
+    /** Ticks desde que el traje empezo a armarse o a irse (-1 si no se sabe). */
+    public static float ticksSinceChange(int id, float pt) {
+        Minecraft mc = Minecraft.getInstance();
+        Long since = SINCE.get(id);
+        if (since == null || mc.level == null) return -1f;
+        return (mc.level.getGameTime() + pt) - since;
     }
 
     public static void clear() { ON.clear(); SINCE.clear(); DESIGN.clear(); energy = 100; }
@@ -115,34 +123,52 @@ public class ClientSuit {
             brazo.render(ps, e.getMultiBufferSource().getBuffer(RenderType.entitySolid(pl.getSkinTextureLocation())), e.getPackedLight(), OverlayTexture.NO_OVERLAY);
             brazo.render(ps, e.getMultiBufferSource().getBuffer(RenderType.entityTranslucent(j.base()[f])), e.getPackedLight(), OverlayTexture.NO_OVERLAY);
             brazo.render(ps, e.getMultiBufferSource().getBuffer(RenderType.eyes(j.brillo()[f])), 15728880, OverlayTexture.NO_OVERLAY);
+            SuitArmor.renderArm(ps, e.getMultiBufferSource(), e.getPackedLight(), m, design(pl.getId()), p, derecho);
         }
 
-        /** Aura: chispas verdes alrededor del traje; anillo de luz mientras se forma; mas fuerte en vuelo. */
+        /**
+         * Chispas mientras el traje aparece; al volar despacio, llamitas verdes y blancas alrededor del pecho y las piernas;
+         * y el contorno verde (el brillo que manda el servidor) toma el color del equipo "gl_voluntad".
+         */
         @SubscribeEvent
         public static void onTick(TickEvent.ClientTickEvent e) {
             if (e.phase != TickEvent.Phase.END) return;
             Minecraft mc = Minecraft.getInstance();
             if (mc.level == null || mc.isPaused()) return;
+            net.minecraft.world.scores.Scoreboard sb = mc.level.getScoreboard();
+            net.minecraft.world.scores.PlayerTeam equipo = sb.getPlayerTeam("gl_voluntad");
             for (Player pl : mc.level.players()) {
-                if (pl.isInvisible()) continue;
                 float p = progress(pl.getId(), 0f);
-                if (p <= 0f) continue;
+                boolean brillo = p >= 1f && pl.isCurrentlyGlowing();
+                net.minecraft.world.scores.PlayerTeam actual = sb.getPlayersTeam(pl.getScoreboardName());
+                if (brillo && actual == null) {
+                    if (equipo == null) { equipo = sb.addPlayerTeam("gl_voluntad"); equipo.setColor(net.minecraft.ChatFormatting.GREEN); }
+                    sb.addPlayerToTeam(pl.getScoreboardName(), equipo);
+                } else if (!brillo && actual != null && actual == equipo) {
+                    sb.removePlayerFromTeam(pl.getScoreboardName(), equipo);
+                }
+                if (pl.isInvisible() || p <= 0f) continue;
                 int d = design(pl.getId());
-                DustParticleOptions polvo = new DustParticleOptions(rgb(SuitTexture.luz(d)), 0.7f);
                 var r = mc.level.random;
                 if (p < 1f) {
-                    double alto = p * 2.0;
-                    for (int i = 0; i < 5; i++) {
-                        double a = r.nextDouble() * Math.PI * 2;
-                        mc.level.addParticle(polvo, pl.getX() + Math.cos(a) * 0.55, pl.getY() + alto, pl.getZ() + Math.sin(a) * 0.55, 0, 0.01, 0);
+                    DustParticleOptions polvo = new DustParticleOptions(rgb(SuitTexture.luz(d)), 0.7f);
+                    for (int i = 0; i < 3; i++) {
+                        mc.level.addParticle(polvo, pl.getX() + (r.nextDouble() - 0.5) * 0.7, pl.getY() + r.nextDouble() * 1.9, pl.getZ() + (r.nextDouble() - 0.5) * 0.5, 0, 0.04, 0);
                     }
                     continue;
                 }
-                boolean volando = !pl.onGround() && !pl.isPassenger() && (pl.getAbilities().flying || pl.getDeltaMovement().lengthSqr() > 0.04);
-                int n = volando ? 3 : (pl.tickCount % 4 == 0 ? 1 : 0);
-                for (int i = 0; i < n; i++) {
-                    mc.level.addParticle(polvo, pl.getX() + (r.nextDouble() - 0.5) * 0.8, pl.getY() + r.nextDouble() * 1.9,
-                            pl.getZ() + (r.nextDouble() - 0.5) * 0.8, 0, 0.02, 0);
+                double vel = Math.hypot(pl.getX() - pl.xo, pl.getZ() - pl.zo);
+                boolean volando = !pl.onGround() && !pl.isPassenger() && !pl.isInWater();
+                if (volando && vel < 0.35) {
+                    for (int i = 0; i < 2; i++) {
+                        boolean abajo = r.nextBoolean();
+                        float k = r.nextFloat();
+                        int c = SuitTexture.luz(d);
+                        Vector3f col = new Vector3f(1f, 1f, 1f).lerp(rgb(abajo ? 0x14ca2e : 0x1ab230), 0.4f + 0.6f * k);
+                        DustParticleOptions llama = new DustParticleOptions(col, 1.3f + r.nextFloat() * 0.4f);
+                        mc.level.addParticle(llama, pl.getX() + (r.nextDouble() - 0.5) * 0.8, pl.getY() + (abajo ? 0.4 : 1.0) + (r.nextDouble() - 0.5) * 0.8,
+                                pl.getZ() + (r.nextDouble() - 0.5) * 0.8, 0, 0.01, 0);
+                    }
                 }
             }
         }

@@ -11,5 +11,9 @@
   "item.greenlantern.willpower_battery": "Willpower Battery",
   "entity.greenlantern.jet": "Energy Jet",
   "key.greenlantern.suit": "Suit (Shift: design)",
-  "key.greenlantern.jet": "Energy jet"
+  "key.greenlantern.jet": "Energy jet",
+  "key.greenlantern.beam": "Ring beam",
+  "key.greenlantern.wave": "Charge the ring (wave)",
+  "key.greenlantern.bubble": "Willpower bubble (hold)",
+  "key.greenlantern.pulse": "Bubble pulse"
 }
