@@ -16,5 +16,7 @@
   "key.greenlantern.beam": "Rayo del anillo",
   "key.greenlantern.wave": "Cargar el anillo (onda)",
   "key.greenlantern.bubble": "Burbuja de voluntad (mantener)",
-  "key.greenlantern.pulse": "Pulso de la burbuja"
+  "key.greenlantern.pulse": "Pulso de la burbuja",
+  "key.greenlantern.coloso": "Coloso de voluntad",
+  "entity.greenlantern.coloso": "Coloso de voluntad"
 }

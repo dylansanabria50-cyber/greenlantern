@@ -15,5 +15,7 @@
   "key.greenlantern.beam": "Ring beam",
   "key.greenlantern.wave": "Charge the ring (wave)",
   "key.greenlantern.bubble": "Willpower bubble (hold)",
-  "key.greenlantern.pulse": "Bubble pulse"
+  "key.greenlantern.pulse": "Bubble pulse",
+  "key.greenlantern.coloso": "Willpower colossus",
+  "entity.greenlantern.coloso": "Willpower colossus"
 }

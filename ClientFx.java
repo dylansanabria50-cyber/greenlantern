@@ -35,6 +35,8 @@ public final class ClientFx {
     private static long clock = 0;
 
     private record Beam(int id, Vec3 end, long t0) { }
+    private record BigBeam(Vec3 a, Vec3 b, long t0) { }
+    private static final List<BigBeam> BIG = new ArrayList<>();
     private record Glow(int id, long t0, int dur) { }
     private record Wave(int id, Vec3 at, long t0, int type) { }
     private record Hit(Vec3 at, long t0) { }
@@ -76,6 +78,7 @@ public final class ClientFx {
         if (mc.level == null) return;
         switch (type) {
             case Powers.FX_BEAM -> BEAMS.add(new Beam(id, new Vec3(bx, by, bz), clock));
+            case Powers.FX_BIG_BEAM -> BIG.add(new BigBeam(new Vec3(ax, ay, az), new Vec3(bx, by, bz), clock));
             case Powers.FX_BEAM_CHARGE -> CHARGES.add(new Glow(id, clock, Powers.BEAM_CHARGE));
             case Powers.FX_WAVE_START -> WAVES.add(new Wave(id, new Vec3(ax, ay, az), clock, 0));
             case Powers.FX_WAVE_BURST -> WAVES.add(new Wave(id, new Vec3(ax, ay, az), clock, 1));
@@ -120,6 +123,7 @@ public final class ClientFx {
         if (mc.level == null || mc.isPaused()) return;
         clock++;
         BEAMS.removeIf(b -> clock - b.t0 > 10);
+        BIG.removeIf(b -> clock - b.t0 > 14);
         CHARGES.removeIf(c -> clock - c.t0 > c.dur);
         WAVES.removeIf(w -> clock - w.t0 > (w.type == 0 ? Powers.WAVE_CHARGE : 16));
         Iterator<Map.Entry<Integer, Bub>> it = BUBBLES.entrySet().iterator();
@@ -143,14 +147,14 @@ public final class ClientFx {
 
     @SubscribeEvent
     public static void onLogout(ClientPlayerNetworkEvent.LoggingOut e) {
-        BEAMS.clear(); CHARGES.clear(); WAVES.clear(); BUBBLES.clear();
+        BEAMS.clear(); BIG.clear(); CHARGES.clear(); WAVES.clear(); BUBBLES.clear();
     }
 
     // ---------- dibujo ----------
     @SubscribeEvent
     public static void onRender(RenderLevelStageEvent e) {
         if (e.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
-        if (BEAMS.isEmpty() && CHARGES.isEmpty() && WAVES.isEmpty() && BUBBLES.isEmpty()) return;
+        if (BEAMS.isEmpty() && BIG.isEmpty() && CHARGES.isEmpty() && WAVES.isEmpty() && BUBBLES.isEmpty()) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
         float pt = e.getPartialTick();
@@ -181,6 +185,16 @@ public final class ClientFx {
             beam(vc, m, a.subtract(cp), b.end.subtract(cp), 0.035f, 0.85f, 1f, 0.9f, f);
             glowDisc(vc, m, a.subtract(cp), right, up, 0.35f * f, 0.2f, 1f, 0.45f, 0.8f * f);
             glowDisc(vc, m, b.end.subtract(cp), right, up, 0.6f * f, 0.2f, 1f, 0.45f, 0.7f * f);
+        }
+        for (BigBeam b : BIG) {
+            float f = 1f - Mth.clamp((now - b.t0) / 14f, 0, 1);
+            float vib = 1f + 0.25f * Mth.sin(now * 2.7f);
+            Vec3 a = b.a.subtract(cp), z = b.b.subtract(cp);
+            beam(vc, m, a, z, 1.2f * vib * f, 0.1f, 1f, 0.35f, 0.3f * f);
+            beam(vc, m, a, z, 0.5f * vib, 0.2f, 1f, 0.45f, 0.7f * f);
+            beam(vc, m, a, z, 0.16f, 0.85f, 1f, 0.9f, f);
+            glowDisc(vc, m, a, right, up, 1.4f * f, 0.2f, 1f, 0.45f, 0.8f * f);
+            glowDisc(vc, m, z, right, up, 2.5f * f, 0.3f, 1f, 0.5f, 0.8f * f);
         }
         for (Wave w : WAVES) {
             Entity en = mc.level.getEntity(w.id);

@@ -44,7 +44,7 @@ public final class Powers {
     public static final double BUBBLE_R = 3.0;
 
     /** Tipos de efecto que se mandan al cliente. */
-    public static final int FX_BEAM = 1, FX_WAVE_START = 2, FX_WAVE_BURST = 3, FX_BUBBLE_HIT = 4, FX_BUBBLE_BREAK = 5, FX_PULSE = 6, FX_BEAM_CHARGE = 7;
+    public static final int FX_BEAM = 1, FX_WAVE_START = 2, FX_WAVE_BURST = 3, FX_BUBBLE_HIT = 4, FX_BUBBLE_BREAK = 5, FX_PULSE = 6, FX_BEAM_CHARGE = 7, FX_BIG_BEAM = 8;
 
     private static final Map<UUID, Integer> BEAM = new HashMap<>();
     private static final Map<UUID, Integer> WAVE = new HashMap<>();

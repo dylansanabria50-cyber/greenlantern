@@ -31,7 +31,9 @@ public class ClientEvents {
     public static final KeyMapping WAVE = new KeyMapping("key.greenlantern.wave", GLFW.GLFW_KEY_B, CATEGORY);
     public static final KeyMapping BUBBLE = new KeyMapping("key.greenlantern.bubble", GLFW.GLFW_KEY_Z, CATEGORY);
     public static final KeyMapping PULSE = new KeyMapping("key.greenlantern.pulse", GLFW.GLFW_KEY_X, CATEGORY);
-    private static boolean bubbleHeld = false;
+    public static final KeyMapping COLOSO = new KeyMapping("key.greenlantern.coloso", GLFW.GLFW_KEY_K, CATEGORY);
+    private static boolean bubbleHeld = false, escudoHeld = false, enColoso = false;
+    private static net.minecraft.client.CameraType camaraAntes = null;
     private static int enElAire = 0;
 
 
@@ -62,6 +64,9 @@ public class ClientEvents {
             e.register(WAVE);
             e.register(BUBBLE);
             e.register(PULSE);
+            e.register(COLOSO);
+            com.example.greenlantern.ColosoEntity.CORRER = () -> Minecraft.getInstance().options.keySprint.isDown();
+            com.example.greenlantern.ColosoEntity.SALTAR = () -> Minecraft.getInstance().screen == null && Minecraft.getInstance().options.keyJump.isDown();
         }
 
         /** Barra de voluntad arriba a la izquierda (solo con el anillo). */
@@ -91,6 +96,29 @@ public class ClientEvents {
                 ab.flying = true;
                 lp.onUpdateAbilities();
             }
+            // arriba del coloso las teclas manejan sus ataques
+            boolean coloso = lp.getVehicle() instanceof com.example.greenlantern.ColosoEntity;
+            if (coloso != enColoso) {
+                enColoso = coloso;
+                if (coloso) { camaraAntes = mc.options.getCameraType(); mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK); }
+                else if (camaraAntes != null) { mc.options.setCameraType(camaraAntes); camaraAntes = null; }
+            }
+            while (COLOSO.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(16));
+            if (coloso) {
+                while (BEAM.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(11));
+                while (WAVE.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(12));
+                while (FLIGHT.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(13));
+                while (BUBBLE.consumeClick()) { }
+                while (PULSE.consumeClick()) { }
+                while (SUIT.consumeClick()) { }
+                while (JET.consumeClick()) { }
+                while (BLAST.consumeClick()) { }
+                boolean esc = BUBBLE.isDown();
+                if (esc != escudoHeld) { escudoHeld = esc; ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(esc ? 14 : 15)); }
+                if (bubbleHeld) { bubbleHeld = false; ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(7)); }
+                return;
+            }
+            escudoHeld = false;
             while (BEAM.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(4));
             while (WAVE.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(5));
             while (PULSE.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(8));
@@ -125,6 +153,17 @@ public class ClientEvents {
                 return;
             }
             while (BLAST.consumeClick()) { }
+        }
+
+        /** Arriba del coloso, el clic izquierdo es el combo de puños. */
+        @SubscribeEvent
+        public static void onAttack(net.minecraftforge.client.event.InputEvent.InteractionKeyMappingTriggered e) {
+            Minecraft mc = Minecraft.getInstance();
+            if (e.isAttack() && mc.player != null && mc.player.getVehicle() instanceof com.example.greenlantern.ColosoEntity) {
+                e.setCanceled(true);
+                e.setSwingHand(false);
+                ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(10));
+            }
         }
 
         private static boolean hasRingClient(Minecraft mc) {
@@ -170,6 +209,7 @@ public class ClientEvents {
                     {BEAM.getTranslatedKeyMessage().getString(), "Rayo del anillo"},
                     {WAVE.getTranslatedKeyMessage().getString(), "Cargar el anillo (onda)"},
                     {BUBBLE.getTranslatedKeyMessage().getString(), "Burbuja (mantener) / " + PULSE.getTranslatedKeyMessage().getString() + ": pulso"},
+                    {COLOSO.getTranslatedKeyMessage().getString(), "Coloso de voluntad"},
             };
             int textW = 0;
             for (String[] r : rows) textW = Math.max(textW, mc.font.width("[" + r[0] + "] " + r[1]));
