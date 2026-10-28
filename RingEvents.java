@@ -84,7 +84,7 @@ public class RingEvents {
                 if (p.tickCount % 40 == 0) p.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.DAMAGE_RESISTANCE, 60, 0, false, false, false));
                 // volar gasta voluntad: 1 cada 2 segundos en el aire
                 if (RingPowers.isFlying(p) && ab.flying && !p.onGround() && p.tickCount % 40 == 0) RingPowers.setEnergy(p, energy - 1);
-                if (RingPowers.isFlying(p) && !ab.mayfly && !p.isCreative()) RingPowers.setFlight(p, true);
+                if (!RingPowers.isFlying(p) || (!ab.mayfly && !p.isCreative())) RingPowers.setFlight(p, true);
             }
         } else if (RingPowers.isFlying(p)) {
             RingPowers.setFlight(p, false);

@@ -114,7 +114,8 @@ public class RingPowers {
   public static void setSuit(ServerPlayer p, boolean on) {
     if (isSuitOn(p) == on) return;
     data(p).putBoolean("GLSuitOn", on);
-    if (!on) setFlight(p, false);
+    // con el traje puesto se puede volar siempre: basta con saltar (sin apretar otra tecla)
+    setFlight(p, on);
     sendSuit(p);
     ServerLevel level = p.serverLevel();
     level.playSound(null, p.blockPosition(), on ? SoundEvents.BEACON_ACTIVATE : SoundEvents.BEACON_DEACTIVATE, SoundSource.PLAYERS, 1.0f, on ? 1.5f : 1.3f);
@@ -129,7 +130,6 @@ public class RingPowers {
       ab.mayfly = on;
       if (!on) ab.flying = false;
     }
-    if (on) ab.flying = true;
     ab.setFlyingSpeed(on ? RING_FLY_SPEED : NORMAL_FLY_SPEED);
     p.onUpdateAbilities();
   }
@@ -144,12 +144,18 @@ public class RingPowers {
     bar(p, "Traje activado");
   }
 
+  /** G: despegar o aterrizar al instante (no hace falta: con el traje alcanza con saltar). */
   private static void toggleFlight(ServerPlayer p) {
     if (!isSuitOn(p)) { p.displayClientMessage(Component.literal("\u00a7cPrimero activa el traje (H)"), true); return; }
-    boolean on = !isFlying(p);
-    setFlight(p, on);
-    if (on) p.serverLevel().sendParticles(GREEN, p.getX(), p.getY() + 0.1, p.getZ(), 30, 0.6, 0.1, 0.6, 0.05);
-    bar(p, on ? "Vuelo activado" : "Vuelo desactivado");
+    if (!isFlying(p)) setFlight(p, true);
+    net.minecraft.world.entity.player.Abilities ab = p.getAbilities();
+    ab.flying = !ab.flying;
+    if (ab.flying) {
+      p.setDeltaMovement(p.getDeltaMovement().add(0, 0.5, 0));
+      p.hurtMarked = true;
+      p.serverLevel().sendParticles(GREEN, p.getX(), p.getY() + 0.1, p.getZ(), 30, 0.6, 0.1, 0.6, 0.05);
+    }
+    p.onUpdateAbilities();
   }
 
   private static void summonJet(ServerPlayer p) {

@@ -32,6 +32,7 @@ public class ClientEvents {
     public static final KeyMapping BUBBLE = new KeyMapping("key.greenlantern.bubble", GLFW.GLFW_KEY_Z, CATEGORY);
     public static final KeyMapping PULSE = new KeyMapping("key.greenlantern.pulse", GLFW.GLFW_KEY_X, CATEGORY);
     private static boolean bubbleHeld = false;
+    private static int enElAire = 0;
 
 
 
@@ -81,6 +82,14 @@ public class ClientEvents {
                 holdTicks = 0; armed = false;
                 if (bubbleHeld) { bubbleHeld = false; ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(7)); }
                 return;
+            }
+            // con el traje puesto: saltar y mantener Espacio en el aire alcanza para empezar a volar
+            var lp = mc.player;
+            if (lp.onGround() || lp.isPassenger() || lp.isInWater()) enElAire = 0; else enElAire++;
+            var ab = lp.getAbilities();
+            if (ClientSuit.isOn(lp.getId()) && ab.mayfly && !ab.flying && enElAire >= 4 && mc.options.keyJump.isDown() && !lp.isFallFlying()) {
+                ab.flying = true;
+                lp.onUpdateAbilities();
             }
             while (BEAM.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(4));
             while (WAVE.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(5));
@@ -155,7 +164,7 @@ public class ClientEvents {
         private static void drawPanel(Minecraft mc, GuiGraphics g, int w, int h) {
             String[][] rows = {
                     {SUIT.getTranslatedKeyMessage().getString(), "Traje (Shift: diseño)"},
-                    {FLIGHT.getTranslatedKeyMessage().getString(), "Volar"},
+                    {"Espacio", "Volar: salta y mantene (" + FLIGHT.getTranslatedKeyMessage().getString() + ": despegar/aterrizar)"},
                     {JET.getTranslatedKeyMessage().getString(), "Caza de energia"},
                     {BLAST.getTranslatedKeyMessage().getString(), "Crear objetos (mantener: favoritos)"},
                     {BEAM.getTranslatedKeyMessage().getString(), "Rayo del anillo"},
