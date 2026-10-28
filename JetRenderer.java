@@ -45,17 +45,4 @@ public class JetRenderer extends EntityRenderer<JetEntity> {
         ps.popPose();
         super.render(e, yaw, pt, ps, buf, light);
     }
-
-    @Mod.EventBusSubscriber(modid = GreenLanternMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
-    public static class Register {
-        @SubscribeEvent
-        public static void onRegister(EntityRenderersEvent.RegisterRenderers e) {
-            e.registerEntityRenderer(GreenLanternMod.JET.get(), JetRenderer::new);
-        }
-
-        @SubscribeEvent
-        public static void onLayers(EntityRenderersEvent.RegisterLayerDefinitions e) {
-            e.registerLayerDefinition(JetModel.LAYER, JetModel::createLayer);
-        }
-    }
 }

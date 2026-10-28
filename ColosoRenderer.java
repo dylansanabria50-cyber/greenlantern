@@ -231,17 +231,4 @@ public class ColosoRenderer extends EntityRenderer<ColosoEntity> {
         ps.popPose();
         super.render(e, yaw, pt, ps, buf, light);
     }
-
-    @Mod.EventBusSubscriber(modid = GreenLanternMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
-    public static class Register {
-        @SubscribeEvent
-        public static void onRegister(EntityRenderersEvent.RegisterRenderers e) {
-            e.registerEntityRenderer(GreenLanternMod.COLOSO.get(), ColosoRenderer::new);
-        }
-
-        @SubscribeEvent
-        public static void onLayers(EntityRenderersEvent.RegisterLayerDefinitions e) {
-            e.registerLayerDefinition(LAYER, ColosoRenderer::createLayer);
-        }
-    }
 }

@@ -51,6 +51,7 @@ public class GreenLanternMod {
         bus.addListener(this::commonSetup);
         bus.addListener(this::addCreative);
         MinecraftForge.EVENT_BUS.register(new RingEvents());
+        net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT, () -> () -> com.example.greenlantern.client.ClientRegs.init(bus));
     }
 
     private void commonSetup(FMLCommonSetupEvent e) {
