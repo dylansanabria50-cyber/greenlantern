@@ -25,7 +25,7 @@ public class JetRenderer extends EntityRenderer<JetEntity> {
     public JetRenderer(EntityRendererProvider.Context ctx) {
         super(ctx);
         this.shadowRadius = 0.8f;
-        this.root = ctx.bakeLayer(JetModel.LAYER);
+        this.root = JetModel.createLayer().bakeRoot();
     }
 
     @Override

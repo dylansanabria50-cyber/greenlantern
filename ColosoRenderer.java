@@ -43,7 +43,7 @@ public class ColosoRenderer extends EntityRenderer<ColosoEntity> {
     public ColosoRenderer(EntityRendererProvider.Context ctx) {
         super(ctx);
         this.shadowRadius = 2.0f;
-        root = ctx.bakeLayer(LAYER);
+        root = createLayer().bakeRoot();
         cadera = root.getChild("cadera");
         torso = root.getChild("torso");
         cabeza = torso.getChild("cabeza");
