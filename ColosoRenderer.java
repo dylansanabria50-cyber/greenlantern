@@ -175,10 +175,10 @@ public class ColosoRenderer extends EntityRenderer<ColosoEntity> {
             cabeza.xRot = -Mth.clamp(pil.getViewXRot(pt), -30f, 30f) * Mth.DEG_TO_RAD * 0.6f;
         }
         // alas: plegadas sobre la espalda, se abren al volar y aletean un poco
-        float u = Mth.lerp(pt, e.alasO, e.alas), aleteo = 0.12f * Mth.sin(age * 0.25f) * u;
-        alaD.yRot = 1.45f * (1 - u) + 0.25f * u;
+        float ua = Mth.lerp(pt, e.alasO, e.alas), aleteo = 0.12f * Mth.sin(age * 0.25f) * ua;
+        alaD.yRot = 1.45f * (1 - ua) + 0.25f * ua;
         alaI.yRot = -alaD.yRot;
-        alaD.zRot = 0.35f * (1 - u) - 0.15f * u + aleteo;
+        alaD.zRot = 0.35f * (1 - ua) - 0.15f * ua + aleteo;
         alaI.zRot = -alaD.zRot;
         // ataques
         int anim = e.anim();
