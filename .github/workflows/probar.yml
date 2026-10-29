@@ -1,6 +1,7 @@
 name: Probar cliente
 on:
-  workflow_dispatch:
+  push:
+    branches: [prueba-cliente]
 jobs:
   probar:
     runs-on: ubuntu-latest
