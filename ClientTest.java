@@ -29,6 +29,7 @@ public final class ClientTest {
             System.out.println("GLTEST renderers total=" + m.size() + " coloso=" + m.get(GreenLanternMod.COLOSO.get()) + " jet=" + m.get(GreenLanternMod.JET.get()));
             EntityRendererProvider.Context ctx = new EntityRendererProvider.Context(d, mc.getItemRenderer(), mc.getBlockRenderer(), d.getItemInHandRenderer(), mc.getResourceManager(), mc.getEntityModels(), mc.font);
             try { new ColosoRenderer(ctx); System.out.println("GLTEST coloso renderer OK"); } catch (Throwable t) { System.out.println("GLTEST coloso renderer FALLA"); t.printStackTrace(System.out); }
+            try { new MisilRenderer(ctx); System.out.println("GLTEST misil renderer OK"); } catch (Throwable t) { System.out.println("GLTEST misil renderer FALLA"); t.printStackTrace(System.out); }
             try { new JetRenderer(ctx); System.out.println("GLTEST jet renderer OK"); } catch (Throwable t) { System.out.println("GLTEST jet renderer FALLA"); t.printStackTrace(System.out); }
         } catch (Throwable t) {
             System.out.println("GLTEST error"); t.printStackTrace(System.out);
