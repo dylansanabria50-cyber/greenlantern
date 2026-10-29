@@ -30,6 +30,7 @@ public final class ClientRegs {
         bus.addListener(ClientRegs::renderers);
         bus.addListener(ClientRegs::layers);
         MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ClientRegs::onJoin);
+        MinecraftForge.EVENT_BUS.addListener(ClientRegs::onTick);
     }
 
     private static void renderers(EntityRenderersEvent.RegisterRenderers e) {
@@ -46,6 +47,13 @@ public final class ClientRegs {
     private static void onJoin(EntityJoinLevelEvent e) {
         if (!e.getLevel().isClientSide()) return;
         if (e.getEntity() instanceof ColosoEntity || e.getEntity() instanceof JetEntity) asegurar();
+    }
+
+    private static int cuenta = 0;
+
+    private static void onTick(net.minecraftforge.event.TickEvent.ClientTickEvent e) {
+        if (e.phase != net.minecraftforge.event.TickEvent.Phase.START || Minecraft.getInstance().level == null) return;
+        if (++cuenta % 20 == 0) asegurar();
     }
 
     /** Si falta el dibujante del coloso o del caza en el despachador, lo agrega. */
