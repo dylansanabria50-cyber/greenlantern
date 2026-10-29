@@ -189,7 +189,7 @@ public class RingPowers {
             case 7 -> Powers.bubble(p, false);
             case 8 -> Powers.pulse(p);
             case 16 -> ColosoEntity.invocar(p);
-            case 10, 11, 12, 13, 14, 15 -> { if (p.getVehicle() instanceof ColosoEntity c) c.accion(p, action); }
+            case 10, 11, 12, 13, 14, 15, 17, 18 -> { if (p.getVehicle() instanceof ColosoEntity c) c.accion(p, action); }
             default -> { }
         }
     }

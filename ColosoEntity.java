@@ -43,22 +43,33 @@ import java.util.function.BooleanSupplier;
 public class ColosoEntity extends Entity {
     public static final int LIFE = 1800, COST = 40;
     public static final float MAX_VIDA = 150f;
-    public static final int ANIM_NADA = 0, ANIM_PUNOS = 1, ANIM_SISMICO = 2, ANIM_CANON = 3, ANIM_COHETES = 4;
-    public static final int[] DURACION = {0, 30, 40, 30, 30};
+    public static final int ANIM_NADA = 0, ANIM_PUNOS = 1, ANIM_SISMICO = 2, ANIM_CANON = 3, ANIM_COHETES = 4, ANIM_MISILES = 5;
+    public static final int[] DURACION = {0, 30, 40, 30, 30, 22};
 
     private static final EntityDataAccessor<Integer> ANIM = SynchedEntityData.defineId(ColosoEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> ANIM_T = SynchedEntityData.defineId(ColosoEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> VOLANDO = SynchedEntityData.defineId(ColosoEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> ESCUDO = SynchedEntityData.defineId(ColosoEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Float> VIDA = SynchedEntityData.defineId(ColosoEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Integer> EDAD = SynchedEntityData.defineId(ColosoEntity.class, EntityDataSerializers.INT);
 
     /** Los pone el cliente (teclas de correr y saltar) — en el servidor quedan en falso. */
     public static BooleanSupplier CORRER = () -> false, SALTAR = () -> false;
+    /** Teclas de movimiento leidas directo (con la camara lejana el juego no se las pasa al jugador). */
+    public static java.util.function.DoubleSupplier ADELANTE = () -> 0, LADO = () -> 0;
+
+    /** Misil guiado: vuela hacia su blanco y explota al llegar o al chocar. */
+    private static final class Misil {
+        Vec3 pos, vel; Entity blanco; int edad;
+        Misil(Vec3 p, Vec3 v, Entity b) { pos = p; vel = v; blanco = b; }
+    }
+    private final java.util.List<Misil> misiles = new java.util.ArrayList<>();
+    private int listoMisiles = 0;
 
     private int age;
     private boolean tuvoPiloto;
     // solo en el cliente, para la animacion de caminar
-    public float paso, pasoO, velAnim;
+    public float paso, pasoO, velAnim, inclinacion;
 
     public ColosoEntity(EntityType<? extends ColosoEntity> type, Level level) {
         super(type, level);
@@ -70,6 +81,7 @@ public class ColosoEntity extends Entity {
         this.entityData.define(ANIM, 0);
         this.entityData.define(ANIM_T, 0);
         this.entityData.define(ESCUDO, false);
+        this.entityData.define(VOLANDO, false);
         this.entityData.define(VIDA, MAX_VIDA);
         this.entityData.define(EDAD, 0);
     }
@@ -77,6 +89,7 @@ public class ColosoEntity extends Entity {
     public int anim() { return this.entityData.get(ANIM); }
     public int animInicio() { return this.entityData.get(ANIM_T); }
     public boolean escudo() { return this.entityData.get(ESCUDO); }
+    public boolean volando() { return this.entityData.get(VOLANDO); }
     public float vida() { return this.entityData.get(VIDA); }
     public int edad() { return this.entityData.get(EDAD); }
 
@@ -129,6 +142,13 @@ public class ColosoEntity extends Entity {
             case 13 -> { if (this.onGround()) empezar(ANIM_SISMICO, SoundEvents.RAVAGER_ROAR); }
             case 14 -> this.entityData.set(ESCUDO, true);
             case 15 -> this.entityData.set(ESCUDO, false);
+            case 17 -> {
+                boolean v = !this.volando();
+                this.entityData.set(VOLANDO, v);
+                this.level().playSound(null, this.blockPosition(), v ? SoundEvents.BEACON_ACTIVATE : SoundEvents.BEACON_DEACTIVATE, SoundSource.PLAYERS, 1.5f, 0.6f);
+                p.displayClientMessage(Component.literal(v ? "\u00a7aModo vuelo: mira hacia donde ir, W avanza, Ctrl acelera, Espacio sube" : "\u00a7aModo caminar"), true);
+            }
+            case 18 -> lanzarMisiles(p);
             default -> { }
         }
     }
@@ -159,7 +179,13 @@ public class ColosoEntity extends Entity {
             }
             if (c instanceof ServerPlayer sp && this.age % 20 == 0) {
                 sp.displayClientMessage(Component.literal("§aColoso §7| vida " + Math.round(this.vida()) + "/" + Math.round(MAX_VIDA)
-                        + " | " + ((LIFE - this.age) / 20) + " s | clic: puños, G: sismico, V: cañon, B: cohetes, Z: escudo, Shift: bajar"), true);
+                        + " | " + ((LIFE - this.age) / 20) + " s | clic: puños, G: sismico, V: cañon, B: cohetes, J: misiles guiados, Z: escudo, X: volar, Shift: bajar"), true);
+            }
+            moverMisiles();
+            if (this.volando() && this.age % 2 == 0) {
+                Vec3 at = Vec3.directionFromRotation(0, this.getYRot()).scale(-1.8);
+                ((ServerLevel) this.level()).sendParticles(ParticleTypes.FLAME, this.getX() + at.x, this.getY() + 6.5, this.getZ() + at.z, 3, 0.3, 0.3, 0.3, 0.02);
+                ((ServerLevel) this.level()).sendParticles(RingPowers.GREEN, this.getX(), this.getY() + 0.3, this.getZ(), 4, 0.6, 0.2, 0.6, 0);
             }
             if (this.age % 3 == 0) {
                 Vec3 atras = Vec3.directionFromRotation(0, this.getYRot()).scale(-1.6);
@@ -178,11 +204,23 @@ public class ColosoEntity extends Entity {
             float dif = Mth.wrapDegrees(c.getYRot() - this.getYRot());
             this.setYRot(this.getYRot() + Mth.clamp(dif, -7f, 7f));
             boolean ocupado = this.anim() == ANIM_SISMICO;
-            float vel = ocupado ? 0f : (CORRER.getAsBoolean() ? 0.42f : 0.24f) * (this.escudo() ? 0.6f : 1f);
+            float adel = (float) ADELANTE.getAsDouble(), lat = (float) LADO.getAsDouble();
+            if (adel == 0 && lat == 0) { adel = c.zza; lat = c.xxa; }
             Vec3 frente = Vec3.directionFromRotation(0, this.getYRot());
             Vec3 lado = new Vec3(frente.z, 0, -frente.x);
-            Vec3 mov = frente.scale(c.zza * vel).add(lado.scale(c.xxa * vel * 0.7));
             Vec3 m = this.getDeltaMovement();
+            if (this.volando()) {
+                // vuela hacia donde mira el piloto, con inercia
+                Vec3 mira = c.getLookAngle();
+                float v = CORRER.getAsBoolean() ? 1.15f : 0.65f;
+                Vec3 obj = mira.scale(adel * v).add(lado.scale(lat * v * 0.6));
+                if (SALTAR.getAsBoolean()) obj = obj.add(0, 0.5, 0);
+                this.setDeltaMovement(m.scale(0.85).add(obj.scale(0.15)));
+                this.move(MoverType.SELF, this.getDeltaMovement());
+                return;
+            }
+            float vel = ocupado ? 0f : (CORRER.getAsBoolean() ? 0.42f : 0.24f) * (this.escudo() ? 0.6f : 1f);
+            Vec3 mov = frente.scale(adel * vel).add(lado.scale(lat * vel * 0.7));
             double vy = m.y - 0.08;
             if (this.onGround() && SALTAR.getAsBoolean() && !ocupado) vy = 0.95;
             this.setDeltaMovement(m.x * 0.5 + mov.x * 0.5, vy * 0.98, m.z * 0.5 + mov.z * 0.5);
@@ -246,6 +284,59 @@ public class ColosoEntity extends Entity {
             }
             for (LivingEntity le : objetivos(fin, 2.5)) daño(le, pp, 6f);
             sl.explode(this, fin.x, fin.y, fin.z, 1.5f, Level.ExplosionInteraction.NONE);
+        }
+    }
+
+    /** J: cuatro misiles guiados desde los hombros hacia los enemigos que estan adelante. */
+    private void lanzarMisiles(ServerPlayer p) {
+        if (this.age < listoMisiles) return;
+        listoMisiles = this.age + 60;
+        empezar(ANIM_MISILES, SoundEvents.FIREWORK_ROCKET_LAUNCH);
+        Vec3 frente = Vec3.directionFromRotation(0, this.getYRot());
+        Vec3 lado = new Vec3(frente.z, 0, -frente.x);
+        java.util.List<LivingEntity> blancos = new java.util.ArrayList<>();
+        Vec3 ojo = p.getEyePosition(), mira = p.getLookAngle();
+        for (LivingEntity le : this.level().getEntitiesOfClass(LivingEntity.class, this.getBoundingBox().inflate(48), x -> x != p && x.isAlive() && !x.isSpectator())) {
+            Vec3 rel = le.getEyePosition().subtract(ojo);
+            if (rel.length() < 4 || rel.normalize().dot(mira) < 0.6) continue;
+            blancos.add(le);
+        }
+        blancos.sort(java.util.Comparator.comparingDouble(le -> -le.getEyePosition().subtract(ojo).normalize().dot(mira) + (le instanceof net.minecraft.world.entity.monster.Enemy ? -0.5 : 0)));
+        for (int i = 0; i < 4; i++) {
+            Vec3 hombro = this.position().add(0, 9.0, 0).add(lado.scale(i % 2 == 0 ? 1.8 : -1.8));
+            Vec3 salida = new Vec3(0, 0.6, 0).add(lado.scale(i % 2 == 0 ? 0.4 : -0.4)).add(frente.scale(0.5));
+            Entity b = blancos.isEmpty() ? null : blancos.get(i % blancos.size());
+            misiles.add(new Misil(hombro, salida, b));
+        }
+    }
+
+    private void moverMisiles() {
+        if (misiles.isEmpty()) return;
+        ServerLevel sl = (ServerLevel) this.level();
+        LivingEntity piloto = this.getControllingPassenger();
+        java.util.Iterator<Misil> it = misiles.iterator();
+        while (it.hasNext()) {
+            Misil m = it.next();
+            m.edad++;
+            Vec3 deseo;
+            if (m.blanco != null && m.blanco.isAlive()) deseo = m.blanco.getBoundingBox().getCenter().subtract(m.pos).normalize().scale(1.4);
+            else deseo = (piloto != null ? piloto.getLookAngle() : Vec3.directionFromRotation(0, this.getYRot())).scale(1.4);
+            float giro = m.edad < 6 ? 0.08f : 0.22f;
+            m.vel = m.vel.scale(1 - giro).add(deseo.scale(giro));
+            if (m.vel.length() > 0.01) m.vel = m.vel.normalize().scale(Math.min(1.4, 0.5 + m.edad * 0.08));
+            Vec3 sig = m.pos.add(m.vel);
+            BlockHitResult bh = sl.clip(new ClipContext(m.pos, sig, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
+            boolean choca = bh.getType() != HitResult.Type.MISS || m.edad > 100;
+            if (!choca) for (LivingEntity le : sl.getEntitiesOfClass(LivingEntity.class, new AABB(sig, sig).inflate(1.2), x -> x != piloto && x.isAlive())) { choca = true; break; }
+            m.pos = choca && bh.getType() != HitResult.Type.MISS ? bh.getLocation() : sig;
+            sl.sendParticles(ParticleTypes.SMOKE, m.pos.x, m.pos.y, m.pos.z, 2, 0.05, 0.05, 0.05, 0.01);
+            sl.sendParticles(RingPowers.GREEN, m.pos.x, m.pos.y, m.pos.z, 2, 0.05, 0.05, 0.05, 0);
+            sl.sendParticles(ParticleTypes.END_ROD, m.pos.x, m.pos.y, m.pos.z, 1, 0, 0, 0, 0);
+            if (choca) {
+                for (LivingEntity le : objetivos(m.pos, 3.0)) daño(le, piloto instanceof Player pp ? pp : null, 8f);
+                sl.explode(this, m.pos.x, m.pos.y, m.pos.z, 2.0f, Level.ExplosionInteraction.NONE);
+                it.remove();
+            }
         }
     }
 

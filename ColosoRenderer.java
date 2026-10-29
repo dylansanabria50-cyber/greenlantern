@@ -166,6 +166,13 @@ public class ColosoRenderer extends EntityRenderer<ColosoEntity> {
             torso.xRot = -0.1f * k + 0.04f * Mth.sin(t * 1.6f) * k;
             brazoD.zRot = -0.3f * k; brazoI.zRot = 0.3f * k;
         }
+        if (e.volando()) {
+            // en vuelo: piernas juntas hacia atras, brazos al costado, sin pasos
+            float k = 0.6f + 0.4f * Mth.sin(age * 0.2f) * 0.1f;
+            piernaD.xRot = piernaI.xRot = -0.35f * k; canD.xRot = canI.xRot = -0.25f;
+            brazoD.xRot = brazoI.xRot = -0.3f; brazoD.zRot = -0.25f; brazoI.zRot = 0.25f;
+            antD.xRot = antI.xRot = 0.15f;
+        }
         if (e.escudo()) { brazoI.xRot = 1.3f; antI.xRot = -1.1f; brazoI.zRot = -0.3f; }
         cabeza.xRot = -torso.xRot * 0.5f;
     }
@@ -179,6 +186,15 @@ public class ColosoRenderer extends EntityRenderer<ColosoEntity> {
         float aparece = Mth.clamp((e.tickCount + pt) / 20f, 0f, 1f);
         ps.pushPose();
         ps.mulPose(Axis.YP.rotationDegrees(-y));
+        // en vuelo el robot se acuesta segun la velocidad (como en la animacion)
+        double dx = e.getX() - e.xo, dz = e.getZ() - e.zo, dy = e.getY() - e.yo;
+        float objetivo = e.volando() ? Mth.clamp((float) Math.sqrt(dx * dx + dz * dz) / 0.9f, 0f, 1f) * 65f - (float) Mth.clamp(dy * 30, -15, 15) : 0f;
+        e.inclinacion += (objetivo - e.inclinacion) * 0.08f;
+        if (Math.abs(e.inclinacion) > 0.1f) {
+            ps.translate(0.0, 5.5, 0.0);
+            ps.mulPose(Axis.XP.rotationDegrees(e.inclinacion));
+            ps.translate(0.0, -5.5, 0.0);
+        }
         // escudo hexagonal delante del pecho
         if (e.escudo()) {
             VertexConsumer vc = buf.getBuffer(GreenRender.GLOW);

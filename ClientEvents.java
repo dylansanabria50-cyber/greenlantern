@@ -66,6 +66,8 @@ public class ClientEvents {
             e.register(PULSE);
             e.register(COLOSO);
             com.example.greenlantern.ColosoEntity.CORRER = () -> Minecraft.getInstance().options.keySprint.isDown();
+            com.example.greenlantern.ColosoEntity.ADELANTE = () -> { var p = Minecraft.getInstance().player; return p == null || Minecraft.getInstance().screen != null ? 0 : p.input.forwardImpulse; };
+            com.example.greenlantern.ColosoEntity.LADO = () -> { var p = Minecraft.getInstance().player; return p == null || Minecraft.getInstance().screen != null ? 0 : p.input.leftImpulse; };
             com.example.greenlantern.ColosoEntity.SALTAR = () -> Minecraft.getInstance().screen == null && Minecraft.getInstance().options.keyJump.isDown();
         }
 
@@ -101,7 +103,7 @@ public class ClientEvents {
             if (coloso != enColoso) {
                 enColoso = coloso;
                 if (coloso) { camaraAntes = mc.options.getCameraType(); mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK); }
-                else if (camaraAntes != null) { mc.options.setCameraType(camaraAntes); camaraAntes = null; }
+                else { ColosoCamera.soltar(); if (camaraAntes != null) { mc.options.setCameraType(camaraAntes); camaraAntes = null; } }
             }
             while (COLOSO.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(16));
             if (coloso) {
@@ -109,9 +111,9 @@ public class ClientEvents {
                 while (WAVE.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(12));
                 while (FLIGHT.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(13));
                 while (BUBBLE.consumeClick()) { }
-                while (PULSE.consumeClick()) { }
+                while (PULSE.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(17));
                 while (SUIT.consumeClick()) { }
-                while (JET.consumeClick()) { }
+                while (JET.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(18));
                 while (BLAST.consumeClick()) { }
                 boolean esc = BUBBLE.isDown();
                 if (esc != escudoHeld) { escudoHeld = esc; ModNetwork.CHANNEL.sendToServer(new ModNetwork.PowerPacket(esc ? 14 : 15)); }
