@@ -37,6 +37,7 @@ public final class ClientRegs {
         System.out.println("[greenlantern] registrando dibujantes del caza y del coloso");
         e.registerEntityRenderer(GreenLanternMod.JET.get(), JetRenderer::new);
         e.registerEntityRenderer(GreenLanternMod.COLOSO.get(), ColosoRenderer::new);
+        e.registerEntityRenderer(GreenLanternMod.MISIL.get(), MisilRenderer::new);
     }
 
     private static void layers(EntityRenderersEvent.RegisterLayerDefinitions e) {
@@ -46,7 +47,7 @@ public final class ClientRegs {
 
     private static void onJoin(EntityJoinLevelEvent e) {
         if (!e.getLevel().isClientSide()) return;
-        if (e.getEntity() instanceof ColosoEntity || e.getEntity() instanceof JetEntity) asegurar();
+        if (e.getEntity() instanceof ColosoEntity || e.getEntity() instanceof JetEntity || e.getEntity() instanceof com.example.greenlantern.MisilEntity) asegurar();
     }
 
     private static int cuenta = 0;
@@ -67,13 +68,14 @@ public final class ClientRegs {
                 f.setAccessible(true);
                 Map<Object, Object> m = (Map<Object, Object>) f.get(d);
                 if (m == null || m.isEmpty() || !(m.keySet().iterator().next() instanceof EntityType)) continue;
-                EntityType<?> col = GreenLanternMod.COLOSO.get(), jet = GreenLanternMod.JET.get();
-                if (m.get(col) != null && m.get(jet) != null) return;
+                EntityType<?> col = GreenLanternMod.COLOSO.get(), jet = GreenLanternMod.JET.get(), mis = GreenLanternMod.MISIL.get();
+                if (m.get(col) != null && m.get(jet) != null && m.get(mis) != null) return;
                 EntityRendererProvider.Context ctx = new EntityRendererProvider.Context(d, mc.getItemRenderer(), mc.getBlockRenderer(),
                         d.getItemInHandRenderer(), mc.getResourceManager(), mc.getEntityModels(), mc.font);
                 Map<Object, Object> nuevo = new HashMap<>(m);
                 if (m.get(col) == null) nuevo.put(col, new ColosoRenderer(ctx));
                 if (m.get(jet) == null) nuevo.put(jet, new JetRenderer(ctx));
+                if (m.get(mis) == null) nuevo.put(mis, new MisilRenderer(ctx));
                 f.set(d, nuevo);
                 System.out.println("[greenlantern] faltaban dibujantes del coloso o del caza: agregados a mano");
                 return;

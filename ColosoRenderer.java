@@ -38,7 +38,7 @@ public class ColosoRenderer extends EntityRenderer<ColosoEntity> {
     private static final float ESCALA = 4.0f;
     private static ResourceLocation casco, vidrio, luz;
 
-    private final ModelPart root, cadera, torso, cabeza, brazoD, brazoI, antD, antI, piernaD, piernaI, canD, canI;
+    private final ModelPart root, cadera, torso, cabeza, brazoD, brazoI, antD, antI, piernaD, piernaI, canD, canI, alaD, alaI;
 
     public ColosoRenderer(EntityRendererProvider.Context ctx) {
         super(ctx);
@@ -55,6 +55,8 @@ public class ColosoRenderer extends EntityRenderer<ColosoEntity> {
         piernaI = root.getChild("piernaI");
         canD = piernaD.getChild("can");
         canI = piernaI.getChild("can");
+        alaD = torso.getChild("alaD");
+        alaI = torso.getChild("alaI");
     }
 
     /** Medidas en "pixeles" del coloso a escala 1/4 (se dibuja 4 veces mas grande). y negativo = arriba, frente en +z. */
@@ -79,6 +81,19 @@ public class ColosoRenderer extends EntityRenderer<ColosoEntity> {
                 .texOffs(0, 0).addBox(2.5f, -11, -7.4f, 2, 6, 0.6f)
                 .texOffs(0, 0).addBox(-8.2f, -14, -1, 0.5f, 10, 2)      // lineas de los costados
                 .texOffs(0, 0).addBox(7.7f, -14, -1, 0.5f, 10, 2), PartPose.ZERO);
+        // alas en la espalda: plegadas al caminar, se abren en modo vuelo
+        for (int lado = 0; lado < 2; lado++) {
+            float s = lado == 0 ? 1 : -1;
+            PartDefinition ala = torso.addOrReplaceChild(lado == 0 ? "alaD" : "alaI", CubeListBuilder.create()
+                    .texOffs(0, 0).addBox(s > 0 ? 0 : -16, -3, -0.4f, 16, 6, 0.8f)
+                    .texOffs(0, 0).addBox(s > 0 ? 2 : -14, 3, -0.3f, 12, 3, 0.6f)
+                    .texOffs(0, 0).addBox(s > 0 ? 6 : -14, 6, -0.3f, 8, 2, 0.6f)
+                    .texOffs(0, 0).addBox(s > 0 ? 15 : -21, -2, -0.3f, 6, 3, 0.6f), PartPose.offset(6 * s, -13, -6));
+            ala.addOrReplaceChild("borde", CubeListBuilder.create()
+                    .texOffs(0, 0).addBox(s > 0 ? 0 : -21, -3.6f, -0.5f, 21, 0.7f, 1.0f)
+                    .texOffs(0, 0).addBox(s > 0 ? 4 : -12, 0, -0.5f, 0.5f, 7, 1.0f)
+                    .texOffs(0, 0).addBox(s > 0 ? 9 : -9.5f, 0, -0.5f, 0.5f, 8, 1.0f), PartPose.ZERO);
+        }
         PartDefinition cab = torso.addOrReplaceChild("cabeza", CubeListBuilder.create().texOffs(0, 0).addBox(-3.5f, -6, -3.5f, 7, 6, 7)
                 .texOffs(0, 0).addBox(-1, -8, -1, 2, 2, 2), PartPose.offset(0, -17, 0));
         cab.addOrReplaceChild("visor", CubeListBuilder.create().texOffs(0, 0).addBox(-3, -4, 3.3f, 6, 1.5f, 0.6f), PartPose.ZERO);
@@ -126,19 +141,45 @@ public class ColosoRenderer extends EntityRenderer<ColosoEntity> {
     private static float suave(float x) { x = Mth.clamp(x, 0, 1); return x * x * (3 - 2 * x); }
 
     private void posar(ColosoEntity e, float pt) {
-        for (ModelPart p : new ModelPart[]{torso, cabeza, brazoD, brazoI, antD, antI, piernaD, piernaI, canD, canI, cadera}) { p.xRot = 0; p.yRot = 0; p.zRot = 0; }
+        for (ModelPart p : new ModelPart[]{torso, cabeza, brazoD, brazoI, antD, antI, piernaD, piernaI, canD, canI, cadera, alaD, alaI}) { p.xRot = 0; p.yRot = 0; p.zRot = 0; }
         float age = e.tickCount + pt;
-        float paso = Mth.lerp(pt, e.pasoO, e.paso), a = e.velAnim;
-        // caminar: piernas, rodillas y brazos que acompañan
-        piernaD.xRot = Mth.sin(paso) * 0.65f * a;
-        piernaI.xRot = -Mth.sin(paso) * 0.65f * a;
-        canD.xRot = -Math.max(0, Mth.cos(paso)) * 0.8f * a;
-        canI.xRot = -Math.max(0, -Mth.cos(paso)) * 0.8f * a;
-        brazoD.xRot = -Mth.sin(paso) * 0.35f * a;
-        brazoI.xRot = Mth.sin(paso) * 0.35f * a;
-        antD.xRot = 0.25f + 0.1f * a; antI.xRot = 0.25f + 0.1f * a;
+        float paso = Mth.lerp(pt, e.pasoO, e.paso), a = Math.min(1f, e.velAnim), corre = Mth.clamp((e.velAnim - 1.0f) / 0.5f, 0f, 1f);
+        float aire = Mth.lerp(pt, e.enAireO, e.enAire);
+        // caminar y correr: zancadas mas largas, brazos doblados y torso inclinado al correr
+        float amp = 0.6f + 0.35f * corre;
+        piernaD.xRot = Mth.sin(paso) * amp * a;
+        piernaI.xRot = -Mth.sin(paso) * amp * a;
+        canD.xRot = -Math.max(0, Mth.cos(paso)) * (0.8f + 0.5f * corre) * a;
+        canI.xRot = -Math.max(0, -Mth.cos(paso)) * (0.8f + 0.5f * corre) * a;
+        brazoD.xRot = -Mth.sin(paso) * (0.35f + 0.4f * corre) * a;
+        brazoI.xRot = Mth.sin(paso) * (0.35f + 0.4f * corre) * a;
+        antD.xRot = 0.25f + 0.1f * a + 0.7f * corre; antI.xRot = 0.25f + 0.1f * a + 0.7f * corre;
         brazoD.zRot = -0.08f; brazoI.zRot = 0.08f;
-        torso.xRot = 0.05f * a + 0.02f * Mth.sin(age * 0.08f);
+        // respiracion y paso: el torso sube y baja un poco
+        torso.xRot = 0.05f * a + 0.25f * corre + 0.02f * Mth.sin(age * 0.08f);
+        torso.y = -22 + Math.abs(Mth.cos(paso)) * 0.6f * a + 0.2f * Mth.sin(age * 0.08f);
+        cadera.y = -20 + Math.abs(Mth.cos(paso)) * 0.6f * a;
+        torso.zRot = Mth.sin(paso) * 0.04f * a;
+        // en el aire (salto): rodillas arriba y brazos abiertos
+        if (aire > 0.01f) {
+            piernaD.xRot = Mth.lerp(aire, piernaD.xRot, 0.7f); piernaI.xRot = Mth.lerp(aire, piernaI.xRot, 0.3f);
+            canD.xRot = Mth.lerp(aire, canD.xRot, -1.1f); canI.xRot = Mth.lerp(aire, canI.xRot, -0.7f);
+            brazoD.zRot = Mth.lerp(aire, brazoD.zRot, -0.7f); brazoI.zRot = Mth.lerp(aire, brazoI.zRot, 0.7f);
+            brazoD.xRot = Mth.lerp(aire, brazoD.xRot, -0.3f); brazoI.xRot = Mth.lerp(aire, brazoI.xRot, -0.3f);
+        }
+        // la cabeza mira hacia donde mira el piloto
+        if (e.getControllingPassenger() != null) {
+            var pil = e.getControllingPassenger();
+            float dif = Mth.wrapDegrees(pil.getViewYRot(pt) - Mth.rotLerp(pt, e.yRotO, e.getYRot()));
+            cabeza.yRot = Mth.clamp(dif, -45f, 45f) * Mth.DEG_TO_RAD;
+            cabeza.xRot = -Mth.clamp(pil.getViewXRot(pt), -30f, 30f) * Mth.DEG_TO_RAD * 0.6f;
+        }
+        // alas: plegadas sobre la espalda, se abren al volar y aletean un poco
+        float u = Mth.lerp(pt, e.alasO, e.alas), aleteo = 0.12f * Mth.sin(age * 0.25f) * u;
+        alaD.yRot = 1.45f * (1 - u) + 0.25f * u;
+        alaI.yRot = -alaD.yRot;
+        alaD.zRot = 0.35f * (1 - u) - 0.15f * u + aleteo;
+        alaI.zRot = -alaD.zRot;
         // ataques
         int anim = e.anim();
         float t = e.edad() - e.animInicio() + pt;
@@ -161,8 +202,9 @@ public class ColosoRenderer extends EntityRenderer<ColosoEntity> {
             brazoD.xRot = -0.5f * carga; brazoI.xRot = -0.5f * carga;
             brazoD.zRot = -0.4f * carga; brazoI.zRot = 0.4f * carga;
             torso.xRot = -0.25f * retro;
-        } else if (anim == ColosoEntity.ANIM_COHETES) {
-            float k = suave(t / 5f) * (1f - suave((t - 26f) / 4f));
+        } else if (anim == ColosoEntity.ANIM_COHETES || anim == ColosoEntity.ANIM_MISILES) {
+            float fin = ColosoEntity.DURACION[anim];
+            float k = suave(t / 5f) * (1f - suave((t - (fin - 4f)) / 4f));
             torso.xRot = -0.1f * k + 0.04f * Mth.sin(t * 1.6f) * k;
             brazoD.zRot = -0.3f * k; brazoI.zRot = 0.3f * k;
         }
@@ -174,7 +216,7 @@ public class ColosoRenderer extends EntityRenderer<ColosoEntity> {
             antD.xRot = antI.xRot = 0.15f;
         }
         if (e.escudo()) { brazoI.xRot = 1.3f; antI.xRot = -1.1f; brazoI.zRot = -0.3f; }
-        cabeza.xRot = -torso.xRot * 0.5f;
+        cabeza.xRot += -torso.xRot * 0.5f;
     }
 
     @Override
@@ -220,6 +262,7 @@ public class ColosoRenderer extends EntityRenderer<ColosoEntity> {
         ModelPart vid = torso.getChild("vidrio"), luces = torso.getChild("luces"), visor = cabeza.getChild("visor");
         vid.visible = false; luces.visible = false; visor.visible = false;
         antD.getChild("luz").visible = antI.getChild("luz").visible = canD.getChild("luz").visible = canI.getChild("luz").visible = false;
+        alaD.getChild("borde").visible = alaI.getChild("borde").visible = false;
         torso.render(ps, buf.getBuffer(RenderType.entityTranslucent(casco)), FULL, OverlayTexture.NO_OVERLAY, 1f, g, 1f, al);
         // brillos
         vid.visible = false; luces.visible = true; visor.visible = true;
@@ -230,6 +273,13 @@ public class ColosoRenderer extends EntityRenderer<ColosoEntity> {
         torso.translateAndRotate(ps);
         luces.render(ps, buf.getBuffer(RenderType.eyes(luz)), FULL, OverlayTexture.NO_OVERLAY, pulso, pulso, pulso, 1f);
         ps.pushPose(); cabeza.translateAndRotate(ps); visor.render(ps, buf.getBuffer(RenderType.eyes(luz)), FULL, OverlayTexture.NO_OVERLAY, pulso, pulso, pulso, 1f); ps.popPose();
+        alaD.getChild("borde").visible = alaI.getChild("borde").visible = true;
+        float alas = Mth.lerp(pt, e.alasO, e.alas), bAla = 0.5f + 0.7f * alas;
+        for (ModelPart ala : new ModelPart[]{alaD, alaI}) {
+            ps.pushPose(); ala.translateAndRotate(ps);
+            ala.getChild("borde").render(ps, buf.getBuffer(RenderType.eyes(luz)), FULL, OverlayTexture.NO_OVERLAY, bAla, bAla, bAla, 1f);
+            ps.popPose();
+        }
         for (ModelPart[] b : new ModelPart[][]{{brazoD, antD}, {brazoI, antI}}) {
             ps.pushPose(); b[0].translateAndRotate(ps); b[1].translateAndRotate(ps);
             b[1].getChild("luz").render(ps, buf.getBuffer(RenderType.eyes(luz)), FULL, OverlayTexture.NO_OVERLAY);

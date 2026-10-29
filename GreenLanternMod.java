@@ -39,6 +39,9 @@ public class GreenLanternMod {
     public static final RegistryObject<EntityType<ColosoEntity>> COLOSO = ENTITIES.register("coloso",
             () -> EntityType.Builder.<ColosoEntity>of(ColosoEntity::new, MobCategory.MISC)
                     .sized(3.5f, 10.5f).clientTrackingRange(16).updateInterval(1).build("coloso"));
+    public static final RegistryObject<EntityType<MisilEntity>> MISIL = ENTITIES.register("misil",
+            () -> EntityType.Builder.<MisilEntity>of(MisilEntity::new, MobCategory.MISC)
+                    .sized(0.5f, 0.5f).clientTrackingRange(12).updateInterval(1).setShouldReceiveVelocityUpdates(true).build("misil"));
 
     public static final RegistryObject<Item> POWER_RING = ITEMS.register("power_ring",
             () -> new PowerRingItem(new Item.Properties().stacksTo(1).rarity(Rarity.EPIC).fireResistant()));
