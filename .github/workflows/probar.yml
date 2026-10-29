@@ -26,9 +26,5 @@ jobs:
           timeout 1500 xvfb-run -a -s "-screen 0 1280x720x24" gradle runClient --no-daemon > run.log 2>&1 || true
           grep -n "GLTEST\|Exception\|Error" run.log | head -80
           tail -60 run.log
-          { grep -n "GLTEST\|Exception\|Caused by\|at com.example" run.log | head -150; echo ----; tail -80 run.log; } > resultado.txt
-          git config user.name "github-actions"
-          git config user.email "github-actions@users.noreply.github.com"
-          git add -f resultado.txt
-          git commit -m "Resultado de la prueba [skip ci]" || true
-          git push || true
+          grep -n "GLTEST\|Caused by\|at com.example\|Exception" run.log | head -40 | while IFS= read -r l; do echo "::warning::$l"; done
+          tail -15 run.log | while IFS= read -r l; do echo "::notice::$l"; done
