@@ -1,0 +1,25 @@
+name: Probar cliente
+on:
+  workflow_dispatch:
+jobs:
+  probar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.1.1
+      - run: sudo apt-get update && sudo apt-get install -y xvfb mesa-utils libgl1-mesa-dri
+      - name: Abrir el juego y revisar
+        env:
+          GL_TEST: '1'
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          timeout 1500 xvfb-run -a -s "-screen 0 1280x720x24" gradle runClient --no-daemon > run.log 2>&1 || true
+          grep -n "GLTEST\|Exception\|Error" run.log | head -80
+          tail -60 run.log

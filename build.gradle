@@ -20,7 +20,7 @@ minecraft {
             property 'forge.logging.console.level', 'debug'
             mods { "greenlantern" { source sourceSets.main } }
         }
-        client { property 'forge.enabledGameTestNamespaces', 'greenlantern' }
+        client { property 'forge.enabledGameTestNamespaces', 'greenlantern'; if (System.getenv('GL_TEST')) property 'greenlantern.test', 'true' }
         server { property 'forge.enabledGameTestNamespaces', 'greenlantern'; args '--nogui' }
     }
 }
